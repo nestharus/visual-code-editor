@@ -169,7 +169,7 @@ APP_JS = """
             "font-size": "11px",
             "color": "#9aa4af",
             "text-max-width": "200px",
-            "text-wrap": "ellipsis",
+            "text-wrap": "wrap",
             "text-background-color": "#0d1117",
             "text-background-opacity": 0.95,
             "text-background-padding": "3px",
@@ -189,7 +189,7 @@ APP_JS = """
             "font-size": "9px",
             "color": "#d29922",
             "text-max-width": "120px",
-            "text-wrap": "ellipsis",
+            "text-wrap": "wrap",
             "text-background-color": "#0d1117",
             "text-background-opacity": 0.8,
             "text-background-padding": "2px"
@@ -370,19 +370,12 @@ APP_JS = """
 
     function behavioralRootLayout() {
         return {
-            name: "preset",
-            fit: true,
+            name: "grid",
+            rows: 1,
             padding: 60,
-            positions: function (node) {
-                var nodes = node.cy().nodes();
-                var index = 0;
-                for (var i = 0; i < nodes.length; i++) {
-                    if (nodes[i].id() === node.id()) { index = i; break; }
-                }
-                var spacing = 300;
-                var wave = (index % 2 === 0) ? 0 : 8;
-                return { x: index * spacing, y: wave };
-            }
+            fit: true,
+            avoidOverlap: true,
+            avoidOverlapPadding: 40
         };
     }
 
@@ -958,10 +951,6 @@ APP_JS = """
             } else {
                 clearGraphStyle(edge, "line-style");
             }
-            clearGraphStyle(edge, "curve-style");
-            clearGraphStyle(edge, "control-point-distances");
-            clearGraphStyle(edge, "control-point-weights");
-            clearGraphStyle(edge, "edge-distances");
             clearGraphStyle(edge, "line-dash-pattern");
             clearGraphStyle(edge, "line-dash-offset");
         });
@@ -993,15 +982,6 @@ APP_JS = """
         animatableEdges.forEach(function (edge) {
             if (!canStyleGraphElement(edge)) {
                 return;
-            }
-            var srcPos = edge.source().position();
-            var tgtPos = edge.target().position();
-            if (srcPos && tgtPos) {
-                var dx = Math.abs(srcPos.x - tgtPos.x);
-                var dy = Math.abs(srcPos.y - tgtPos.y);
-                if (dx < 5 || dy < 5) {
-                    return;
-                }
             }
             edge._origLineStyle = edge.style("line-style") || "solid";
             edge.style({

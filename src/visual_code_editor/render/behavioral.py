@@ -105,11 +105,7 @@ def _short_artifact_label(label: str) -> str:
         if label.endswith(ext):
             label = label[:-len(ext)]
             break
-    result = label.replace("-", " ").replace("_", " ").strip()
-    # Cap at 25 chars
-    if len(result) > 25:
-        result = result[:22] + "..."
-    return result
+    return label.replace("-", " ").replace("_", " ").strip()
 
 
 def _artifact_labels(artifact_lookup: dict[str, dict], artifact_ids: list[str]) -> list[str]:
@@ -368,8 +364,7 @@ def build_behavioral_runtime(site: dict) -> dict:
     root_edge_click_map: dict[str, dict] = {}
 
     for lifecycle in ordered_lifecycles:
-        stage_count = len(lifecycle.get("stage_ids", []))
-        label = f"{lifecycle['label']}\n{stage_count} stages"
+        label = lifecycle["label"]
         root_elements.append({
             "data": {
                 "id": lifecycle["id"],
