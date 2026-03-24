@@ -65,6 +65,55 @@
             "height": 60,
             "cursor": "pointer"
         }},
+        { selector: "node.behavioral-lifecycle", style: {
+            "shape": "round-rectangle",
+            "background-color": "#18222d",
+            "border-color": "#58a6ff",
+            "border-width": 2.5,
+            "label": "data(label)",
+            "text-valign": "center",
+            "text-halign": "center",
+            "color": "#e6edf3",
+            "font-size": "13px",
+            "width": 210,
+            "height": 92,
+            "text-wrap": "wrap",
+            "text-max-width": "180px",
+            "padding": "10px",
+            "cursor": "pointer"
+        }},
+        { selector: "node.behavioral-stage", style: {
+            "shape": "round-rectangle",
+            "background-color": "#202736",
+            "border-color": "#4fa9a0",
+            "border-width": 2,
+            "label": "data(label)",
+            "text-valign": "center",
+            "text-halign": "center",
+            "color": "#e6edf3",
+            "font-size": "12px",
+            "width": 180,
+            "height": 74,
+            "text-wrap": "wrap",
+            "text-max-width": "160px",
+            "cursor": "pointer"
+        }},
+        { selector: "node.behavioral-step", style: {
+            "shape": "round-rectangle",
+            "background-color": "#251f2f",
+            "border-color": "#d29922",
+            "border-width": 2,
+            "label": "data(label)",
+            "text-valign": "center",
+            "text-halign": "center",
+            "color": "#e6edf3",
+            "font-size": "11px",
+            "width": 170,
+            "height": 64,
+            "text-wrap": "wrap",
+            "text-max-width": "150px",
+            "cursor": "pointer"
+        }},
         { selector: "edge.cluster-edge", style: {
             "curve-style": "bezier",
             "control-point-step-size": 40,
@@ -104,6 +153,45 @@
             "width": 1,
             "line-style": "dashed",
             "opacity": 0.6
+        }},
+        { selector: "edge.behavioral-edge", style: {
+            "curve-style": "bezier",
+            "control-point-step-size": 8,
+            "target-arrow-shape": "triangle",
+            "target-arrow-fill": "filled",
+            "line-color": "#4fa9a0",
+            "target-arrow-color": "#4fa9a0",
+            "arrow-scale": 1.25,
+            "width": 2.4,
+            "opacity": 0.92,
+            "label": "data(label)",
+            "font-size": "11px",
+            "color": "#9aa4af",
+            "text-max-width": "200px",
+            "text-wrap": "wrap",
+            "text-background-color": "#0d1117",
+            "text-background-opacity": 0.95,
+            "text-background-padding": "3px",
+            "text-margin-y": "-8px",
+            "cursor": "pointer"
+        }},
+        { selector: "edge.behavioral-back-edge", style: {
+            "curve-style": "unbundled-bezier",
+            "control-point-distances": "140",
+            "control-point-weights": "0.5",
+            "line-style": "dashed",
+            "line-color": "#d29922",
+            "target-arrow-color": "#d29922",
+            "target-arrow-shape": "triangle",
+            "width": 2,
+            "label": "data(label)",
+            "font-size": "9px",
+            "color": "#d29922",
+            "text-max-width": "120px",
+            "text-wrap": "wrap",
+            "text-background-color": "#0d1117",
+            "text-background-opacity": 0.8,
+            "text-background-padding": "2px"
         }},
         { selector: "node.module-group", style: {
             "shape": "round-rectangle",
@@ -148,54 +236,10 @@
             "height": 50,
             "cursor": "pointer"
         }},
-        { selector: "node.behavioral-lifecycle", style: {
-            "shape": "round-rectangle",
-            "background-color": "#13202d",
+        { selector: "node.panel-active", style: {
+            "border-width": 3,
             "border-color": "#58a6ff",
-            "border-width": 2,
-            "label": "data(label)",
-            "text-valign": "center",
-            "text-halign": "center",
-            "color": "#e6edf3",
-            "font-size": "14px",
-            "font-weight": 600,
-            "width": 220,
-            "height": 92,
-            "text-wrap": "wrap",
-            "text-max-width": "190px",
-            "padding": "12px"
-        }},
-        { selector: "node.behavioral-stage", style: {
-            "shape": "round-rectangle",
-            "background-color": "#1c2333",
-            "border-color": "#7ee787",
-            "border-width": 2,
-            "label": "data(label)",
-            "text-valign": "center",
-            "text-halign": "center",
-            "color": "#e6edf3",
-            "font-size": "13px",
-            "width": 180,
-            "height": 78,
-            "text-wrap": "wrap",
-            "text-max-width": "150px",
-            "padding": "10px"
-        }},
-        { selector: "node.behavioral-step", style: {
-            "shape": "round-rectangle",
-            "background-color": "#252d3a",
-            "border-color": "#d29922",
-            "border-width": 2,
-            "label": "data(label)",
-            "text-valign": "center",
-            "text-halign": "center",
-            "color": "#e6edf3",
-            "font-size": "12px",
-            "width": 170,
-            "height": 72,
-            "text-wrap": "wrap",
-            "text-max-width": "145px",
-            "padding": "10px"
+            "border-style": "double"
         }},
         { selector: "edge.file-import", style: {
             "curve-style": "bezier",
@@ -203,7 +247,14 @@
             "target-arrow-shape": "triangle",
             "line-color": "#30363d",
             "target-arrow-color": "#30363d",
-            "width": 1.5
+            "width": 1.5,
+            "label": "data(label)",
+            "font-size": "8px",
+            "color": "#6e7681",
+            "text-rotation": "autorotate",
+            "text-background-color": "#0d1117",
+            "text-background-opacity": 0.7,
+            "text-background-padding": "2px"
         }},
         { selector: "edge.agent-invoke", style: {
             "curve-style": "bezier",
@@ -212,21 +263,14 @@
             "line-color": "#9D7BEE",
             "target-arrow-color": "#9D7BEE",
             "width": 1.5,
-            "line-style": "dashed"
-        }},
-        { selector: "edge.behavioral-edge", style: {
-            "curve-style": "bezier",
-            "control-point-step-size": 36,
-            "target-arrow-shape": "triangle",
-            "line-color": "#58a6ff",
-            "target-arrow-color": "#58a6ff",
-            "width": 2.5,
+            "line-style": "dashed",
             "label": "data(label)",
-            "font-size": "10px",
-            "color": "#9aa4af",
+            "font-size": "8px",
+            "color": "#6e7681",
+            "text-rotation": "autorotate",
             "text-background-color": "#0d1117",
-            "text-background-opacity": 0.78,
-            "text-background-padding": "3px"
+            "text-background-opacity": 0.7,
+            "text-background-padding": "2px"
         }},
         { selector: "edge[_segmentWeights]", style: {
             "curve-style": "unbundled-bezier",
@@ -268,6 +312,9 @@
             "opacity": 0.25,
             "transition-property": "opacity",
             "transition-duration": "0.15s"
+        }},
+        { selector: ".dimmed.highlighted, .dimmed.neighbor-highlighted", style: {
+            "opacity": 1
         }}
     ];
 
@@ -275,17 +322,22 @@
         baseUrl: null,
         pageCache: new Map(),
         stack: [{ type: "root" }],
+        view: "organizational",
         requestToken: 0,
         fragmentCounter: 0,
         _diagramRendered: false,
         currentClusterMeta: null,
         currentSystemMeta: null,
+        currentLifecycleMeta: null,
+        currentStageMeta: null,
         currentPanelMeta: null,
         rootCy: null,
         rootBehavioralCy: null,
         viewportCy: null,
         pendingViewportTransition: null,
-        rootView: "organizational",
+        rootConfigs: {},
+        behavioralRuntime: { available: false },
+        crossrefs: [],
         elements: {}
     };
 
@@ -326,6 +378,48 @@
         };
     }
 
+    function behavioralDetailLayout(level) {
+        if (level === "behavioral-stage") {
+            return {
+                name: "grid",
+                cols: 1,
+                padding: 40,
+                fit: true,
+                avoidOverlap: true,
+                avoidOverlapPadding: 28,
+                condense: false
+            };
+        }
+        // Use a custom positions function to space nodes horizontally
+        // with slight Y wave to prevent collinear edge rendering bug
+        return {
+            name: "preset",
+            fit: true,
+            padding: 60,
+            positions: function (node) {
+                var nodes = node.cy().nodes();
+                var index = 0;
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].id() === node.id()) { index = i; break; }
+                }
+                var spacing = 300;
+                var wave = (index % 2 === 0) ? 0 : 20;
+                return { x: index * spacing, y: wave };
+            }
+        };
+    }
+
+    function mermaidSafeNodeId(nodeId) {
+        return String(nodeId || "").replace(/[:\s-]/g, "_");
+    }
+
+    function lookupMermaidNodePosition(layout, nodeId) {
+        if (!layout || !layout.nodePositions || !nodeId) {
+            return null;
+        }
+        return layout.nodePositions[nodeId] || layout.nodePositions[mermaidSafeNodeId(nodeId)] || null;
+    }
+
     function fitCytoscapeInstance(cy, padding) {
         if (!cy) {
             return;
@@ -336,25 +430,71 @@
 
     function behavioralRootAvailable() {
         return !!(
-            state.elements.rootBehavioralCy
+            state.behavioralRuntime
+            && state.behavioralRuntime.available
+            && state.elements.rootBehavioralCy
             && String(state.elements.rootBehavioralCy.getAttribute("data-elements") || "").trim() !== ""
             && String(state.elements.rootBehavioralCy.getAttribute("data-elements") || "").trim() !== "[]"
         );
     }
 
-    function readRootDefaultView() {
-        if (!state.elements.rootStage) {
-            return "organizational";
+    function elementId(element) {
+        if (!element) {
+            return "";
         }
-        var requested = state.elements.rootStage.getAttribute("data-default-view");
-        if (requested === "behavioral" && behavioralRootAvailable()) {
-            return "behavioral";
+        if (typeof element.id === "function") {
+            var directId = element.id();
+            if (directId) {
+                return directId;
+            }
         }
-        return "organizational";
+        if (typeof element.data === "function") {
+            return element.data("id") || "";
+        }
+        return "";
+    }
+
+    function edgeSourceId(edge) {
+        if (!edge) {
+            return "";
+        }
+        if (typeof edge.source === "function") {
+            var source = edge.source();
+            if (source && typeof source.id === "function") {
+                return source.id() || "";
+            }
+        }
+        if (typeof edge.data === "function") {
+            return edge.data("source") || "";
+        }
+        return "";
+    }
+
+    function edgeTargetId(edge) {
+        if (!edge) {
+            return "";
+        }
+        if (typeof edge.target === "function") {
+            var target = edge.target();
+            if (target && typeof target.id === "function") {
+                return target.id() || "";
+            }
+        }
+        if (typeof edge.data === "function") {
+            return edge.data("target") || "";
+        }
+        return "";
+    }
+
+    function syncRootViewVisibility() {
+        document.body.classList.toggle("behavioral-active", state.view === "behavioral");
+        if (state.elements.rootStage) {
+            state.elements.rootStage.setAttribute("data-active-view", state.view);
+        }
     }
 
     function activeRootCy() {
-        if (state.rootView === "behavioral" && state.rootBehavioralCy) {
+        if (state.view === "behavioral" && state.rootBehavioralCy) {
             return state.rootBehavioralCy;
         }
         return state.rootCy;
@@ -580,6 +720,12 @@
             distances.push(Math.round(distance * 10) / 10);
         });
 
+        // If all distances are zero/near-zero, the edge is straight — skip segment override
+        var hasNonZero = distances.some(function (d) { return Math.abs(d) > 1; });
+        if (!hasNonZero) {
+            return null;
+        }
+
         return {
             weights: weights,
             distances: distances
@@ -588,16 +734,21 @@
 
     function applyMermaidGeometry(elements, layout) {
         if (!layout || !Array.isArray(elements)) {
-            return elements;
+            return {
+                elements: elements,
+                positionedNodeCount: 0
+            };
         }
+        var positionedNodeCount = 0;
         var positioned = elements.map(function (element) {
             if (!element || !element.data || !element.data.id) {
                 return element;
             }
-            var position = layout.nodePositions[element.data.id];
+            var position = lookupMermaidNodePosition(layout, element.data.id);
             if (!position || element.data.source || element.data.target) {
                 return element;
             }
+            positionedNodeCount += 1;
             return Object.assign({}, element, {
                 position: {
                     x: position.x,
@@ -607,7 +758,7 @@
         });
 
         var edgeIndex = 0;
-        return positioned.map(function (element) {
+        var positionedWithEdges = positioned.map(function (element) {
             if (!element || !element.data || !element.data.source || !element.data.target) {
                 return element;
             }
@@ -616,8 +767,8 @@
             if (!pathPoints) {
                 return element;
             }
-            var sourcePos = layout.nodePositions[element.data.source];
-            var targetPos = layout.nodePositions[element.data.target];
+            var sourcePos = lookupMermaidNodePosition(layout, element.data.source);
+            var targetPos = lookupMermaidNodePosition(layout, element.data.target);
             var waypointData = convertEdgeWaypoints(pathPoints, sourcePos, targetPos);
             if (!waypointData) {
                 return element;
@@ -629,15 +780,20 @@
                 })
             });
         });
+        return {
+            elements: positionedWithEdges,
+            positionedNodeCount: positionedNodeCount
+        };
     }
 
     async function prepareDiagramElements(container, level) {
         var elements = parseJsonAttribute(container, "data-elements", []);
         var mermaidText = container.getAttribute("data-mermaid") || "";
         var layout = await computeMermaidLayout(mermaidText, level || container.getAttribute("data-level") || "diagram");
+        var geometry = applyMermaidGeometry(elements, layout);
         return {
-            elements: applyMermaidGeometry(elements, layout),
-            hasMermaidLayout: !!layout
+            elements: geometry.elements,
+            hasMermaidLayout: !!layout && geometry.positionedNodeCount > 0
         };
     }
 
@@ -687,8 +843,9 @@
             return;
         }
         stopEdgeDirectionAnimation(cy);
-        cy.elements().removeClass("dimmed highlighted neighbor-highlighted flow-animated");
+        cy.nodes().removeClass("dimmed highlighted neighbor-highlighted");
         if (hasGraphCollection(cy.edges())) {
+            resetEdgeHighlightStyles(cy.edges());
             resetEdgeDirectionStyles(cy.edges());
         }
     }
@@ -746,12 +903,57 @@
         }
     }
 
+    function isBehavioralEdge(edge) {
+        return edge.hasClass("behavioral-edge") || edge.hasClass("behavioral-back-edge");
+    }
+
+    function applyEdgeHighlightStyles(allEdges, activeEdges) {
+        if (!hasGraphCollection(allEdges)) return;
+        allEdges.forEach(function (edge) {
+            if (canStyleGraphElement(edge) && !edge.hasClass("behavioral-back-edge")) {
+                edge.style("opacity", 0.25);
+            }
+        });
+        if (!hasGraphCollection(activeEdges)) return;
+        activeEdges.forEach(function (edge) {
+            if (canStyleGraphElement(edge) && !edge.hasClass("behavioral-back-edge")) {
+                edge.style({
+                    "opacity": 1,
+                    "line-color": "#58a6ff",
+                    "target-arrow-color": "#58a6ff",
+                    "width": 3,
+                    "z-index": 999,
+                    "z-index-compare": "manual"
+                });
+            }
+        });
+    }
+
+    function resetEdgeHighlightStyles(edges) {
+        if (!hasGraphCollection(edges)) return;
+        edges.forEach(function (edge) {
+            if (canStyleGraphElement(edge) && !edge.hasClass("behavioral-back-edge")) {
+                clearGraphStyle(edge, "opacity");
+                clearGraphStyle(edge, "line-color");
+                clearGraphStyle(edge, "target-arrow-color");
+                clearGraphStyle(edge, "width");
+                clearGraphStyle(edge, "z-index");
+                clearGraphStyle(edge, "z-index-compare");
+            }
+        });
+    }
+
     function resetEdgeDirectionStyles(edges) {
         if (!hasGraphCollection(edges)) {
             return;
         }
         edges.forEach(function (edge) {
-            clearGraphStyle(edge, "line-style");
+            if (edge._origLineStyle && typeof edge.style === "function") {
+                edge.style("line-style", edge._origLineStyle);
+                delete edge._origLineStyle;
+            } else {
+                clearGraphStyle(edge, "line-style");
+            }
             clearGraphStyle(edge, "line-dash-pattern");
             clearGraphStyle(edge, "line-dash-offset");
         });
@@ -765,9 +967,6 @@
         if (typeof active.cancel === "function") {
             active.cancel();
         }
-        if (active.edges && typeof active.edges.removeClass === "function") {
-            active.edges.removeClass("flow-animated");
-        }
         resetEdgeDirectionStyles(active.edges);
         clearEdgeDirectionAnimation(cy);
     }
@@ -778,18 +977,25 @@
         }
 
         stopEdgeDirectionAnimation(cy);
-        if (typeof edges.addClass === "function") {
-            edges.addClass("flow-animated");
-        }
-        edges.forEach(function (edge) {
+        var animatableEdges = edges.filter(function (edge) {
+            return canStyleGraphElement(edge);
+        });
+        if (animatableEdges.length === 0) return;
+
+        animatableEdges.forEach(function (edge) {
             if (!canStyleGraphElement(edge)) {
                 return;
             }
-            edge.style({
-                "line-style": "dashed",
-                "line-dash-pattern": [8, 4],
-                "line-dash-offset": 0
-            });
+            edge._origLineStyle = edge.style("line-style") || "solid";
+            if (edge._origLineStyle !== "dashed") {
+                edge.style({
+                    "line-style": "dashed",
+                    "line-dash-pattern": [8, 4],
+                    "line-dash-offset": 0
+                });
+            } else {
+                edge.style("line-dash-offset", 0);
+            }
         });
 
         var dashOffset = 0;
@@ -816,7 +1022,7 @@
                 return;
             }
             dashOffset = (dashOffset + 1) % 40;
-            edges.forEach(function (edge) {
+            animatableEdges.forEach(function (edge) {
                 if (canStyleGraphElement(edge)) {
                     edge.style("line-dash-offset", -dashOffset);
                 }
@@ -825,7 +1031,7 @@
         }
 
         writeEdgeDirectionAnimation(cy, {
-            edges: edges,
+            edges: animatableEdges,
             cancel: function () {
                 cancelled = true;
                 if (typeof cancelScheduledFrame === "function") {
@@ -1095,11 +1301,11 @@
                 return;
             }
             hoveredNode = node;
-            cy.elements().addClass("dimmed");
+            cy.nodes().addClass("dimmed");
             node.removeClass("dimmed").addClass("highlighted");
             var connectedEdges = node.connectedEdges();
-            connectedEdges.removeClass("dimmed").addClass("highlighted");
             node.neighborhood("node").removeClass("dimmed").addClass("neighbor-highlighted");
+            applyEdgeHighlightStyles(cy.edges(), connectedEdges);
             startEdgeDirectionAnimation(cy, connectedEdges);
         });
 
@@ -1107,23 +1313,312 @@
             hoveredNode = null;
             clearCytoscapeHighlighting(cy);
         });
+    }
 
-        cy.on("mouseover", "edge", function (evt) {
-            if (hoveredNode) return;
-            var edge = evt && evt.target ? evt.target : null;
-            if (!edge || !canHighlightCytoscape(cy) || typeof edge.connectedNodes !== "function") {
-                return;
+    function createNodeActionOverlay(cyContainer) {
+        if (!cyContainer) {
+            return null;
+        }
+        if (cyContainer.__nodeActionOverlay && cyContainer.__nodeActionOverlay.isConnected) {
+            return cyContainer.__nodeActionOverlay;
+        }
+        var overlay = document.createElement("div");
+        overlay.className = "cy-node-actions";
+        overlay.innerHTML = '<button class="cy-node-action cy-node-info" title="View details">i</button>'
+            + '<button class="cy-node-action cy-node-expand" title="Expand">⛶</button>';
+        overlay.style.display = "none";
+        cyContainer.style.position = "relative";
+        cyContainer.appendChild(overlay);
+        cyContainer.__nodeActionOverlay = overlay;
+        return overlay;
+    }
+
+    function openBehavioralDetailPanel(kind, id, label) {
+        if (!kind || !id) {
+            return;
+        }
+        setPanelEntry({
+            type: "panel",
+            kind: kind,
+            id: id,
+            label: label || "",
+            parentLifecycleId: kind === "lifecycle" ? null : currentLifecycleId(),
+            parentStageId: kind === "step" ? currentStageId() : null
+        });
+    }
+
+    function openDetailForNode(kind, id, label) {
+        if (kind === "system" || kind === "external") {
+            openSystem(id, currentClusterId(), label);
+        } else if (kind === "cluster") {
+            setPanelEntry({
+                type: "panel",
+                kind: "cluster",
+                id: id,
+                url: resolveClusterUrl(id).href,
+                label: label,
+                parentClusterId: currentClusterId()
+            });
+        } else if (kind === "store") {
+            openStore(id, label);
+        } else if (kind === "agent") {
+            if (typeof window.agentClick === "function") window.agentClick(id);
+        } else if (kind === "module") {
+            if (typeof window.moduleClick === "function") window.moduleClick(id);
+        } else if (kind === "lifecycle") {
+            openBehavioralDetailPanel(kind, id, label);
+        } else if (kind === "stage") {
+            openBehavioralDetailPanel(kind, id, label);
+        } else if (kind === "step") {
+            openBehavioralDetailPanel(kind, id, label);
+        }
+    }
+
+    function suppressOverlayNodeTap(cy, nodeId) {
+        if (!cy) {
+            return;
+        }
+        cy.__suppressedOverlayTap = {
+            nodeId: nodeId || "",
+            expiresAt: Date.now() + 400
+        };
+    }
+
+    function consumeSuppressedNodeTap(cy, nodeId) {
+        if (!cy || !cy.__suppressedOverlayTap) {
+            return false;
+        }
+        var suppressed = cy.__suppressedOverlayTap;
+        if (!suppressed.expiresAt || suppressed.expiresAt <= Date.now()) {
+            delete cy.__suppressedOverlayTap;
+            return false;
+        }
+        if (!suppressed.nodeId || !nodeId || suppressed.nodeId === nodeId) {
+            delete cy.__suppressedOverlayTap;
+            return true;
+        }
+        return false;
+    }
+
+    function activateNodePrimaryAction(cy, node, targetMap) {
+        if (!node || typeof node.data !== "function") {
+            return;
+        }
+
+        var nodeId = elementId(node);
+        var label = node.data("label") || nodeId;
+        var kind = node.data("kind") || "";
+        var resolvedTarget = (targetMap || {})[nodeId] || null;
+
+        if (kind === "module-group") {
+            return;
+        }
+        if (kind === "cluster") {
+            window.drillDown(nodeId, label);
+            return;
+        }
+        if (kind === "lifecycle") {
+            openLifecycle(nodeId, label);
+            return;
+        }
+        if (kind === "store") {
+            window.storeClick(node.data("storeId"), label);
+            return;
+        }
+        if (kind === "system" || kind === "external") {
+            window.systemClick(nodeId, label);
+            return;
+        }
+        if (resolvedTarget && resolvedTarget.kind === "stage") {
+            openStage(resolvedTarget.id, currentLifecycleId(), label);
+            return;
+        }
+        if (resolvedTarget && resolvedTarget.kind === "step") {
+            setPanelEntry({
+                type: "panel",
+                kind: "step",
+                id: resolvedTarget.id,
+                parentLifecycleId: currentLifecycleId(),
+                parentStageId: currentStageId(),
+                label: label || resolvedTarget.id
+            });
+            return;
+        }
+        if (kind === "agent" || (resolvedTarget && resolvedTarget.kind === "agent")) {
+            window.agentClick(
+                (resolvedTarget && resolvedTarget.id) || nodeId,
+                (resolvedTarget && resolvedTarget.label) || label
+            );
+            return;
+        }
+
+        var container = cy && typeof cy.container === "function" ? cy.container() : null;
+        var systemId = container && container.dataset ? container.dataset.systemId || "" : "";
+        var diagramTarget = resolveDiagramClickTarget(nodeId, systemId, targetMap);
+        var moduleId = (resolvedTarget && resolvedTarget.kind === "module" ? resolvedTarget.id : "")
+            || (diagramTarget && diagramTarget.kind === "module" ? diagramTarget.id : "")
+            || node.data("moduleId")
+            || resolveModuleClickTarget(nodeId, systemId);
+        if (!moduleId) {
+            return;
+        }
+        window.moduleClick(
+            moduleId,
+            (resolvedTarget && resolvedTarget.label) || label
+        );
+    }
+
+    function bindNodeActionOverlay(cy, targetMap) {
+        if (!cy || typeof cy.on !== "function") return;
+        var container = cy.container();
+        if (!container) return;
+        var overlay = createNodeActionOverlay(container);
+        if (!overlay || overlay.__boundCy === cy) {
+            return;
+        }
+        overlay.__boundCy = cy;
+        var infoBtn = overlay.querySelector(".cy-node-info");
+        var expandBtn = overlay.querySelector(".cy-node-expand");
+        var showTimeout = null;
+        var hideTimeout = null;
+        var hideAnimationTimeout = null;
+        var activeNodeId = null;
+
+        function positionOverlay(node) {
+            var bb = node.renderedBoundingBox();
+            overlay.style.top = (bb.y1 - 4) + "px";
+            overlay.style.left = (bb.x2 - 52) + "px";
+        }
+
+        function showOverlay(node) {
+            clearTimeout(hideTimeout);
+            clearTimeout(hideAnimationTimeout);
+            activeNodeId = node.id();
+            positionOverlay(node);
+            overlay.style.display = "flex";
+            requestAnimationFrame(function () {
+                overlay.classList.add("is-visible");
+            });
+        }
+
+        function hideOverlay() {
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(function () {
+                overlay.classList.remove("is-visible");
+                clearTimeout(hideAnimationTimeout);
+                hideAnimationTimeout = setTimeout(function () {
+                    overlay.style.display = "none";
+                    activeNodeId = null;
+                }, 150);
+            }, 100);
+        }
+
+        cy.on("mouseover", "node", function (evt) {
+            var node = evt.target;
+            if (typeof node.isParent === "function" && node.isParent()) return;
+            clearTimeout(hideTimeout);
+            clearTimeout(hideAnimationTimeout);
+            clearTimeout(showTimeout);
+            showTimeout = setTimeout(function () {
+                showOverlay(node);
+            }, 150);
+        });
+
+        cy.on("mouseout", "node", function () {
+            clearTimeout(showTimeout);
+            hideOverlay();
+        });
+
+        overlay.addEventListener("mouseenter", function () {
+            clearTimeout(hideTimeout);
+            clearTimeout(hideAnimationTimeout);
+        });
+        overlay.addEventListener("mouseleave", function () {
+            hideOverlay();
+        });
+        overlay.addEventListener("mousedown", function (e) {
+            suppressOverlayNodeTap(cy, activeNodeId);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        overlay.addEventListener("pointerdown", function (e) {
+            suppressOverlayNodeTap(cy, activeNodeId);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        overlay.addEventListener("click", function (e) {
+            suppressOverlayNodeTap(cy, activeNodeId);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        infoBtn.addEventListener("click", function (e) {
+            suppressOverlayNodeTap(cy, activeNodeId);
+            e.preventDefault();
+            e.stopPropagation();
+            if (!activeNodeId) return;
+            var node = cy.getElementById(activeNodeId);
+            if (!node || node.length === 0) return;
+            var target = (targetMap || {})[activeNodeId];
+            var kind = (target && target.kind) || node.data("kind") || "";
+            var id = (target && target.id) || activeNodeId;
+            hideOverlay();
+            openDetailForNode(kind, id, node.data("label") || id);
+        });
+
+        expandBtn.addEventListener("click", function (e) {
+            suppressOverlayNodeTap(cy, activeNodeId);
+            e.preventDefault();
+            e.stopPropagation();
+            if (!activeNodeId) return;
+            var node = cy.getElementById(activeNodeId);
+            if (!node || node.length === 0) return;
+            hideOverlay();
+            activateNodePrimaryAction(cy, node, targetMap);
+        });
+
+        cy.on("pan zoom resize", function () {
+            if (activeNodeId) {
+                var node = cy.getElementById(activeNodeId);
+                if (node && node.length > 0) {
+                    positionOverlay(node);
+                }
             }
-            stopEdgeDirectionAnimation(cy);
-            cy.elements().addClass("dimmed");
-            edge.removeClass("dimmed").addClass("highlighted");
-            edge.connectedNodes().removeClass("dimmed").addClass("highlighted");
         });
 
-        cy.on("mouseout", "edge", function () {
-            if (hoveredNode) return;
-            clearCytoscapeHighlighting(cy);
+        cy.on("tapstart", function () {
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            clearTimeout(hideAnimationTimeout);
+            overlay.style.display = "none";
+            overlay.classList.remove("is-visible");
+            activeNodeId = null;
         });
+    }
+
+    function updateActiveCardIndicator(cy) {
+        if (!cy) return;
+        cy.nodes().removeClass("panel-active");
+        var panelState = currentState();
+        if (!panelState || panelState.type !== "panel" || !panelState.id) {
+            return;
+        }
+        var activeNode = cy.getElementById(panelState.id);
+        if ((!activeNode || activeNode.length === 0) && cy.container()) {
+            var resolvedTargetMap = parseNodeTargetMap(cy.container());
+            Object.keys(resolvedTargetMap).some(function (nodeId) {
+                var target = resolvedTargetMap[nodeId];
+                if (target && target.id === panelState.id) {
+                    activeNode = cy.getElementById(nodeId);
+                    return !!(activeNode && activeNode.length > 0);
+                }
+                return false;
+            });
+        }
+        if (activeNode && activeNode.length > 0) {
+            activeNode.addClass("panel-active");
+        }
     }
 
     document.addEventListener("DOMContentLoaded", initialize);
@@ -1207,6 +1702,7 @@
     async function initialize() {
         state.baseUrl = computeBaseUrl();
         cacheElements();
+        initializeRuntimeData();
         initDetailsToggle(document);
         bindGlobalEvents();
         if (window.mermaid && typeof window.mermaid.initialize === "function") {
@@ -1217,9 +1713,13 @@
             });
         }
         await initRootCytoscape();
-        await setRootView(readRootDefaultView(), { skipRefit: true });
+        syncRootViewVisibility();
+        if (state.view === "behavioral") {
+            await initBehavioralRootCytoscape();
+        }
         await initClusterCytoscape(document.querySelector('.cy-container[data-level="cluster"]'));
         await initStandaloneSystemCytoscape(document);
+        updateViewToggleButtons();
 
         if (!isIndexPage()) {
             return;
@@ -1239,17 +1739,89 @@
             : new URL("../", window.location.href);
     }
 
+    function updateViewToggleButtons() {
+        Array.from(document.querySelectorAll("[data-view-toggle]")).forEach(function (button) {
+            var active = button.getAttribute("data-view-toggle") === state.view;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+    }
+
+    async function switchDiagramView(nextView) {
+        var resolvedView = nextView === "behavioral" && behavioralRootAvailable() ? "behavioral" : "organizational";
+        if (resolvedView === state.view) {
+            syncRootViewVisibility();
+            updateViewToggleButtons();
+            fitRootCytoscape(resolvedView);
+            return;
+        }
+
+        state.view = resolvedView;
+        state.currentClusterMeta = null;
+        state.currentSystemMeta = null;
+        state.currentLifecycleMeta = null;
+        state.currentStageMeta = null;
+        state.currentPanelMeta = null;
+        state._diagramRendered = false;
+        state.stack = [{ type: "root" }];
+        state.pendingViewportTransition = null;
+        updateViewToggleButtons();
+        closeAllPanels();
+        destroyBehavioralCytoscape(state.elements.viewport);
+        destroyClusterCytoscape(state.elements.viewport);
+        destroySystemCytoscape(state.elements.viewport);
+        if (state.elements.viewport) {
+            state.elements.viewport.innerHTML = "";
+            state.elements.viewport.classList.remove("is-active");
+        }
+        state.viewportCy = null;
+        syncRootViewVisibility();
+        if (resolvedView === "behavioral") {
+            await initBehavioralRootCytoscape();
+        }
+        if (resolvedView === "organizational" && state.rootCy) {
+            var organizationalPositions = readRevealTargetPositions(state.rootCy);
+            if (organizationalPositions) {
+                finalizeCytoscapeReveal(state.rootCy, organizationalPositions);
+            }
+            state.rootCy.nodes().style({ opacity: 1 });
+            state.rootCy.edges().style({ opacity: 1 });
+            fitRootCytoscape("organizational");
+        }
+        if (resolvedView === "behavioral" && state.rootBehavioralCy) {
+            var behavioralPositions = readRevealTargetPositions(state.rootBehavioralCy);
+            if (behavioralPositions) {
+                finalizeCytoscapeReveal(state.rootBehavioralCy, behavioralPositions);
+            }
+            state.rootBehavioralCy.nodes().style({ opacity: 1 });
+            state.rootBehavioralCy.edges().style({ opacity: 1 });
+            fitRootCytoscape("behavioral");
+        }
+        await renderCurrentState();
+    }
+
+    function closeAllPanels() {
+        if (!state.elements.detailPanel || !state.elements.detailScrim) {
+            return;
+        }
+        state.elements.detailPanel.classList.remove("is-open");
+        state.elements.detailScrim.classList.remove("is-visible");
+        state.elements.detailPanel.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("panel-open");
+    }
+
     async function initRootCytoscape() {
         var container = state.elements.rootCy || document.getElementById("root-cy");
         if (!isIndexPage() || !container || !window.cytoscape) {
             return null;
         }
         if (state.rootCy) {
-            fitRootCytoscape();
+            fitRootCytoscape("organizational");
             return state.rootCy;
         }
 
         var edgeClickMap = parseJsonAttribute(container, "data-edge-click-map", {});
+        var targetMap = parseJsonAttribute(container, "data-node-target-map", {});
         var prepared = await prepareDiagramElements(container, "root");
         var elements = prepared.elements;
 
@@ -1281,26 +1853,26 @@
 
         state.rootCy.on("tap", "node", function (evt) {
             var node = evt.target;
-            var kind = node.data("kind");
-            if (kind === "cluster") {
-                window.drillDown(node.data("id"), node.data("label"));
-            } else if (kind === "store") {
-                window.storeClick(node.data("storeId"), node.data("label"));
+            var nodeId = elementId(node);
+            if (consumeSuppressedNodeTap(state.rootCy, nodeId)) {
+                return;
             }
+            activateNodePrimaryAction(state.rootCy, node, targetMap);
         });
 
         state.rootCy.on("tap", "edge.cluster-edge", function (evt) {
             var edge = evt.target;
-            var match = edgeClickMap[edge.data("id")] || {
+            var match = edgeClickMap[elementId(edge)] || {
                 label: edge.data("label") || "",
-                from: edge.data("source") || "",
-                to: edge.data("target") || "",
+                from: edgeSourceId(edge),
+                to: edgeTargetId(edge),
                 pages: edge.data("pages") || []
             };
             openEdgeMatch(match, edge.data("label") || match.label || "");
         });
 
         bindCytoscapeHighlighting(state.rootCy);
+        bindNodeActionOverlay(state.rootCy, targetMap);
         fitRootCytoscape("organizational");
         return state.rootCy;
     }
@@ -1316,6 +1888,7 @@
         }
 
         var edgeClickMap = parseJsonAttribute(container, "data-edge-click-map", {});
+        var targetMap = parseJsonAttribute(container, "data-node-target-map", {});
         var elements = parseJsonAttribute(container, "data-elements", []);
 
         try {
@@ -1340,15 +1913,32 @@
 
         container.__edgeClickMap = edgeClickMap;
         storeRevealTargetPositions(state.rootBehavioralCy, snapshotNodePositions(state.rootBehavioralCy));
+
+        state.rootBehavioralCy.on("tap", "node", function (evt) {
+            var node = evt.target;
+            var nodeId = elementId(node);
+            if (consumeSuppressedNodeTap(state.rootBehavioralCy, nodeId)) {
+                return;
+            }
+            activateNodePrimaryAction(state.rootBehavioralCy, node, targetMap);
+        });
+
+        state.rootBehavioralCy.on("tap", "edge.behavioral-edge", function (evt) {
+            var edge = evt.target;
+            var match = edgeClickMap[elementId(edge)] || behavioralEdgeFallbackMatch(edge);
+            openBehavioralEdgePanel(match, null, null);
+        });
+
         bindCytoscapeHighlighting(state.rootBehavioralCy);
+        bindNodeActionOverlay(state.rootBehavioralCy, targetMap);
         fitRootCytoscape("behavioral");
         return state.rootBehavioralCy;
     }
 
-    function fitRootCytoscape(view) {
-        var targetView = view || state.rootView || "organizational";
-        var cy = targetView === "behavioral" ? state.rootBehavioralCy : state.rootCy;
-        if (!cy || !state.elements.rootStage || state.elements.rootStage.classList.contains("is-hidden")) {
+    function fitRootCytoscape(viewName) {
+        var targetView = viewName || state.view || "organizational";
+        var targetCy = targetView === "behavioral" ? state.rootBehavioralCy : state.rootCy;
+        if (!targetCy || !state.elements.rootStage || state.elements.rootStage.classList.contains("is-hidden")) {
             return;
         }
         window.requestAnimationFrame(function () {
@@ -1376,6 +1966,7 @@
         }
 
         var edgeClickMap = parseJsonAttribute(container, "data-edge-click-map", {});
+        var targetMap = parseJsonAttribute(container, "data-node-target-map", {});
         var prepared = await prepareDiagramElements(container, "cluster");
         var elements = prepared.elements;
 
@@ -1404,29 +1995,26 @@
 
         container.__cyInstance.on("tap", "node", function (evt) {
             var node = evt.target;
-            var nodeId = node.data("id");
-            var kind = node.data("kind");
-            if (kind === "store") {
-                window.storeClick(node.data("storeId"), node.data("label"));
+            var nodeId = elementId(node);
+            if (consumeSuppressedNodeTap(container.__cyInstance, nodeId)) {
                 return;
             }
-            if (kind === "system" || kind === "external") {
-                window.systemClick(nodeId, node.data("label"));
-            }
+            activateNodePrimaryAction(container.__cyInstance, node, targetMap);
         });
 
         container.__cyInstance.on("tap", "edge.system-edge", function (evt) {
             var edge = evt.target;
-            var match = edgeClickMap[edge.data("id")] || {
+            var match = edgeClickMap[elementId(edge)] || {
                 label: edge.data("label") || "",
-                from: edge.data("source") || "",
-                to: edge.data("target") || "",
+                from: edgeSourceId(edge),
+                to: edgeTargetId(edge),
                 pages: edge.data("href") ? [edge.data("href")] : []
             };
             openEdgeMatch(match, edge.data("label") || match.label || "");
         });
 
         bindCytoscapeHighlighting(container.__cyInstance);
+        bindNodeActionOverlay(container.__cyInstance, container.__nodeTargetMap || targetMap || {});
         window.requestAnimationFrame(function () {
             if (!container.__cyInstance) {
                 return;
@@ -1462,6 +2050,87 @@
         return initSystemCytoscape(container);
     }
 
+    async function initBehavioralCytoscape(container) {
+        if (!container || !window.cytoscape) {
+            return null;
+        }
+        if (container.__cyInstance) {
+            window.requestAnimationFrame(function () {
+                if (!container.__cyInstance) {
+                    return;
+                }
+                container.__cyInstance.resize();
+                container.__cyInstance.fit(container.__cyInstance.elements(), 36);
+            });
+            return container.__cyInstance;
+        }
+
+        var targetMap = parseJsonAttribute(container, "data-node-target-map", {});
+        var edgeClickMap = parseJsonAttribute(container, "data-edge-click-map", {});
+        var prepared = await prepareDiagramElements(container, container.dataset.level || "behavioral");
+        var elements = prepared.elements;
+        container.__nodeTargetMap = targetMap;
+        container.__edgeClickMap = edgeClickMap;
+
+        var level = container.dataset.level || "behavioral";
+        var layoutChoice;
+        if (prepared.hasMermaidLayout) {
+            layoutChoice = presetLayout();
+        } else {
+            layoutChoice = behavioralDetailLayout(level);
+        }
+
+        try {
+            container.__cyInstance = window.cytoscape({
+                container: container,
+                elements: elements,
+                style: cytoscapeStyle,
+                layout: layoutChoice,
+                minZoom: 0.2,
+                maxZoom: 4,
+                wheelSensitivity: 0.25,
+                autoungrabify: true,
+                boxSelectionEnabled: false
+            });
+        } catch (err) {
+            console.error("Behavioral Cytoscape init failed:", err);
+            container.textContent = "Diagram failed to load. Check console.";
+            container.style.color = "var(--danger)";
+            container.style.padding = "2rem";
+            return null;
+        }
+
+        state.viewportCy = container.__cyInstance;
+        storeRevealTargetPositions(container.__cyInstance, snapshotNodePositions(container.__cyInstance));
+
+        container.__cyInstance.on("tap", "node", function (evt) {
+            var node = evt.target;
+            var nodeId = elementId(node);
+            if (consumeSuppressedNodeTap(container.__cyInstance, nodeId)) {
+                return;
+            }
+            activateNodePrimaryAction(container.__cyInstance, node, targetMap);
+        });
+
+        container.__cyInstance.on("tap", "edge.behavioral-edge", function (evt) {
+            var edge = evt.target;
+            var match = edgeClickMap[elementId(edge)] || behavioralEdgeFallbackMatch(edge);
+            openBehavioralEdgePanel(match, currentLifecycleId(), currentStageId());
+        });
+
+        bindCytoscapeHighlighting(container.__cyInstance);
+        bindNodeActionOverlay(container.__cyInstance, container.__nodeTargetMap || targetMap || {});
+        window.requestAnimationFrame(function () {
+            if (!container.__cyInstance) {
+                return;
+            }
+            container.__cyInstance.resize();
+            container.__cyInstance.fit(container.__cyInstance.elements(), 36);
+        });
+
+        return container.__cyInstance;
+    }
+
     async function initSystemCytoscape(container) {
         if (!container || !window.cytoscape) {
             return null;
@@ -1478,9 +2147,11 @@
         }
 
         var targetMap = parseJsonAttribute(container, "data-node-target-map", {});
+        var edgeClickMap = parseJsonAttribute(container, "data-edge-click-map", {});
         var prepared = await prepareDiagramElements(container, "system");
         var elements = prepared.elements;
         container.__nodeTargetMap = targetMap;
+        container.__edgeClickMap = edgeClickMap;
 
         try {
             container.__cyInstance = window.cytoscape({
@@ -1507,29 +2178,21 @@
 
         container.__cyInstance.on("tap", "node", function (evt) {
             var node = evt.target;
-            var nodeId = node.data("id");
-            var kind = node.data("kind");
-            var systemId = container.dataset.systemId || "";
-            var resolvedTarget = resolveDiagramClickTarget(nodeId, systemId, targetMap);
-            if (kind === "module-group") {
+            var nodeId = elementId(node);
+            if (consumeSuppressedNodeTap(container.__cyInstance, nodeId)) {
                 return;
             }
-            if (kind === "agent" || (resolvedTarget && resolvedTarget.kind === "agent")) {
-                window.agentClick(
-                    (resolvedTarget && resolvedTarget.id) || nodeId,
-                    (resolvedTarget && resolvedTarget.label) || node.data("label")
-                );
-                return;
-            }
-            window.moduleClick(
-                (resolvedTarget && resolvedTarget.id)
-                || node.data("moduleId")
-                || resolveModuleClickTarget(nodeId, systemId),
-                (resolvedTarget && resolvedTarget.label) || node.data("label")
-            );
+            activateNodePrimaryAction(container.__cyInstance, node, targetMap);
+        });
+
+        container.__cyInstance.on("tap", "edge", function (evt) {
+            var edge = evt.target;
+            var match = edgeClickMap[elementId(edge)] || systemEdgeFallbackMatch(edge);
+            openSystemEdgePanel(match);
         });
 
         bindCytoscapeHighlighting(container.__cyInstance);
+        bindNodeActionOverlay(container.__cyInstance, container.__nodeTargetMap || targetMap || {});
         window.requestAnimationFrame(function () {
             if (!container.__cyInstance) {
                 return;
@@ -1554,6 +2217,19 @@
         state.viewportCy = null;
     }
 
+    function destroyBehavioralCytoscape(scope) {
+        if (!scope) {
+            return;
+        }
+        scope.querySelectorAll(".cy-container[data-level='behavioral-lifecycle'], .cy-container[data-level='behavioral-stage']").forEach(function (container) {
+            if (container.__cyInstance && typeof container.__cyInstance.destroy === "function") {
+                container.__cyInstance.destroy();
+            }
+            container.__cyInstance = null;
+        });
+        state.viewportCy = null;
+    }
+
     function cacheElements() {
         state.elements.rootLayout = document.querySelector(".root-layout");
         state.elements.rootStage = document.getElementById("root-stage");
@@ -1568,7 +2244,6 @@
         state.elements.detailPanelBody = document.getElementById("detail-panel-body");
         state.elements.detailPanelClose = document.getElementById("detail-panel-close");
         state.elements.detailScrim = document.getElementById("detail-scrim");
-        state.elements.viewToggleButtons = Array.from(document.querySelectorAll("[data-view-toggle]"));
     }
 
     function bindGlobalEvents() {
@@ -1586,14 +2261,15 @@
             });
         }
 
-        if (state.elements.viewToggleButtons) {
-            state.elements.viewToggleButtons.forEach(function (button) {
-                button.addEventListener("click", function () {
-                    var nextView = button.getAttribute("data-view-toggle") || "organizational";
-                    setRootView(nextView);
-                });
+        Array.from(document.querySelectorAll("[data-view-toggle]")).forEach(function (button) {
+            button.addEventListener("click", function () {
+                var nextView = button.getAttribute("data-view-toggle");
+                if (!nextView || nextView === state.view) {
+                    return;
+                }
+                switchDiagramView(nextView);
             });
-        }
+        });
 
         if (state.elements.backButton) {
             state.elements.backButton.addEventListener("click", goBack);
@@ -1796,6 +2472,121 @@
         updateNavigation();
     }
 
+    function buildSystemEdgeTitle(match) {
+        if (match && match.label) {
+            return match.label;
+        }
+        var fromLabel = match && (match.fromLabel || match.from) ? (match.fromLabel || match.from) : "Source";
+        var toLabel = match && (match.toLabel || match.to) ? (match.toLabel || match.to) : "Target";
+        return fromLabel + " → " + toLabel;
+    }
+
+    function systemEdgeFallbackMatch(edge) {
+        var sourceNode = edge && typeof edge.source === "function" ? edge.source() : null;
+        var targetNode = edge && typeof edge.target === "function" ? edge.target() : null;
+        var data = edge && typeof edge.data === "function" ? edge.data() : {};
+        var imports = Array.isArray(data.imports) ? data.imports : [];
+        var importCount = Number.isFinite(data.importCount) ? data.importCount : imports.length;
+        var fromId = edgeSourceId(edge);
+        var toId = edgeTargetId(edge);
+        return {
+            id: elementId(edge) || (fromId + "-to-" + toId),
+            label: data.label || "",
+            kind: data.kind || "import",
+            description: data.description || "",
+            from: fromId,
+            fromLabel: sourceNode && typeof sourceNode.data === "function" ? sourceNode.data("label") || fromId : fromId,
+            to: toId,
+            toLabel: targetNode && typeof targetNode.data === "function" ? targetNode.data("label") || toId : toId,
+            importCount: importCount,
+            imports: imports
+        };
+    }
+
+    function renderSystemEdgePanel(entry) {
+        var match = entry.edgeMatch || {};
+        var title = buildSystemEdgeTitle(match);
+        var fromLabel = match.fromLabel || match.from || "Source";
+        var toLabel = match.toLabel || match.to || "Target";
+        var edgeKind = match.kind === "agent" ? "Agent Invoke" : "File Import";
+        var summary = match.kind === "agent"
+            ? (match.description || "This edge represents an agent invocation.")
+            : ((match.importCount || 0) > 0
+                ? String(match.importCount) + " import" + ((match.importCount || 0) === 1 ? "" : "s")
+                : (match.description || "No import metadata available."));
+        return ''
+            + '<article class="detail-page" data-entity-kind="system-edge" data-entity-id="' + escapeHtml(entry.id || "") + '">'
+            + '  <section class="detail-hero">'
+            + '    <div class="eyebrow">System Edge</div>'
+            + '    <h1 class="page-title">' + escapeHtml(title) + '</h1>'
+            + '    <p class="lede">' + escapeHtml(edgeKind + ": " + summary) + '</p>'
+            + '  </section>'
+            + '  <section class="claims">'
+            + '    <div class="claim-block"><details open><summary>Route</summary><div class="claim-body"><p>' + escapeHtml(fromLabel) + ' → ' + escapeHtml(toLabel) + '</p></div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Imports</summary><div class="claim-body">' + renderBehavioralList(match.imports || []) + '</div></details></div>'
+            + '  </section>'
+            + '</article>';
+    }
+
+    function openSystemEdgePanel(match) {
+        var resolved = match || {};
+        setPanelEntry({
+            type: "panel",
+            kind: "system-edge",
+            id: resolved.id || (resolved.from || "source") + "-to-" + (resolved.to || "target"),
+            label: buildSystemEdgeTitle(resolved),
+            parentClusterId: currentClusterId(),
+            parentSystemId: currentSystemId(),
+            edgeMatch: resolved
+        });
+    }
+
+    function buildBehavioralEdgeTitle(match) {
+        if (match && match.label) {
+            return match.label;
+        }
+        var fromLabel = match && (match.fromLabel || match.from) ? (match.fromLabel || match.from) : "";
+        var toLabel = match && (match.toLabel || match.to) ? (match.toLabel || match.to) : "";
+        if (fromLabel || toLabel) {
+            return (fromLabel || "Source") + " → " + (toLabel || "Target");
+        }
+        return "Artifact Flow";
+    }
+
+    function behavioralEdgeFallbackMatch(edge) {
+        var sourceNode = edge && typeof edge.source === "function" ? edge.source() : null;
+        var targetNode = edge && typeof edge.target === "function" ? edge.target() : null;
+        var fromId = edgeSourceId(edge);
+        var toId = edgeTargetId(edge);
+        return {
+            id: elementId(edge) || (fromId + "-to-" + toId),
+            label: edge && typeof edge.data === "function" ? edge.data("label") || "" : "",
+            from: fromId,
+            fromLabel: sourceNode && typeof sourceNode.data === "function" ? sourceNode.data("label") || fromId : fromId,
+            to: toId,
+            toLabel: targetNode && typeof targetNode.data === "function" ? targetNode.data("label") || toId : toId,
+            sourceKind: sourceNode && typeof sourceNode.data === "function" ? sourceNode.data("kind") || "behavioral" : "behavioral",
+            targetKind: targetNode && typeof targetNode.data === "function" ? targetNode.data("kind") || "behavioral" : "behavioral",
+            artifacts: [],
+            sharedArtifacts: [],
+            sourceArtifacts: [],
+            targetArtifacts: []
+        };
+    }
+
+    function openBehavioralEdgePanel(match, parentLifecycleId, parentStageId) {
+        var resolved = match || {};
+        setPanelEntry({
+            type: "panel",
+            kind: "behavioral-edge",
+            id: resolved.id || (resolved.from || "source") + "-to-" + (resolved.to || "target"),
+            label: buildBehavioralEdgeTitle(resolved),
+            parentLifecycleId: parentLifecycleId || currentLifecycleId(),
+            parentStageId: parentStageId || currentStageId(),
+            edgeMatch: resolved
+        });
+    }
+
     function initDetailsToggle(scope) {
         scope.querySelectorAll("details").forEach(function (element) {
             element.addEventListener("toggle", function () {
@@ -1810,35 +2601,6 @@
                 button.textContent = allOpen ? "Collapse All" : "Expand All";
             });
         });
-    }
-
-    async function setRootView(view, options) {
-        if (!isIndexPage()) {
-            return null;
-        }
-        var nextView = view === "behavioral" && behavioralRootAvailable() ? "behavioral" : "organizational";
-        state.rootView = nextView;
-
-        document.body.classList.toggle("behavioral-active", nextView === "behavioral");
-        if (state.elements.rootStage) {
-            state.elements.rootStage.setAttribute("data-active-view", nextView);
-        }
-        if (Array.isArray(state.elements.viewToggleButtons)) {
-            state.elements.viewToggleButtons.forEach(function (button) {
-                var buttonView = button.getAttribute("data-view-toggle");
-                button.classList.toggle("is-active", buttonView === nextView);
-                button.setAttribute("aria-pressed", buttonView === nextView ? "true" : "false");
-            });
-        }
-
-        if (nextView === "behavioral") {
-            await initBehavioralRootCytoscape();
-        }
-
-        if (!(options && options.skipRefit)) {
-            fitRootCytoscape(nextView);
-        }
-        return activeRootCy();
     }
 
     function currentState() {
@@ -1870,6 +2632,31 @@
         return null;
     }
 
+    function currentLifecycleId() {
+        const current = currentState();
+        if (current.type === "lifecycle") {
+            return current.lifecycleId;
+        }
+        if (current.type === "stage") {
+            return current.parentLifecycleId || current.lifecycleId;
+        }
+        if (current.type === "panel" && current.parentLifecycleId) {
+            return current.parentLifecycleId;
+        }
+        return null;
+    }
+
+    function currentStageId() {
+        const current = currentState();
+        if (current.type === "stage") {
+            return current.stageId;
+        }
+        if (current.type === "panel" && current.parentStageId) {
+            return current.parentStageId;
+        }
+        return null;
+    }
+
     function moduleSystemId(moduleId) {
         const index = String(moduleId).indexOf("-");
         return index === -1 ? "" : String(moduleId).slice(0, index);
@@ -1881,6 +2668,12 @@
             : stack[stack.length - 1];
         if (!effective || effective.type === "root") {
             return { type: "root", id: "" };
+        }
+        if (effective.type === "lifecycle") {
+            return { type: "lifecycle", id: effective.lifecycleId };
+        }
+        if (effective.type === "stage") {
+            return { type: "stage", id: effective.stageId };
         }
         if (effective.type === "cluster") {
             return { type: "cluster", id: effective.clusterId };
@@ -1895,10 +2688,10 @@
         if (!diagramState || diagramState.type === "root") {
             return 0;
         }
-        if (diagramState.type === "cluster") {
+        if (diagramState.type === "cluster" || diagramState.type === "lifecycle") {
             return 1;
         }
-        if (diagramState.type === "system") {
+        if (diagramState.type === "system" || diagramState.type === "stage") {
             return 2;
         }
         return 0;
@@ -1940,6 +2733,36 @@
             [{ type: "root" }, { type: "cluster", clusterId: clusterId, label: label || "" }],
             { originNodeId: originNodeId || clusterId }
         );
+    }
+
+    function openLifecycle(lifecycleId, label) {
+        if (currentLifecycleId() === lifecycleId && !currentStageId() && currentState().type !== "panel") {
+            return;
+        }
+        applyStack(
+            [{ type: "root" }, { type: "lifecycle", lifecycleId: lifecycleId, label: label || "" }],
+            { originNodeId: lifecycleId }
+        );
+    }
+
+    function openStage(stageId, lifecycleId, label) {
+        const nextStack = [{ type: "root" }];
+        if (lifecycleId) {
+            nextStack.push({
+                type: "lifecycle",
+                lifecycleId: lifecycleId,
+                label: state.currentLifecycleMeta && state.currentLifecycleMeta.id === lifecycleId
+                    ? state.currentLifecycleMeta.label
+                    : ""
+            });
+        }
+        nextStack.push({
+            type: "stage",
+            stageId: stageId,
+            parentLifecycleId: lifecycleId || currentLifecycleId(),
+            label: label || ""
+        });
+        applyStack(nextStack, { originNodeId: stageId });
     }
 
     function openSystem(systemId, clusterId, label) {
@@ -2098,6 +2921,9 @@
             return;
         }
 
+        updateActiveCardIndicator(state.rootCy);
+        updateActiveCardIndicator(state.rootBehavioralCy);
+        updateActiveCardIndicator(state.viewportCy);
         updateNavigation();
     }
 
@@ -2127,11 +2953,12 @@
 
     async function restoreRootViewport() {
         state.elements.rootStage.classList.remove("is-hidden");
+        destroyBehavioralCytoscape(state.elements.viewport);
         destroyClusterCytoscape(state.elements.viewport);
         destroySystemCytoscape(state.elements.viewport);
         state.elements.viewport.innerHTML = "";
         state.elements.viewport.classList.remove("is-active");
-        await setRootView(state.rootView, { skipRefit: true });
+        syncRootViewVisibility();
         await nextFrame();
         var rootCy = activeRootCy();
         if (rootCy) {
@@ -2145,7 +2972,7 @@
                 storeRevealTargetPositions(rootCy, rootPositions);
                 await animateCytoscapeRevealIn(rootCy);
             }
-            fitCytoscapeInstance(rootCy, state.rootView === "behavioral" ? 60 : 48);
+            fitCytoscapeInstance(rootCy, state.view === "behavioral" ? 60 : 48);
         }
     }
 
@@ -2153,6 +2980,13 @@
         if (!state.elements.rootStage || !state.elements.viewport) {
             return;
         }
+
+        if (state.view === "behavioral") {
+            await renderBehavioralViewport(token, transition);
+            return;
+        }
+        state.currentLifecycleMeta = null;
+        state.currentStageMeta = null;
 
         var rendered = getRenderedDiagramState();
         var target = { type: "root", id: "" };
@@ -2178,7 +3012,12 @@
                 state.elements.rootStage.classList.remove("is-hidden");
                 state.elements.viewport.innerHTML = "";
                 state.elements.viewport.classList.remove("is-active");
-                await setRootView(state.rootView, { skipRefit: false });
+                syncRootViewVisibility();
+                await initRootCytoscape();
+                if (state.view === "behavioral") {
+                    await initBehavioralRootCytoscape();
+                }
+                fitRootCytoscape(state.view);
             }
             state._diagramRendered = true;
             return;
@@ -2209,6 +3048,79 @@
             label: payload.title || clusterId
         };
         state.currentSystemMeta = null;
+        state._diagramRendered = true;
+    }
+
+    async function renderBehavioralViewport(token, transition) {
+        var lifecycleId = currentLifecycleId();
+        var stageId = currentStageId();
+        state.currentClusterMeta = null;
+        state.currentSystemMeta = null;
+        var rendered = getRenderedDiagramState();
+        var target = { type: "root", id: "" };
+        if (stageId) {
+            target = { type: "stage", id: stageId };
+        } else if (lifecycleId) {
+            target = { type: "lifecycle", id: lifecycleId };
+        }
+        if (rendered && rendered.type === target.type && rendered.id === target.id) {
+            return;
+        }
+
+        if (!lifecycleId) {
+            state.currentLifecycleMeta = null;
+            state.currentStageMeta = null;
+            if (rendered && rendered.type !== "root") {
+                await transitionOutCurrentDiagram(transition || { direction: "backward" });
+                if (token !== state.requestToken) {
+                    return;
+                }
+                await restoreRootViewport();
+            } else {
+                state.elements.rootStage.classList.remove("is-hidden");
+                state.elements.viewport.innerHTML = "";
+                state.elements.viewport.classList.remove("is-active");
+                syncRootViewVisibility();
+                await initRootCytoscape();
+                await initBehavioralRootCytoscape();
+                fitRootCytoscape("behavioral");
+            }
+            state._diagramRendered = true;
+            return;
+        }
+
+        if (stageId) {
+            var stageRecord = state.behavioralRuntime.stages[stageId];
+            if (!stageRecord) {
+                return;
+            }
+            var stageWrapper = buildBehavioralViewportContent(stageRecord, "behavioral-stage", "stage-" + stageId + "-diagram");
+            await showViewportContent(stageWrapper, token, transition);
+            if (token !== state.requestToken) {
+                return;
+            }
+            state.currentLifecycleMeta = {
+                id: stageRecord.lifecycleId || lifecycleId,
+                label: state.behavioralRuntime.lifecycles[stageRecord.lifecycleId || lifecycleId]
+                    ? state.behavioralRuntime.lifecycles[stageRecord.lifecycleId || lifecycleId].label
+                    : (lifecycleId || "")
+            };
+            state.currentStageMeta = { id: stageRecord.id, label: stageRecord.label };
+            state._diagramRendered = true;
+            return;
+        }
+
+        var lifecycleRecord = state.behavioralRuntime.lifecycles[lifecycleId];
+        if (!lifecycleRecord) {
+            return;
+        }
+        var lifecycleWrapper = buildBehavioralViewportContent(lifecycleRecord, "behavioral-lifecycle", "lifecycle-" + lifecycleId + "-diagram");
+        await showViewportContent(lifecycleWrapper, token, transition);
+        if (token !== state.requestToken) {
+            return;
+        }
+        state.currentLifecycleMeta = { id: lifecycleRecord.id, label: lifecycleRecord.label };
+        state.currentStageMeta = null;
         state._diagramRendered = true;
     }
 
@@ -2252,6 +3164,22 @@
         );
     }
 
+    function buildBehavioralViewportContent(record, level, prefix) {
+        var wrapper = document.createElement("section");
+        wrapper.className = "drill-down-diagram";
+        var container = document.createElement("div");
+        container.className = "cy-container";
+        container.dataset.level = level;
+        container.dataset.view = "behavioral";
+        container.setAttribute("data-elements", record.elements || "[]");
+        container.setAttribute("data-mermaid", record.mermaid || "");
+        container.setAttribute("data-node-target-map", JSON.stringify(record.nodeTargetMap || {}));
+        container.setAttribute("data-edge-click-map", JSON.stringify(record.edgeClickMap || {}));
+        container.id = prefix || nextFragmentPrefix();
+        wrapper.appendChild(container);
+        return wrapper;
+    }
+
     function buildDrillDownDiagramContent(payload, selector, prefix) {
         const wrapper = document.createElement("section");
         wrapper.className = "drill-down-diagram";
@@ -2269,6 +3197,12 @@
     function getRenderedDiagramState() {
         if (!state._diagramRendered) {
             return null;
+        }
+        if (state.currentStageMeta) {
+            return { type: "stage", id: state.currentStageMeta.id };
+        }
+        if (state.currentLifecycleMeta) {
+            return { type: "lifecycle", id: state.currentLifecycleMeta.id };
         }
         if (state.currentSystemMeta) {
             return { type: "system", id: state.currentSystemMeta.id };
@@ -2288,6 +3222,7 @@
             return;
         }
         state.elements.rootStage.classList.add("is-hidden");
+        destroyBehavioralCytoscape(state.elements.viewport);
         destroyClusterCytoscape(state.elements.viewport);
         destroySystemCytoscape(state.elements.viewport);
         state.elements.viewport.innerHTML = "";
@@ -2306,6 +3241,10 @@
             return null;
         }
         var activeCy = null;
+        var behavioralContainers = Array.from(scope.querySelectorAll(".cy-container[data-level='behavioral-lifecycle'], .cy-container[data-level='behavioral-stage']"));
+        for (var b = 0; b < behavioralContainers.length; b += 1) {
+            activeCy = (await initBehavioralCytoscape(behavioralContainers[b])) || activeCy;
+        }
         var clusterContainers = Array.from(scope.querySelectorAll(".cy-container[data-level='cluster']"));
         for (var i = 0; i < clusterContainers.length; i += 1) {
             activeCy = (await initClusterCytoscape(clusterContainers[i])) || activeCy;
@@ -2315,6 +3254,131 @@
             activeCy = (await initSystemCytoscape(systemContainers[j])) || activeCy;
         }
         return activeCy;
+    }
+
+    function renderBehavioralList(items) {
+        if (!items || items.length === 0) {
+            return '<p class="empty">No linked items available.</p>';
+        }
+        return "<ul>" + items.map(function (item) {
+            return "<li>" + escapeHtml(item) + "</li>";
+        }).join("") + "</ul>";
+    }
+
+    function renderBehavioralComponentLinks(items) {
+        if (!items || items.length === 0) {
+            return '<p class="empty">No linked components available.</p>';
+        }
+        return '<ul class="link-list">' + items.map(function (item) {
+            if (item.href) {
+                return '<li><a href="' + escapeHtml(item.href) + '">' + escapeHtml(item.label) + '</a></li>';
+            }
+            return "<li>" + escapeHtml(item.label) + "</li>";
+        }).join("") + "</ul>";
+    }
+
+    function renderBehavioralStepPanel(entry) {
+        var step = state.behavioralRuntime.steps[entry.id];
+        if (!step) {
+            return "";
+        }
+        var codeBlocks = step.codeBlocks || [];
+        var codeHtml = codeBlocks.length ? '<ul class="link-list">' + codeBlocks.map(function (block) {
+            var suffix = block.symbol ? " — " + escapeHtml(block.symbol) : "";
+            return '<li><code>' + escapeHtml(block.path + ":" + block.line_start + "-" + block.line_end) + "</code>" + suffix + "</li>";
+        }).join("") + "</ul>" : '<p class="empty">No code anchors available.</p>';
+        return ''
+            + '<article class="detail-page" data-entity-kind="step" data-entity-id="' + escapeHtml(step.id) + '">'
+            + '  <section class="detail-hero">'
+            + '    <div class="eyebrow">Behavioral Step</div>'
+            + '    <h1 class="page-title">' + escapeHtml(step.label) + '</h1>'
+            + '    <p class="lede">' + escapeHtml(step.description || "Behavioral step detail.") + '</p>'
+            + '  </section>'
+            + '  <section class="claims">'
+            + '    <div class="claim-block"><details open><summary>Input Artifacts</summary><div class="claim-body">' + renderBehavioralList(step.inputArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Output Artifacts</summary><div class="claim-body">' + renderBehavioralList(step.outputArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Owning Components</summary><div class="claim-body">' + renderBehavioralComponentLinks(step.components || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Code Blocks</summary><div class="claim-body">' + codeHtml + '</div></details></div>'
+            + '  </section>'
+            + '</article>';
+    }
+
+    function renderBehavioralLifecyclePanel(entry) {
+        var lifecycle = state.behavioralRuntime.lifecycles[entry.id];
+        if (!lifecycle) {
+            return "";
+        }
+        var stageLabels = (lifecycle.stageIds || []).map(function (stageId) {
+            var stage = state.behavioralRuntime.stages[stageId];
+            return stage ? stage.label || stage.id : stageId;
+        });
+        return ''
+            + '<article class="detail-page" data-entity-kind="lifecycle" data-entity-id="' + escapeHtml(lifecycle.id) + '">'
+            + '  <section class="detail-hero">'
+            + '    <div class="eyebrow">Behavioral Lifecycle</div>'
+            + '    <h1 class="page-title">' + escapeHtml(lifecycle.label) + '</h1>'
+            + '    <p class="lede">' + escapeHtml(lifecycle.description || "Behavioral lifecycle detail.") + '</p>'
+            + '  </section>'
+            + '  <section class="claims">'
+            + '    <div class="claim-block"><details open><summary>Stages</summary><div class="claim-body">' + renderBehavioralList(stageLabels) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Entry Artifacts</summary><div class="claim-body">' + renderBehavioralList(lifecycle.entryArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Exit Artifacts</summary><div class="claim-body">' + renderBehavioralList(lifecycle.exitArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Components</summary><div class="claim-body">' + renderBehavioralComponentLinks(lifecycle.components || []) + '</div></details></div>'
+            + '  </section>'
+            + '</article>';
+    }
+
+    function renderBehavioralStagePanel(entry) {
+        var stage = state.behavioralRuntime.stages[entry.id];
+        if (!stage) {
+            return "";
+        }
+        var stepLabels = (stage.stepIds || []).map(function (stepId) {
+            var step = state.behavioralRuntime.steps[stepId];
+            return step ? step.label || step.id : stepId;
+        });
+        return ''
+            + '<article class="detail-page" data-entity-kind="stage" data-entity-id="' + escapeHtml(stage.id) + '">'
+            + '  <section class="detail-hero">'
+            + '    <div class="eyebrow">Behavioral Stage</div>'
+            + '    <h1 class="page-title">' + escapeHtml(stage.label) + '</h1>'
+            + '    <p class="lede">' + escapeHtml(stage.description || "Behavioral stage detail.") + '</p>'
+            + '  </section>'
+            + '  <section class="claims">'
+            + '    <div class="claim-block"><details open><summary>Steps</summary><div class="claim-body">' + renderBehavioralList(stepLabels) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Input Artifacts</summary><div class="claim-body">' + renderBehavioralList(stage.inputArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Output Artifacts</summary><div class="claim-body">' + renderBehavioralList(stage.outputArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Components</summary><div class="claim-body">' + renderBehavioralComponentLinks(stage.components || []) + '</div></details></div>'
+            + '  </section>'
+            + '</article>';
+    }
+
+    function renderBehavioralEdgePanel(entry) {
+        var match = entry.edgeMatch || {};
+        var title = buildBehavioralEdgeTitle(match);
+        var fromLabel = match.fromLabel || match.from || "Source";
+        var toLabel = match.toLabel || match.to || "Target";
+        var sourceKind = match.sourceKind ? titleCase(match.sourceKind) : "Behavioral";
+        var targetKind = match.targetKind ? titleCase(match.targetKind) : "behavioral";
+        return ''
+            + '<article class="detail-page behavioral-edge-panel" data-entity-kind="behavioral-edge" data-entity-id="' + escapeHtml(entry.id || "") + '">'
+            + '  <section class="detail-hero">'
+            + '    <div class="eyebrow">Artifact Flow</div>'
+            + '    <h1 class="page-title">' + escapeHtml(title) + '</h1>'
+            + '    <div class="behavioral-edge-route">'
+            + '      <span class="behavioral-edge-node">' + escapeHtml(fromLabel) + '</span>'
+            + '      <span class="flow-arrow">→</span>'
+            + '      <span class="behavioral-edge-node">' + escapeHtml(toLabel) + '</span>'
+            + '    </div>'
+            + '    <p class="lede">' + escapeHtml(sourceKind + " to " + targetKind + " transition.") + '</p>'
+            + '  </section>'
+            + '  <section class="claims">'
+            + '    <div class="claim-block"><details open><summary>Artifacts On This Edge</summary><div class="claim-body">' + renderBehavioralList(match.artifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Shared Artifacts</summary><div class="claim-body">' + renderBehavioralList(match.sharedArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Source Outputs</summary><div class="claim-body">' + renderBehavioralList(match.sourceArtifacts || []) + '</div></details></div>'
+            + '    <div class="claim-block"><details open><summary>Target Inputs</summary><div class="claim-body">' + renderBehavioralList(match.targetArtifacts || []) + '</div></details></div>'
+            + '  </section>'
+            + '</article>';
     }
 
     async function renderDetailPanel(entry, token) {
@@ -2328,6 +3392,111 @@
             state.elements.detailScrim.classList.remove("is-visible");
             state.elements.detailPanel.setAttribute("aria-hidden", "true");
             document.body.classList.remove("panel-open");
+            return;
+        }
+
+        if (entry.kind === "step") {
+            state.elements.detailPanelBody.innerHTML = renderBehavioralStepPanel(entry);
+            state.currentPanelMeta = {
+                kind: "step",
+                label: state.behavioralRuntime.steps[entry.id] ? state.behavioralRuntime.steps[entry.id].label : entry.label || entry.id,
+                title: state.behavioralRuntime.steps[entry.id] ? state.behavioralRuntime.steps[entry.id].label : entry.label || entry.id
+            };
+            if (state.elements.detailPanelTitle) {
+                state.elements.detailPanelTitle.textContent = state.currentPanelMeta.label;
+            }
+            if (state.elements.detailPanelKind) {
+                state.elements.detailPanelKind.textContent = "Step";
+            }
+            state.elements.detailPanel.classList.add("is-open");
+            state.elements.detailScrim.classList.add("is-visible");
+            state.elements.detailPanel.setAttribute("aria-hidden", "false");
+            state.elements.detailPanelBody.scrollTop = 0;
+            document.body.classList.add("panel-open");
+            return;
+        }
+
+        if (entry.kind === "lifecycle") {
+            state.elements.detailPanelBody.innerHTML = renderBehavioralLifecyclePanel(entry);
+            state.currentPanelMeta = {
+                kind: "lifecycle",
+                label: state.behavioralRuntime.lifecycles[entry.id] ? state.behavioralRuntime.lifecycles[entry.id].label : entry.label || entry.id,
+                title: state.behavioralRuntime.lifecycles[entry.id] ? state.behavioralRuntime.lifecycles[entry.id].label : entry.label || entry.id
+            };
+            if (state.elements.detailPanelTitle) {
+                state.elements.detailPanelTitle.textContent = state.currentPanelMeta.label;
+            }
+            if (state.elements.detailPanelKind) {
+                state.elements.detailPanelKind.textContent = "Lifecycle";
+            }
+            state.elements.detailPanel.classList.add("is-open");
+            state.elements.detailScrim.classList.add("is-visible");
+            state.elements.detailPanel.setAttribute("aria-hidden", "false");
+            state.elements.detailPanelBody.scrollTop = 0;
+            document.body.classList.add("panel-open");
+            return;
+        }
+
+        if (entry.kind === "stage") {
+            state.elements.detailPanelBody.innerHTML = renderBehavioralStagePanel(entry);
+            state.currentPanelMeta = {
+                kind: "stage",
+                label: state.behavioralRuntime.stages[entry.id] ? state.behavioralRuntime.stages[entry.id].label : entry.label || entry.id,
+                title: state.behavioralRuntime.stages[entry.id] ? state.behavioralRuntime.stages[entry.id].label : entry.label || entry.id
+            };
+            if (state.elements.detailPanelTitle) {
+                state.elements.detailPanelTitle.textContent = state.currentPanelMeta.label;
+            }
+            if (state.elements.detailPanelKind) {
+                state.elements.detailPanelKind.textContent = "Stage";
+            }
+            state.elements.detailPanel.classList.add("is-open");
+            state.elements.detailScrim.classList.add("is-visible");
+            state.elements.detailPanel.setAttribute("aria-hidden", "false");
+            state.elements.detailPanelBody.scrollTop = 0;
+            document.body.classList.add("panel-open");
+            return;
+        }
+
+        if (entry.kind === "behavioral-edge") {
+            state.elements.detailPanelBody.innerHTML = renderBehavioralEdgePanel(entry);
+            state.currentPanelMeta = {
+                kind: "behavioral-edge",
+                label: entry.label || buildBehavioralEdgeTitle(entry.edgeMatch || {}),
+                title: entry.label || buildBehavioralEdgeTitle(entry.edgeMatch || {})
+            };
+            if (state.elements.detailPanelTitle) {
+                state.elements.detailPanelTitle.textContent = state.currentPanelMeta.label;
+            }
+            if (state.elements.detailPanelKind) {
+                state.elements.detailPanelKind.textContent = "Artifact Flow";
+            }
+            state.elements.detailPanel.classList.add("is-open");
+            state.elements.detailScrim.classList.add("is-visible");
+            state.elements.detailPanel.setAttribute("aria-hidden", "false");
+            state.elements.detailPanelBody.scrollTop = 0;
+            document.body.classList.add("panel-open");
+            return;
+        }
+
+        if (entry.kind === "system-edge") {
+            state.elements.detailPanelBody.innerHTML = renderSystemEdgePanel(entry);
+            state.currentPanelMeta = {
+                kind: "system-edge",
+                label: entry.label || buildSystemEdgeTitle(entry.edgeMatch || {}),
+                title: entry.label || buildSystemEdgeTitle(entry.edgeMatch || {})
+            };
+            if (state.elements.detailPanelTitle) {
+                state.elements.detailPanelTitle.textContent = state.currentPanelMeta.label;
+            }
+            if (state.elements.detailPanelKind) {
+                state.elements.detailPanelKind.textContent = "System Edge";
+            }
+            state.elements.detailPanel.classList.add("is-open");
+            state.elements.detailScrim.classList.add("is-visible");
+            state.elements.detailPanel.setAttribute("aria-hidden", "false");
+            state.elements.detailPanelBody.scrollTop = 0;
+            document.body.classList.add("panel-open");
             return;
         }
 
@@ -2490,7 +3659,25 @@
 
     function resolveBreadcrumbLabel(entry, index) {
         if (!entry || entry.type === "root") {
-            return "Overview";
+            return state.view === "behavioral" ? "Behavioral" : "Organizational";
+        }
+        if (entry.type === "lifecycle") {
+            if (entry.label) {
+                return entry.label;
+            }
+            if (state.currentLifecycleMeta && state.currentLifecycleMeta.id === entry.lifecycleId) {
+                return state.currentLifecycleMeta.label;
+            }
+            return titleCase(entry.lifecycleId || "");
+        }
+        if (entry.type === "stage") {
+            if (entry.label) {
+                return entry.label;
+            }
+            if (state.currentStageMeta && state.currentStageMeta.id === entry.stageId) {
+                return state.currentStageMeta.label;
+            }
+            return titleCase(entry.stageId || "");
         }
         if (entry.type === "cluster") {
             if (entry.label) {
@@ -2581,6 +3768,35 @@
             return JSON.parse(raw);
         } catch (error) {
             return fallback;
+        }
+    }
+
+    function readJsonScript(id, fallback) {
+        var element = document.getElementById(id);
+        if (!element || !element.textContent) {
+            return fallback;
+        }
+        try {
+            return JSON.parse(element.textContent);
+        } catch (error) {
+            return fallback;
+        }
+    }
+
+    function initializeRuntimeData() {
+        state.rootConfigs.organizational = readJsonScript("diagram-root-organizational", null);
+        state.behavioralRuntime = readJsonScript("diagram-behavioral-runtime", { available: false });
+        state.crossrefs = readJsonScript("diagram-crossrefs", []);
+        if (state.behavioralRuntime && state.behavioralRuntime.available) {
+            state.rootConfigs.behavioral = state.behavioralRuntime.root || null;
+        }
+        if (state.elements.rootStage && state.elements.rootStage.dataset.defaultView) {
+            state.view = state.elements.rootStage.dataset.defaultView;
+        } else if (state.behavioralRuntime && state.behavioralRuntime.available) {
+            state.view = "behavioral";
+        }
+        if (state.view === "behavioral" && !behavioralRootAvailable()) {
+            state.view = "organizational";
         }
     }
 

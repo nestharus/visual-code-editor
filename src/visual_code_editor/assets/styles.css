@@ -142,6 +142,26 @@ svg {
     align-items: center;
 }
 
+.view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(12, 18, 30, 0.72);
+    border: 1px solid var(--border);
+}
+
+.view-toggle-button {
+    min-width: 7.5rem;
+}
+
+.view-toggle-button.is-active {
+    background: linear-gradient(180deg, rgba(88, 166, 255, 0.28), rgba(88, 166, 255, 0.12));
+    border-color: var(--accent);
+    color: var(--text);
+}
+
 .button,
 button.button {
     appearance: none;
@@ -392,6 +412,50 @@ button.button:disabled {
     height: 100%;
 }
 
+.cy-node-actions {
+    position: absolute;
+    display: none;
+    flex-direction: row;
+    gap: 4px;
+    z-index: 100;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.cy-node-actions.is-visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.cy-node-action {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border-light);
+    background: rgba(13, 17, 23, 0.85);
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.cy-node-action:hover {
+    background: var(--surface-3);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+node.panel-active {
+    border-width: 3;
+    border-color: #58a6ff;
+    border-style: double;
+}
+
 #root-behavioral-cy {
     display: none;
 }
@@ -402,22 +466,6 @@ button.button:disabled {
 
 .diagram-index.behavioral-active #root-behavioral-cy {
     display: block;
-}
-
-.view-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(13, 17, 23, 0.42);
-    border: 1px solid var(--border);
-}
-
-.view-toggle-button.is-active {
-    background: var(--surface-4);
-    border-color: var(--accent);
-    color: var(--text);
 }
 
 .cluster-viewport,
@@ -510,6 +558,21 @@ button.button:disabled {
 
 .flow-arrow {
     color: var(--warning);
+}
+
+.behavioral-edge-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    color: var(--text-dim);
+}
+
+.behavioral-edge-node {
+    color: var(--text);
+    font-weight: 600;
 }
 
 .flow-tables {
@@ -712,7 +775,7 @@ button.button:disabled {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
-    z-index: 40;
+    z-index: 190;
 }
 
 .detail-scrim.is-visible {
@@ -731,7 +794,7 @@ button.button:disabled {
     box-shadow: var(--shadow-strong);
     transform: translateX(100%);
     transition: transform 0.3s ease;
-    z-index: 50;
+    z-index: 200;
     display: flex;
     flex-direction: column;
 }
