@@ -1,5 +1,6 @@
 import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
 import { createMemo, type ParentComponent } from "solid-js";
+import { DetailPanel } from "./DetailPanel";
 
 export const AppShell: ParentComponent = (props) => {
   const navigate = useNavigate();
@@ -99,7 +100,10 @@ export const AppShell: ParentComponent = (props) => {
         ))}
       </nav>
 
-      <main id="diagram-viewport">{props.children}</main>
+      <div class="diagram-and-panel">
+        <main id="diagram-viewport">{props.children}</main>
+        <DetailPanel />
+      </div>
     </div>
   );
 };
