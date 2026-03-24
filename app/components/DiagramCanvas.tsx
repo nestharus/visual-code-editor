@@ -6,6 +6,7 @@ type DiagramCanvasProps = {
   elements: ElementDefinition[];
   style: Stylesheet[];
   layout?: LayoutOptions;
+  onReady?: (cy: Core, container: HTMLDivElement) => void;
 };
 
 const defaultLayout: LayoutOptions = {
@@ -53,6 +54,10 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
     resizeObserver.observe(container);
 
     window.addEventListener("resize", handleResize);
+
+    if (props.onReady && container) {
+      props.onReady(graph, container);
+    }
   });
 
   createEffect(() => {
