@@ -166,13 +166,14 @@ APP_JS = """
             "width": 2.4,
             "opacity": 0.92,
             "label": "data(label)",
-            "font-size": "9px",
+            "font-size": "11px",
             "color": "#9aa4af",
-            "text-max-width": "140px",
+            "text-max-width": "200px",
             "text-wrap": "ellipsis",
             "text-background-color": "#0d1117",
-            "text-background-opacity": 0.8,
+            "text-background-opacity": 0.95,
             "text-background-padding": "3px",
+            "text-margin-y": "-8px",
             "cursor": "pointer"
         }},
         { selector: "edge.behavioral-back-edge", style: {
@@ -369,12 +370,19 @@ APP_JS = """
 
     function behavioralRootLayout() {
         return {
-            name: "grid",
-            rows: 1,
-            padding: 60,
+            name: "preset",
             fit: true,
-            avoidOverlap: true,
-            avoidOverlapPadding: 40
+            padding: 60,
+            positions: function (node) {
+                var nodes = node.cy().nodes();
+                var index = 0;
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].id() === node.id()) { index = i; break; }
+                }
+                var spacing = 300;
+                var wave = (index % 2 === 0) ? 0 : 8;
+                return { x: index * spacing, y: wave };
+            }
         };
     }
 
@@ -906,13 +914,13 @@ APP_JS = """
     function applyEdgeHighlightStyles(allEdges, activeEdges) {
         if (!hasGraphCollection(allEdges)) return;
         allEdges.forEach(function (edge) {
-            if (canStyleGraphElement(edge)) {
+            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
                 edge.style("opacity", 0.25);
             }
         });
         if (!hasGraphCollection(activeEdges)) return;
         activeEdges.forEach(function (edge) {
-            if (canStyleGraphElement(edge)) {
+            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
                 edge.style({
                     "opacity": 1,
                     "line-color": "#58a6ff",
@@ -928,7 +936,7 @@ APP_JS = """
     function resetEdgeHighlightStyles(edges) {
         if (!hasGraphCollection(edges)) return;
         edges.forEach(function (edge) {
-            if (canStyleGraphElement(edge)) {
+            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
                 clearGraphStyle(edge, "opacity");
                 clearGraphStyle(edge, "line-color");
                 clearGraphStyle(edge, "target-arrow-color");
@@ -977,20 +985,22 @@ APP_JS = """
         }
 
         stopEdgeDirectionAnimation(cy);
-        edges.forEach(function (edge) {
+        var animatableEdges = edges.filter(function (edge) {
+            return canStyleGraphElement(edge) && edge.style("curve-style") === "bezier";
+        });
+        if (animatableEdges.length === 0) return;
+
+        animatableEdges.forEach(function (edge) {
             if (!canStyleGraphElement(edge)) {
                 return;
             }
-            var curveStyle = edge.style("curve-style");
-            if (curveStyle === "bezier") {
-                var srcPos = edge.source().position();
-                var tgtPos = edge.target().position();
-                if (srcPos && tgtPos) {
-                    var dx = Math.abs(srcPos.x - tgtPos.x);
-                    var dy = Math.abs(srcPos.y - tgtPos.y);
-                    if (dx < 5 || dy < 5) {
-                        return;
-                    }
+            var srcPos = edge.source().position();
+            var tgtPos = edge.target().position();
+            if (srcPos && tgtPos) {
+                var dx = Math.abs(srcPos.x - tgtPos.x);
+                var dy = Math.abs(srcPos.y - tgtPos.y);
+                if (dx < 5 || dy < 5) {
+                    return;
                 }
             }
             edge._origLineStyle = edge.style("line-style") || "solid";
@@ -1025,7 +1035,7 @@ APP_JS = """
                 return;
             }
             dashOffset = (dashOffset + 1) % 40;
-            edges.forEach(function (edge) {
+            animatableEdges.forEach(function (edge) {
                 if (canStyleGraphElement(edge)) {
                     edge.style("line-dash-offset", -dashOffset);
                 }
@@ -1034,7 +1044,7 @@ APP_JS = """
         }
 
         writeEdgeDirectionAnimation(cy, {
-            edges: edges,
+            edges: animatableEdges,
             cancel: function () {
                 cancelled = true;
                 if (typeof cancelScheduledFrame === "function") {
@@ -1314,23 +1324,6 @@ APP_JS = """
 
         cy.on("mouseout", "node", function () {
             hoveredNode = null;
-            clearCytoscapeHighlighting(cy);
-        });
-
-        cy.on("mouseover", "edge", function (evt) {
-            if (hoveredNode) return;
-            var edge = evt && evt.target ? evt.target : null;
-            if (!edge || !canHighlightCytoscape(cy) || typeof edge.connectedNodes !== "function") {
-                return;
-            }
-            stopEdgeDirectionAnimation(cy);
-            cy.nodes().addClass("dimmed");
-            applyEdgeHighlightStyles(cy.edges(), edge);
-            edge.connectedNodes().removeClass("dimmed").addClass("highlighted");
-        });
-
-        cy.on("mouseout", "edge", function () {
-            if (hoveredNode) return;
             clearCytoscapeHighlighting(cy);
         });
     }
