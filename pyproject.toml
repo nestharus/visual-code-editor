@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "visual-code-editor"
+version = "0.1.0"
+description = "Dual-view code visualization - behavioral lifecycles + organizational structure"
+requires-python = ">=3.12"
+
+[project.scripts]
+visual-code-editor = "visual_code_editor.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/visual_code_editor"]
