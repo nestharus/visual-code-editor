@@ -1,8 +1,10 @@
 import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
 import { createMemo, type ParentComponent } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
+import { useWatchSubscription } from "../lib/live/useWatchSubscription";
 
 export const AppShell: ParentComponent = (props) => {
+  useWatchSubscription();
   const navigate = useNavigate();
   const location = useLocation();
 
