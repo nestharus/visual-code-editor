@@ -157,7 +157,7 @@ APP_JS = """
         }},
         { selector: "edge.behavioral-edge", style: {
             "curve-style": "bezier",
-            "control-point-step-size": 60,
+            "control-point-step-size": 8,
             "target-arrow-shape": "triangle",
             "target-arrow-fill": "filled",
             "line-color": "#4fa9a0",
@@ -904,16 +904,20 @@ APP_JS = """
         }
     }
 
+    function isBehavioralEdge(edge) {
+        return edge.hasClass("behavioral-edge") || edge.hasClass("behavioral-back-edge");
+    }
+
     function applyEdgeHighlightStyles(allEdges, activeEdges) {
         if (!hasGraphCollection(allEdges)) return;
         allEdges.forEach(function (edge) {
-            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
+            if (canStyleGraphElement(edge) && !isBehavioralEdge(edge)) {
                 edge.style("opacity", 0.25);
             }
         });
         if (!hasGraphCollection(activeEdges)) return;
         activeEdges.forEach(function (edge) {
-            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
+            if (canStyleGraphElement(edge) && !isBehavioralEdge(edge)) {
                 edge.style({
                     "opacity": 1,
                     "line-color": "#58a6ff",
@@ -929,7 +933,7 @@ APP_JS = """
     function resetEdgeHighlightStyles(edges) {
         if (!hasGraphCollection(edges)) return;
         edges.forEach(function (edge) {
-            if (canStyleGraphElement(edge) && edge.style("curve-style") !== "unbundled-bezier") {
+            if (canStyleGraphElement(edge) && !isBehavioralEdge(edge)) {
                 clearGraphStyle(edge, "opacity");
                 clearGraphStyle(edge, "line-color");
                 clearGraphStyle(edge, "target-arrow-color");
@@ -975,7 +979,7 @@ APP_JS = """
 
         stopEdgeDirectionAnimation(cy);
         var animatableEdges = edges.filter(function (edge) {
-            return canStyleGraphElement(edge) && edge.style("curve-style") === "bezier";
+            return canStyleGraphElement(edge) && !isBehavioralEdge(edge);
         });
         if (animatableEdges.length === 0) return;
 
