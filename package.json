@@ -6,7 +6,8 @@
     "dev": "vite",
     "dev:watcher": "npx tsx server/watcher.ts",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve": "vite preview --port 8742"
   },
   "dependencies": {
     "@tanstack/solid-query": "^5.95.2",
