@@ -1,58 +1,105 @@
-import type { ParentComponent } from "solid-js";
+import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
+import { createMemo, type ParentComponent } from "solid-js";
 
-type AppShellProps = {
-  breadcrumbs: string;
-  subtitle?: string;
-  activeView?: "diagram" | "source";
-};
+export const AppShell: ParentComponent = (props) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-export const AppShell: ParentComponent<AppShellProps> = (props) => {
-  const activeView = () => props.activeView ?? "diagram";
+  const activeView = createMemo(() => {
+    const path = location().pathname;
+    if (path.startsWith("/organizational")) return "organizational";
+    return "behavioral";
+  });
+
+  const breadcrumbs = createMemo(() => {
+    const path = location().pathname;
+    const parts: { label: string; href?: string }[] = [];
+
+    if (path.startsWith("/organizational")) {
+      parts.push({ label: "Organizational", href: "/organizational" });
+      const clusterMatch = path.match(/\/clusters\/([^/]+)/);
+      if (clusterMatch) {
+        parts.push({
+          label: decodeURIComponent(clusterMatch[1]),
+          href: `/organizational/clusters/${clusterMatch[1]}`,
+        });
+      }
+      const systemMatch = path.match(/\/systems\/([^/]+)/);
+      if (systemMatch) {
+        parts.push({ label: decodeURIComponent(systemMatch[1]) });
+      }
+    } else {
+      parts.push({ label: "Behavioral", href: "/behavioral" });
+      const lifecycleMatch = path.match(/\/lifecycles\/([^/]+)/);
+      if (lifecycleMatch) {
+        parts.push({
+          label: decodeURIComponent(lifecycleMatch[1]),
+          href: `/behavioral/lifecycles/${lifecycleMatch[1]}`,
+        });
+      }
+      const stageMatch = path.match(/\/stages\/([^/]+)/);
+      if (stageMatch) {
+        parts.push({ label: decodeURIComponent(stageMatch[1]) });
+      }
+    }
+
+    return parts;
+  });
 
   return (
-    <main class="page-shell app-shell">
-      <header class="app-header">
-        <div class="app-toolbar">
-          <div>
-            <p class="app-eyebrow">Visual Code Editor</p>
-            <h1 class="app-title">Diagram Workspace</h1>
-            <p class="app-subtitle">
-              {props.subtitle ??
-                "Inspect structural and behavioral diagrams from a single frontend shell."}
-            </p>
-          </div>
-          <div class="app-view-toggle" role="tablist" aria-label="View toggle">
-            <button
-              type="button"
-              classList={{ "app-toggle": true, "is-active": activeView() === "diagram" }}
-              aria-pressed={activeView() === "diagram"}
-            >
-              Diagram
-            </button>
-            <button
-              type="button"
-              classList={{ "app-toggle": true, "is-active": activeView() === "source" }}
-              aria-pressed={activeView() === "source"}
-            >
-              Source
-            </button>
-          </div>
+    <div class="page-shell">
+      <header class="toolbar">
+        <div class="toolbar-title">
+          <h1>Artifact Lifecycle</h1>
         </div>
-        <div class="breadcrumb-bar">
-          <span class="breadcrumb-label">Path</span>
-          <span class="breadcrumb-value mono">{props.breadcrumbs}</span>
+        <div class="toolbar-actions">
+          <div class="view-toggle" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              classList={{
+                "view-toggle-btn": true,
+                "is-active": activeView() === "behavioral",
+              }}
+              aria-selected={activeView() === "behavioral"}
+              onClick={() => navigate({ to: "/behavioral" })}
+              data-view-toggle="behavioral"
+            >
+              Behavioral
+            </button>
+            <button
+              type="button"
+              role="tab"
+              classList={{
+                "view-toggle-btn": true,
+                "is-active": activeView() === "organizational",
+              }}
+              aria-selected={activeView() === "organizational"}
+              onClick={() => navigate({ to: "/organizational" })}
+              data-view-toggle="organizational"
+            >
+              Organizational
+            </button>
+          </div>
         </div>
       </header>
 
-      <section class="diagram-panel">
-        <div class="diagram-panel__header">
-          <div>
-            <h2>Root Diagram</h2>
-            <p>Initial canvas render for the frontend scaffold.</p>
-          </div>
-        </div>
-        <div class="diagram-panel__body">{props.children}</div>
-      </section>
-    </main>
+      <nav id="breadcrumb" class="breadcrumb-bar">
+        {breadcrumbs().map((crumb, i) => (
+          <>
+            {i > 0 && <span class="breadcrumb-sep">/</span>}
+            {crumb.href && i < breadcrumbs().length - 1 ? (
+              <Link href={crumb.href} class="breadcrumb-item">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span class="breadcrumb-current">{crumb.label}</span>
+            )}
+          </>
+        ))}
+      </nav>
+
+      <main id="diagram-viewport">{props.children}</main>
+    </div>
   );
 };
