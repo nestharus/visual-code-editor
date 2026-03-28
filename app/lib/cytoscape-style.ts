@@ -180,6 +180,12 @@ export const cytoscapeStyle: Stylesheet[] = [
       width: 1,
       "line-style": "dashed",
       opacity: 0.6,
+      label: "data(label)",
+      "font-size": "10px",
+      color: "#d29922",
+      "text-background-color": "#0d1117",
+      "text-background-opacity": 0.8,
+      "text-background-padding": "2px",
     },
   },
   {
@@ -241,7 +247,8 @@ export const cytoscapeStyle: Stylesheet[] = [
       "font-size": "11px",
       padding: "18px",
       "text-margin-y": "-4px",
-    },
+      events: "no",
+    } as any,
   },
   {
     selector: "node.file-node",
@@ -291,7 +298,7 @@ export const cytoscapeStyle: Stylesheet[] = [
     selector: "edge.file-import",
     style: {
       "curve-style": "bezier",
-      "control-point-step-size": 40,
+      "control-point-step-size": 30,
       "target-arrow-shape": "triangle",
       "line-color": "#30363d",
       "target-arrow-color": "#30363d",
@@ -299,7 +306,6 @@ export const cytoscapeStyle: Stylesheet[] = [
       label: "data(label)",
       "font-size": "8px",
       color: "#6e7681",
-      "text-rotation": "autorotate",
       "text-background-color": "#0d1117",
       "text-background-opacity": 0.7,
       "text-background-padding": "2px",
@@ -318,7 +324,6 @@ export const cytoscapeStyle: Stylesheet[] = [
       label: "data(label)",
       "font-size": "8px",
       color: "#6e7681",
-      "text-rotation": "autorotate",
       "text-background-color": "#0d1117",
       "text-background-opacity": 0.7,
       "text-background-padding": "2px",
@@ -342,19 +347,15 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: ".highlighted",
     style: {
-      "border-width": 3,
-      "border-color": "#58a6ff",
       "z-index": 999,
       "z-index-compare": "manual",
-      "transition-property": "border-width, border-color, opacity",
+      "transition-property": "opacity",
       "transition-duration": "0.15s",
     },
   },
   {
     selector: "edge.highlighted",
     style: {
-      "line-color": "#58a6ff",
-      "target-arrow-color": "#58a6ff",
       width: 3,
       "z-index": 999,
       "z-index-compare": "manual",
@@ -372,18 +373,25 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: ".neighbor-highlighted",
     style: {
-      "border-width": 2.5,
       opacity: 1,
       "z-index": 998,
       "z-index-compare": "manual",
     },
   },
   {
+    selector: ".hover-hidden",
+    style: {
+      opacity: 0,
+      "transition-property": "opacity",
+      "transition-duration": "0.05s",
+    },
+  },
+  {
     selector: ".dimmed",
     style: {
-      opacity: 0.25,
+      opacity: 0.18,
       "transition-property": "opacity",
-      "transition-duration": "0.15s",
+      "transition-duration": "0.3s",
     },
   },
   {
@@ -391,5 +399,16 @@ export const cytoscapeStyle: Stylesheet[] = [
     style: {
       opacity: 1,
     },
+  },
+  // Mermaid edge routing: when edges have segment data from mermaid layout,
+  // override curve-style to unbundled-bezier with computed control points
+  {
+    selector: "edge[_segmentWeights]",
+    style: {
+      "curve-style": "unbundled-bezier",
+      "control-point-weights": "data(_segmentWeights)",
+      "control-point-distances": "data(_segmentDistances)",
+      "edge-distances": "node-position",
+    } as any,
   },
 ];

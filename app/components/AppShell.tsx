@@ -2,11 +2,13 @@ import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
 import { createMemo, type ParentComponent } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
 import { useWatchSubscription } from "../lib/live/useWatchSubscription";
+import { useDiagramData } from "../lib/diagram-data";
 
 export const AppShell: ParentComponent = (props) => {
   useWatchSubscription();
   const navigate = useNavigate();
   const location = useLocation();
+  const diagramQuery = useDiagramData();
 
   const activeView = createMemo(() => {
     const path = location().pathname;
@@ -15,6 +17,7 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   const breadcrumbs = createMemo(() => {
+    const data = diagramQuery.data;
     const path = location().pathname;
     const parts: { label: string; href?: string }[] = [];
 
@@ -22,27 +25,35 @@ export const AppShell: ParentComponent = (props) => {
       parts.push({ label: "Organizational", href: "/organizational" });
       const clusterMatch = path.match(/\/clusters\/([^/]+)/);
       if (clusterMatch) {
+        const clusterId = decodeURIComponent(clusterMatch[1]);
         parts.push({
-          label: decodeURIComponent(clusterMatch[1]),
+          label: data?.organizational.clusters[clusterId]?.label || clusterId,
           href: `/organizational/clusters/${clusterMatch[1]}`,
         });
       }
       const systemMatch = path.match(/\/systems\/([^/]+)/);
       if (systemMatch) {
-        parts.push({ label: decodeURIComponent(systemMatch[1]) });
+        const systemId = decodeURIComponent(systemMatch[1]);
+        parts.push({
+          label: data?.organizational.systems[systemId]?.label || systemId,
+        });
       }
     } else {
       parts.push({ label: "Behavioral", href: "/behavioral" });
       const lifecycleMatch = path.match(/\/lifecycles\/([^/]+)/);
       if (lifecycleMatch) {
+        const lifecycleId = decodeURIComponent(lifecycleMatch[1]);
         parts.push({
-          label: decodeURIComponent(lifecycleMatch[1]),
+          label: data?.behavioral.lifecycles[lifecycleId]?.label || lifecycleId,
           href: `/behavioral/lifecycles/${lifecycleMatch[1]}`,
         });
       }
       const stageMatch = path.match(/\/stages\/([^/]+)/);
       if (stageMatch) {
-        parts.push({ label: decodeURIComponent(stageMatch[1]) });
+        const stageId = decodeURIComponent(stageMatch[1]);
+        parts.push({
+          label: data?.behavioral.stages[stageId]?.label || stageId,
+        });
       }
     }
 

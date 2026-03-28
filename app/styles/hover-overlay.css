@@ -1,0 +1,95 @@
+.hover-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.hover-card {
+  position: absolute;
+  transform-origin: center center;
+  z-index: 900;
+}
+
+/* Card body — the visible card with shadow underneath */
+.hover-card-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  color: #e6edf3;
+  text-align: center;
+  word-wrap: break-word;
+  overflow: hidden;
+  box-sizing: border-box;
+  box-shadow: none;
+  transition: box-shadow 400ms ease-out;
+}
+
+/* ============================================
+   LIFTING — fast snap upward (600ms)
+   ============================================ */
+.hover-card.lifting {
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(1.10) translateY(-8px);
+}
+
+.hover-card.lifting .hover-card-body {
+  transition: box-shadow 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+              0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   FLOATING — smooth organic drift
+   ============================================ */
+.hover-card.floating {
+  animation: hover-drift 8s ease-in-out infinite;
+}
+
+.hover-card.floating .hover-card-body {
+  animation: shadow-breathe 8s ease-in-out infinite;
+}
+
+@keyframes hover-drift {
+  0%   { transform: scale(1.10) translate(0px, -8px)    rotate(0deg); }
+  8%   { transform: scale(1.10) translate(1px, -9px)    rotate(0.3deg); }
+  17%  { transform: scale(1.10) translate(2px, -7.5px)  rotate(0.5deg); }
+  25%  { transform: scale(1.10) translate(1.5px, -6.5px) rotate(0.2deg); }
+  33%  { transform: scale(1.10) translate(0px, -7px)    rotate(-0.2deg); }
+  42%  { transform: scale(1.10) translate(-1.5px, -8.5px) rotate(-0.5deg); }
+  50%  { transform: scale(1.10) translate(-2px, -9px)   rotate(-0.3deg); }
+  58%  { transform: scale(1.10) translate(-1px, -8px)   rotate(0deg); }
+  67%  { transform: scale(1.10) translate(0.5px, -7px)  rotate(0.4deg); }
+  75%  { transform: scale(1.10) translate(1.5px, -8.5px) rotate(0.2deg); }
+  83%  { transform: scale(1.10) translate(0.5px, -9px)  rotate(-0.3deg); }
+  92%  { transform: scale(1.10) translate(-0.5px, -7.5px) rotate(-0.1deg); }
+  100% { transform: scale(1.10) translate(0px, -8px)    rotate(0deg); }
+}
+
+@keyframes shadow-breathe {
+  0%   { box-shadow: 0 10px 30px rgba(0,0,0,0.5),  0 4px 10px rgba(0,0,0,0.4); }
+  25%  { box-shadow: 0 12px 34px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35); }
+  50%  { box-shadow: 0 9px 28px  rgba(0,0,0,0.55), 0 3px 9px  rgba(0,0,0,0.45); }
+  75%  { box-shadow: 0 11px 32px rgba(0,0,0,0.47), 0 5px 11px rgba(0,0,0,0.37); }
+  100% { box-shadow: 0 10px 30px rgba(0,0,0,0.5),  0 4px 10px rgba(0,0,0,0.4); }
+}
+
+/* ============================================
+   SETTLING — slow deceleration back to rest
+   ============================================ */
+.hover-card.settling {
+  animation: none;
+  transition: transform 1200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transform: scale(1) translate(0px, 0px) rotate(0deg);
+}
+
+.hover-card.settling .hover-card-body {
+  animation: none;
+  transition: box-shadow 1200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: none;
+}

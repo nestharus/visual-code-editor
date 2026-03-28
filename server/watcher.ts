@@ -185,6 +185,27 @@ async function loadConfig() {
   }
 }
 
+// --- Diagram data ---
+
+const PROJECT_ROOT = join(__dirname, "..");
+
+const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
+  || join(PROJECT_ROOT, "dist", "data", "diagram.json");
+
+app.get("/api/diagram", async (_req, res) => {
+  try {
+    const data = await readFile(DIAGRAM_JSON_PATH, "utf-8");
+    res.setHeader("Content-Type", "application/json");
+    res.send(data);
+  } catch {
+    res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
+  }
+});
+
+// Serve static site pages
+const SITE_DIR = join(PROJECT_ROOT, "..", "agent-implementation-skill", "execution-philosophy", "diagrams", "site");
+app.use("/site", express.static(SITE_DIR));
+
 // --- Start ---
 
 const PORT = parseInt(process.env.WATCHER_PORT || "3001", 10);
