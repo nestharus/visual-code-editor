@@ -1,6 +1,7 @@
-import { Show, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import type { Core, NodeSingular } from "cytoscape";
+import { getNodeVisual } from "../lib/node-visuals";
 
 type NodeActionOverlayProps = {
   cy: Core | undefined;
@@ -12,6 +13,7 @@ export function NodeActionOverlay(props: NodeActionOverlayProps) {
   const [visible, setVisible] = createSignal(false);
   const [position, setPosition] = createSignal({ x: 0, y: 0 });
   const [activeNode, setActiveNode] = createSignal<NodeSingular | null>(null);
+  const [showImmediateInspect, setShowImmediateInspect] = createSignal(false);
 
   let hideTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -29,6 +31,8 @@ export function NodeActionOverlay(props: NodeActionOverlayProps) {
       x: pos.x,
       y: bb.y1 - 8,
     });
+    const nodeVisual = getNodeVisual(node.classes());
+    setShowImmediateInspect(!!nodeVisual?.isContainer && !!nodeVisual?.hasDetail);
     setActiveNode(node);
     setVisible(true);
   };
@@ -37,6 +41,7 @@ export function NodeActionOverlay(props: NodeActionOverlayProps) {
     hideTimeout = setTimeout(() => {
       setVisible(false);
       setActiveNode(null);
+      setShowImmediateInspect(false);
     }, 300);
   };
 
@@ -66,32 +71,35 @@ export function NodeActionOverlay(props: NodeActionOverlayProps) {
     }
   };
 
-  // Bind to Cytoscape events when cy is available
-  const bindEvents = () => {
+  createEffect(() => {
     const cy = props.cy;
     if (!cy) return;
 
-    cy.on("mouseover", "node", (evt) => {
+    const handleNodeMouseOver = (evt: { target: NodeSingular }) => {
       const node = evt.target;
       if (typeof node.isParent === "function" && node.isParent()) return;
+      const nodeVisual = getNodeVisual(node.classes());
+      if (nodeVisual?.isContainer && nodeVisual.hasDetail) {
+        showOverlay(node);
+        return;
+      }
       showOverlay(node);
-    });
+    };
 
-    cy.on("mouseout", "node", () => {
+    const handleNodeMouseOut = () => {
       hideOverlay();
-    });
-  };
+    };
 
-  // Re-bind when cy changes
-  const checkCy = setInterval(() => {
-    if (props.cy) {
-      bindEvents();
-      clearInterval(checkCy);
-    }
-  }, 200);
+    cy.on("mouseover", "node", handleNodeMouseOver);
+    cy.on("mouseout", "node", handleNodeMouseOut);
+
+    onCleanup(() => {
+      cy.off("mouseover", "node", handleNodeMouseOver);
+      cy.off("mouseout", "node", handleNodeMouseOut);
+    });
+  });
 
   onCleanup(() => {
-    clearInterval(checkCy);
     if (hideTimeout) clearTimeout(hideTimeout);
   });
 
@@ -114,9 +122,10 @@ export function NodeActionOverlay(props: NodeActionOverlayProps) {
         <button
           class="cy-node-action cy-node-info"
           title="View details"
+          data-immediate={showImmediateInspect() ? "true" : "false"}
           onClick={handleInfo}
         >
-          i
+          ℹ
         </button>
         <button
           class="cy-node-action cy-node-expand"

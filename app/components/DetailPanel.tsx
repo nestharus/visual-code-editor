@@ -1,12 +1,79 @@
-import { Show, For, createEffect, createSignal } from "solid-js";
-import { useSearch, useNavigate } from "@tanstack/solid-router";
-import { WATCHER_URL, useDiagramData } from "../lib/diagram-data";
+import type { JSX } from "solid-js";
+import { Show, For, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { useSearch, useNavigate, useParams } from "@tanstack/solid-router";
+import { WATCHER_URL } from "../lib/diagram-data";
+import { useDiagramData } from "../lib/diagram-data";
+import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
+import { getNodeVisualByKind } from "../lib/node-visuals";
+import { IconSvg } from "./IconSvg";
+
+const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
+const SUMMARY_ONLY_FIELDS = new Set([
+  "description",
+  "systemCount",
+  "fileCount",
+  "agentCount",
+]);
+
+function metadataFieldLabel(key: string): string {
+  const labels: Record<string, string> = {
+    stageIds: "Stages",
+    stepIds: "Steps",
+    entryArtifacts: "Entry Artifacts",
+    exitArtifacts: "Exit Artifacts",
+    inputArtifacts: "Input Artifacts",
+    outputArtifacts: "Output Artifacts",
+    lifecycleId: "Lifecycle",
+    systems: "Systems",
+    modules: "Modules",
+    agents: "Agents",
+    systemCount: "Systems",
+    fileCount: "Files",
+    agentCount: "Agents",
+    path: "Path",
+    moduleId: "Module",
+    systemId: "System",
+    symbols: "Symbols",
+    importedBy: "Imported By",
+    imports: "Imports",
+    mechanism: "Mechanism",
+    from: "From",
+    to: "To",
+  };
+  return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
+}
+
+function renderMetadataValue(value: unknown): JSX.Element {
+  if (Array.isArray(value)) {
+    if (value.length > 8) {
+      return <span>{value.length} items</span>;
+    }
+
+    return (
+      <ul style={{ margin: 0, padding: "0 0 0 16px", "list-style": "disc" }}>
+        <For each={value}>{(item) => <li>{String(item)}</li>}</For>
+      </ul>
+    );
+  }
+
+  return <span>{String(value)}</span>;
+}
+
+function clearPanelSearch(prev: Record<string, unknown>) {
+  const next = { ...prev };
+  delete next.panelKind;
+  delete next.panelId;
+  delete next.panelLabel;
+  return next;
+}
 
 export function DetailPanel() {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+  const routeParams = useParams({ strict: false });
+  const diagramQuery = useDiagramData();
   const [htmlContent, setHtmlContent] = createSignal("");
-  const data = useDiagramData();
+  let panelBodyRef: HTMLDivElement | undefined;
 
   const s = () => (search as any)() as Record<string, string | undefined>;
   const isOpen = () => !!s().panelKind && !!s().panelId;
@@ -16,11 +83,81 @@ export function DetailPanel() {
 
   // Look up the detail record and its href
   const detail = () => {
-    const d = data.data;
+    const d = diagramQuery.data;
     const id = panelId();
     if (!d || !id) return null;
     return d.details[id] ?? null;
   };
+
+  const isContainer = createMemo(
+    () => !!getNodeVisualByKind(panelKind() || "")?.isContainer,
+  );
+
+  const panelAccent = createMemo(() => {
+    const d = detail();
+    if (typeof d?.color === "string" && d.color) return d.color;
+    if (typeof d?.clusterColor === "string" && d.clusterColor) return d.clusterColor;
+    return "currentColor";
+  });
+
+  const description = createMemo(() => {
+    const value = detail()?.description;
+    return typeof value === "string" ? value : "";
+  });
+
+  const summaryFields = createMemo(() => {
+    const d = detail();
+    if (!d) return [] as Array<{ label: string; value: string }>;
+
+    const fields: Array<{ label: string; value: string }> = [];
+    const seenLabels = new Set<string>();
+    const pushField = (label: string, value: string) => {
+      if (seenLabels.has(label)) return;
+      seenLabels.add(label);
+      fields.push({ label, value });
+    };
+    const pushCount = (key: string, label: string) => {
+      const value = d[key];
+      if (typeof value === "number") {
+        pushField(label, String(value));
+      }
+    };
+    const pushArrayCount = (key: string, label: string) => {
+      const value = d[key];
+      if (Array.isArray(value)) {
+        pushField(label, String(value.length));
+      }
+    };
+    const pushText = (key: string, label: string) => {
+      const value = d[key];
+      if (typeof value === "string" && value) {
+        pushField(label, value);
+      }
+    };
+
+    pushCount("systemCount", "Systems");
+    pushCount("fileCount", "Files");
+    pushCount("agentCount", "Agents");
+    pushArrayCount("stageIds", "Stages");
+    pushArrayCount("stepIds", "Steps");
+    pushArrayCount("systems", "Systems");
+    pushArrayCount("modules", "Modules");
+    pushArrayCount("agents", "Agents");
+    pushText("path", "Path");
+    pushText("lifecycleId", "Lifecycle");
+    pushText("moduleId", "Module");
+    pushText("systemId", "System");
+
+    return fields;
+  });
+
+  const fields = createMemo(() => {
+    const d = detail();
+    if (!d) return [] as Array<[string, unknown]>;
+    return Object.entries(d).filter(
+      ([key]) => !SKIP_FIELDS.has(key) && !SUMMARY_ONLY_FIELDS.has(key),
+    );
+  });
 
   // Fetch page content when panel opens
   createEffect(() => {
@@ -38,8 +175,8 @@ export function DetailPanel() {
       return;
     }
 
-    const url = `${WATCHER_URL}/site/${href}`;
-    fetch(url)
+    const fetchUrl = `${WATCHER_URL}/site/${href}`;
+    fetch(fetchUrl)
       .then((res) => (res.ok ? res.text() : ""))
       .then((html) => {
         if (!html) {
@@ -48,22 +185,123 @@ export function DetailPanel() {
         }
         const doc = new DOMParser().parseFromString(html, "text/html");
         const article = doc.querySelector("article");
-        setHtmlContent(article?.innerHTML ?? "");
+        if (article) {
+          rebaseArticleLinks(article, fetchUrl);
+          setHtmlContent(article.innerHTML);
+          return;
+        }
+        setHtmlContent("");
       })
       .catch(() => {
         setHtmlContent("");
       });
   });
 
+  const handleClick = (e: MouseEvent) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+
+    const anchor = target.closest("a[href]");
+    if (!anchor || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+
+    if (anchor.hasAttribute("data-open-system-diagram")) {
+      e.preventDefault();
+      const systemId = anchor.getAttribute("data-system-id");
+      const clusterId =
+        anchor.getAttribute("data-cluster-id") ||
+        diagramQuery.data?.organizational.systems[systemId || ""]?.clusterId ||
+        routeParams().clusterId;
+      if (systemId && clusterId) {
+        navigate({
+          to: `/organizational/clusters/${clusterId}/systems/${systemId}`,
+          search: clearPanelSearch,
+        });
+      }
+      return;
+    }
+
+    const diagramData = diagramQuery.data;
+    if (!diagramData) return;
+
+    const action = resolveLegacyLink(href, diagramData, routeParams());
+    if (action.type === "route") {
+      e.preventDefault();
+      navigate({ to: action.to, search: clearPanelSearch });
+    } else if (action.type === "panel") {
+      e.preventDefault();
+      navigate({
+        search: (prev: Record<string, unknown>) => ({
+          ...prev,
+          panelKind: action.panelKind,
+          panelId: action.panelId,
+          panelLabel: action.panelLabel,
+        }),
+      });
+    }
+  };
+
+  createEffect(() => {
+    const panelBody = panelBodyRef;
+    if (!panelBody) return;
+
+    panelBody.addEventListener("click", handleClick);
+    onCleanup(() => {
+      panelBody.removeEventListener("click", handleClick);
+    });
+  });
+
+  const viewDiagram = () => {
+    const id = panelId();
+    const kind = panelKind();
+    const data = diagramQuery.data;
+    const currentParams = routeParams();
+    if (!id || !kind) return;
+
+    if (kind === "cluster") {
+      navigate({
+        to: `/organizational/clusters/${id}`,
+        search: clearPanelSearch,
+      });
+      return;
+    }
+
+    if (kind === "system") {
+      const clusterId = data?.organizational.systems[id]?.clusterId || currentParams.clusterId;
+      if (clusterId) {
+        navigate({
+          to: `/organizational/clusters/${clusterId}/systems/${id}`,
+          search: clearPanelSearch,
+        });
+      }
+      return;
+    }
+
+    if (kind === "lifecycle") {
+      navigate({
+        to: `/behavioral/lifecycles/${id}`,
+        search: clearPanelSearch,
+      });
+      return;
+    }
+
+    if (kind === "stage") {
+      const lifecycleId =
+        data?.behavioral.stages[id]?.lifecycleId || currentParams.lifecycleId;
+      if (lifecycleId) {
+        navigate({
+          to: `/behavioral/lifecycles/${lifecycleId}/stages/${id}`,
+          search: clearPanelSearch,
+        });
+      }
+    }
+  };
+
   const close = () => {
     navigate({
-      search: (prev: Record<string, unknown>) => {
-        const next = { ...prev };
-        delete next.panelKind;
-        delete next.panelId;
-        delete next.panelLabel;
-        return next;
-      },
+      search: clearPanelSearch,
     });
   };
 
@@ -79,28 +317,59 @@ export function DetailPanel() {
       >
         <Show when={isOpen()}>
           <div class="detail-panel-header">
-            <div>
-              <span id="detail-panel-kind" class="eyebrow">
-                {panelKind()}
-              </span>
-              <h2 id="detail-panel-title">
-                {panelLabel() || detail()?.label || panelId()}
-              </h2>
+            <div class="detail-panel-header-main">
+              <div class="detail-panel-icon" style={{ color: panelAccent() }}>
+                <IconSvg kind={panelKind() || ""} size={28} />
+              </div>
+              <div class="detail-panel-titleblock">
+                <span id="detail-panel-kind" class="eyebrow">
+                  {panelKind()}
+                </span>
+                <h2 id="detail-panel-title">
+                  {panelLabel() || detail()?.label || panelId()}
+                </h2>
+              </div>
             </div>
-            <button
-              id="detail-panel-close"
-              type="button"
-              class="button"
-              onClick={close}
-              aria-label="Close panel"
-            >
-              ✕
-            </button>
+            <div class="detail-panel-actions">
+              <Show when={isContainer()}>
+                <button type="button" class="button" onClick={viewDiagram}>
+                  View Diagram →
+                </button>
+              </Show>
+              <button
+                id="detail-panel-close"
+                type="button"
+                class="button"
+                onClick={close}
+                aria-label="Close panel"
+              >
+                ✕
+              </button>
+            </div>
           </div>
-          <div id="detail-panel-body" class="detail-panel-body">
-            <Show when={htmlContent()} fallback={
-              <DetailMetadata detail={detail()} kind={panelKind()} />
-            }>
+          <div
+            id="detail-panel-body"
+            class="detail-panel-body"
+            ref={panelBodyRef}
+          >
+            <Show when={summaryFields().length}>
+              <div class="detail-summary-strip">
+                <For each={summaryFields()}>
+                  {(field) => (
+                    <div class="detail-summary-item">
+                      <span class="detail-summary-label">{field.label}</span>
+                      <strong class="detail-summary-value">{field.value}</strong>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
+            <Show when={description()}>
+              <div class="detail-module">
+                <p>{description()}</p>
+              </div>
+            </Show>
+            <Show when={htmlContent()}>
               <div
                 class="detail-page"
                 data-entity-kind={panelKind()}
@@ -108,102 +377,42 @@ export function DetailPanel() {
                 innerHTML={htmlContent()}
               />
             </Show>
+            <Show when={!htmlContent() && fields().length}>
+              <div class="detail-module">
+                <table class="table" style={{ "font-size": "0.88rem" }}>
+                  <tbody>
+                    <For each={fields()}>
+                      {([key, value]) => (
+                        <tr>
+                          <td
+                            style={{
+                              padding: "6px 12px 6px 0",
+                              color: "var(--text-dim, #8b949e)",
+                              "vertical-align": "top",
+                              "white-space": "nowrap",
+                              "font-weight": "500",
+                            }}
+                          >
+                            {metadataFieldLabel(key)}
+                          </td>
+                          <td style={{ padding: "6px 0", color: "var(--text-secondary, #c9d1d9)" }}>
+                            {renderMetadataValue(value)}
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+            <Show when={!htmlContent() && !fields().length && !description()}>
+              <div class="detail-module">
+                <p style={{ color: "var(--text-dim)" }}>No details available.</p>
+              </div>
+            </Show>
           </div>
         </Show>
       </aside>
     </>
-  );
-}
-
-/** Render detail metadata directly when no static HTML page exists. */
-function DetailMetadata(props: { detail: Record<string, any> | null; kind: string | undefined }) {
-  const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
-
-  const fields = () => {
-    const d = props.detail;
-    if (!d) return [];
-    return Object.entries(d).filter(([k]) => !SKIP_FIELDS.has(k));
-  };
-
-  return (
-    <div class="detail-page" style={{ padding: "16px" }}>
-      <Show when={props.detail} fallback={
-        <p style={{ color: "var(--text-dim)" }}>No details available.</p>
-      }>
-        <Show when={props.detail?.description}>
-          <p style={{ "margin-bottom": "16px", color: "var(--text-secondary, #c9d1d9)" }}>
-            {props.detail!.description}
-          </p>
-        </Show>
-        <table class="table" style={{ "font-size": "0.88rem" }}>
-          <tbody>
-            <For each={fields().filter(([k]) => k !== "description")}>
-              {([key, value]) => (
-                <tr>
-                  <td style={{
-                    padding: "6px 12px 6px 0",
-                    color: "var(--text-dim, #8b949e)",
-                    "vertical-align": "top",
-                    "white-space": "nowrap",
-                    "font-weight": "500",
-                  }}>
-                    {metadataFieldLabel(key)}
-                  </td>
-                  <td style={{ padding: "6px 0", color: "var(--text-secondary, #c9d1d9)" }}>
-                    <MetadataValue value={value} />
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
-      </Show>
-    </div>
-  );
-
-  function metadataFieldLabel(key: string): string {
-    const labels: Record<string, string> = {
-      stageIds: "Stages",
-      stepIds: "Steps",
-      entryArtifacts: "Entry Artifacts",
-      exitArtifacts: "Exit Artifacts",
-      inputArtifacts: "Input Artifacts",
-      outputArtifacts: "Output Artifacts",
-      lifecycleId: "Lifecycle",
-      systems: "Systems",
-      modules: "Modules",
-      agents: "Agents",
-      systemCount: "Systems",
-      fileCount: "Files",
-      path: "Path",
-      moduleId: "Module",
-      systemId: "System",
-      symbols: "Symbols",
-      importedBy: "Imported By",
-      imports: "Imports",
-      mechanism: "Mechanism",
-      from: "From",
-      to: "To",
-    };
-    return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-  }
-}
-
-/** Render a metadata value — handles strings, numbers, arrays. */
-function MetadataValue(props: { value: any }) {
-  const v = () => props.value;
-
-  return (
-    <Show when={Array.isArray(v())} fallback={<span>{String(v())}</span>}>
-      <Show when={(v() as any[]).length <= 8} fallback={
-        <span>{(v() as any[]).length} items</span>
-      }>
-        <ul style={{ margin: 0, padding: "0 0 0 16px", "list-style": "disc" }}>
-          <For each={v() as any[]}>
-            {(item) => <li>{String(item)}</li>}
-          </For>
-        </ul>
-      </Show>
-    </Show>
   );
 }

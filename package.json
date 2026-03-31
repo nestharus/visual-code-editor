@@ -7,7 +7,8 @@
     "dev:watcher": "npx tsx server/watcher.ts",
     "build": "vite build",
     "preview": "vite preview",
-    "serve": "vite preview --port 8742"
+    "serve": "vite preview --port 8742",
+    "regenerate": "python3 src/visual_code_editor/export_json_cli.py $HOME/projects/agent-implementation-skill/execution-philosophy/diagrams/workspace.json > public/data/diagram.json"
   },
   "dependencies": {
     "@tanstack/solid-query": "^5.95.2",

@@ -1,11 +1,8 @@
 import { useNavigate, useParams } from "@tanstack/solid-router";
-import { createMemo, createSignal } from "solid-js";
-import type { Core } from "cytoscape";
-import { DiagramCanvas } from "../components/DiagramCanvas";
-import { HoverOverlay } from "../components/HoverOverlay";
-import { NodeActionOverlay } from "../components/NodeActionOverlay";
-import { cytoscapeStyle } from "../lib/cytoscape-style";
+import { Show, createEffect, createMemo } from "solid-js";
+import { useDiagramShellContext } from "../components/AppShell";
 import { useDiagramData, type DiagramData } from "../lib/diagram-data";
+import { ParentSummary } from "../components/ParentSummary";
 
 type DiagramViewProps = {
   view: "organizational" | "behavioral";
@@ -46,8 +43,7 @@ export function DiagramView(props: DiagramViewProps) {
   const params = useParams({ strict: false });
   const navigate = useNavigate();
   const diagramQuery = useDiagramData();
-  const [cy, setCy] = createSignal<Core | undefined>();
-  const [container, setContainer] = createSignal<HTMLDivElement | undefined>();
+  const shell = useDiagramShellContext();
 
   const slice = createMemo<DiagramSlice | undefined>(() => {
     const data = diagramQuery.data;
@@ -171,25 +167,134 @@ export function DiagramView(props: DiagramViewProps) {
     openPanel(panelKind, edgeId, panelLabel);
   };
 
+  const parentSummary = createMemo(() => {
+    const data = diagramQuery.data;
+    const routeParams = params();
+    if (!data || !props.level) return null;
+
+    if (props.level === "cluster") {
+      const clusterId = routeParams.clusterId || "";
+      const cluster = data.organizational.clusters[clusterId];
+      if (!cluster) return null;
+      const detail = data.details[clusterId];
+      const childCount =
+        typeof detail?.systemCount === "number"
+          ? detail.systemCount
+          : Array.isArray(detail?.systems)
+            ? detail.systems.length
+            : undefined;
+      return {
+        parentKind: "cluster",
+        parentId: clusterId,
+        parentLabel: cluster.label,
+        parentDescription:
+          typeof detail?.description === "string" ? detail.description : undefined,
+        childCount,
+      };
+    }
+
+    if (props.level === "system") {
+      const systemId = routeParams.systemId || "";
+      const system = data.organizational.systems[systemId];
+      if (!system) return null;
+      const detail = data.details[systemId];
+      const childCount =
+        (typeof detail?.fileCount === "number" ? detail.fileCount : system.fileCount || 0) +
+        (typeof detail?.agentCount === "number" ? detail.agentCount : system.agentCount || 0);
+      return {
+        parentKind: "system",
+        parentId: systemId,
+        parentLabel: system.label,
+        parentDescription:
+          typeof detail?.description === "string" ? detail.description : undefined,
+        childCount,
+      };
+    }
+
+    if (props.level === "lifecycle") {
+      const lifecycleId = routeParams.lifecycleId || "";
+      const lifecycle = data.behavioral.lifecycles[lifecycleId];
+      if (!lifecycle) return null;
+      const detail = data.details[lifecycleId];
+      const childCount = Array.isArray(lifecycle.stageIds) ? lifecycle.stageIds.length : undefined;
+      return {
+        parentKind: "lifecycle",
+        parentId: lifecycleId,
+        parentLabel: lifecycle.label,
+        parentDescription:
+          typeof lifecycle.description === "string"
+            ? lifecycle.description
+            : typeof detail?.description === "string"
+              ? detail.description
+              : undefined,
+        childCount,
+      };
+    }
+
+    if (props.level === "stage") {
+      const stageId = routeParams.stageId || "";
+      const stage = data.behavioral.stages[stageId];
+      if (!stage) return null;
+      const detail = data.details[stageId];
+      const childCount = Array.isArray(stage.stepIds) ? stage.stepIds.length : undefined;
+      return {
+        parentKind: "stage",
+        parentId: stageId,
+        parentLabel: stage.label,
+        parentDescription:
+          typeof stage.description === "string"
+            ? stage.description
+            : typeof detail?.description === "string"
+              ? detail.description
+              : undefined,
+        childCount,
+      };
+    }
+
+    return null;
+  });
+
+  createEffect(() => {
+    slice();
+    mermaidText();
+    title();
+
+    shell.publish({
+      elements,
+      mermaidText,
+      onNodeTap,
+      onEdgeTap,
+      title,
+      view: () => props.view,
+      level: () => props.level,
+    });
+  });
+
   return (
-    <div class="diagram-view" style={{ position: "relative" }}>
+    <div
+      class="diagram-view"
+      style={{
+        position: "relative",
+        padding: "16px 20px 0",
+        "pointer-events": "none",
+      }}
+    >
+      <Show when={parentSummary()}>
+        {(summary) => (
+          <ParentSummary
+            parentKind={summary().parentKind}
+            parentId={summary().parentId}
+            parentLabel={summary().parentLabel}
+            parentDescription={summary().parentDescription}
+            childCount={summary().childCount}
+            onExpand={() =>
+              openPanel(summary().parentKind, summary().parentId, summary().parentLabel)
+            }
+          />
+        )}
+      </Show>
       <div class="diagram-view__header">
         <h2>{title()}</h2>
-      </div>
-      <div style={{ position: "relative" }}>
-        <DiagramCanvas
-          elements={elements()}
-          mermaidText={mermaidText()}
-          style={cytoscapeStyle}
-          onNodeTap={onNodeTap}
-          onEdgeTap={onEdgeTap}
-          onReady={(cyInstance, containerEl) => {
-            setCy(cyInstance);
-            setContainer(containerEl);
-          }}
-        />
-        <HoverOverlay cy={cy()} container={container()} />
-        <NodeActionOverlay cy={cy()} container={container()} />
       </div>
     </div>
   );

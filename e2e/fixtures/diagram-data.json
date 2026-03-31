@@ -1,0 +1,248 @@
+{
+  "organizational": {
+    "root": {
+      "elements": [
+        { "data": { "id": "cluster-alpha", "label": "Alpha", "kind": "cluster", "color": "#4a9eff" }, "classes": "cluster" },
+        { "data": { "id": "cluster-beta", "label": "Beta", "kind": "cluster", "color": "#ff6b4a" }, "classes": "cluster" },
+        { "data": { "id": "store-config", "label": "Config Store", "kind": "store" }, "classes": "store" },
+        { "data": { "id": "e-ab", "source": "cluster-alpha", "target": "cluster-beta", "kind": "import", "label": "uses" }, "classes": "cluster-edge" },
+        { "data": { "id": "e-a-store", "source": "cluster-alpha", "target": "store-config", "kind": "store-write", "label": "write" }, "classes": "store-edge" },
+        { "data": { "id": "e-store-b", "source": "store-config", "target": "cluster-beta", "kind": "store-read", "label": "read" }, "classes": "store-edge" }
+      ],
+      "edgeClickMap": {},
+      "mermaid": "graph TD\n  cluster_alpha[Alpha]\n  cluster_beta[Beta]\n  store_config[Config Store]\n  cluster_alpha --> cluster_beta\n  cluster_alpha --> store_config\n  store_config --> cluster_beta"
+    },
+    "clusters": {
+      "cluster-alpha": {
+        "id": "cluster-alpha",
+        "label": "Alpha",
+        "color": "#4a9eff",
+        "elements": [
+          { "data": { "id": "system-a1", "label": "System A1", "kind": "system", "color": "#4a9eff" }, "classes": "system" },
+          { "data": { "id": "system-a2", "label": "System A2", "kind": "system", "color": "#4a9eff" }, "classes": "system" },
+          { "data": { "id": "system-ext", "label": "External Sys", "kind": "external" }, "classes": "external" },
+          { "data": { "id": "e-a1-a2", "source": "system-a1", "target": "system-a2", "kind": "import", "label": "imports" }, "classes": "system-edge" },
+          { "data": { "id": "e-a1-ext", "source": "system-a1", "target": "system-ext", "kind": "import", "label": "calls" }, "classes": "system-edge" }
+        ],
+        "edgeClickMap": {},
+        "nodeTargetMap": {},
+        "mermaid": "graph TD\n  system_a1[System A1]\n  system_a2[System A2]\n  system_ext[External Sys]\n  system_a1 --> system_a2\n  system_a1 --> system_ext"
+      },
+      "cluster-beta": {
+        "id": "cluster-beta",
+        "label": "Beta",
+        "color": "#ff6b4a",
+        "elements": [
+          { "data": { "id": "system-b1", "label": "System B1", "kind": "system", "color": "#ff6b4a" }, "classes": "system" },
+          { "data": { "id": "system-b2", "label": "System B2", "kind": "system", "color": "#ff6b4a" }, "classes": "system" },
+          { "data": { "id": "e-b1-b2", "source": "system-b1", "target": "system-b2", "kind": "import", "label": "depends" }, "classes": "system-edge" }
+        ],
+        "edgeClickMap": {},
+        "nodeTargetMap": {},
+        "mermaid": "graph TD\n  system_b1[System B1]\n  system_b2[System B2]\n  system_b1 --> system_b2"
+      }
+    },
+    "systems": {
+      "system-a1": {
+        "id": "system-a1",
+        "label": "System A1",
+        "clusterId": "cluster-alpha",
+        "clusterColor": "#4a9eff",
+        "elements": [
+          { "data": { "id": "mod-group-a1", "label": "Module A1", "kind": "module-group" }, "classes": "module-group" },
+          { "data": { "id": "file-1.py", "label": "file-1.py", "kind": "file", "color": "#4a9eff", "parent": "mod-group-a1" }, "classes": "file-node" },
+          { "data": { "id": "file-2.py", "label": "file-2.py", "kind": "file", "color": "#4a9eff", "parent": "mod-group-a1" }, "classes": "file-node" },
+          { "data": { "id": "agent-a1", "label": "agent-a1<br/>coordinator", "kind": "agent", "color": "#9D7BEE", "parent": "mod-group-a1" }, "classes": "agent-node" },
+          { "data": { "id": "file-3.py", "label": "file-3.py", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "e-f1-f2", "source": "file-1.py", "target": "file-2.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" },
+          { "data": { "id": "e-f2-f3", "source": "file-2.py", "target": "file-3.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" }
+        ],
+        "fileCount": 3,
+        "agentCount": 1,
+        "mermaid": "graph TD\n  subgraph mod_group_a1[Module A1]\n    file_1_py[file-1.py]\n    file_2_py[file-2.py]\n    agent_a1{{\"agent-a1<br/>coordinator\"}}\n  end\n  file_3_py[file-3.py]\n  file_1_py --> file_2_py\n  file_2_py --> file_3_py"
+      },
+      "system-a2": {
+        "id": "system-a2",
+        "label": "System A2",
+        "clusterId": "cluster-alpha",
+        "clusterColor": "#4a9eff",
+        "elements": [
+          { "data": { "id": "file-main.py", "label": "main.py", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "file-util.py", "label": "util.py", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "e-main-util", "source": "file-main.py", "target": "file-util.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" }
+        ],
+        "fileCount": 2,
+        "agentCount": 0,
+        "mermaid": "graph TD\n  file_main_py[main.py]\n  file_util_py[util.py]\n  file_main_py --> file_util_py"
+      },
+      "system-ext": {
+        "id": "system-ext",
+        "label": "External Sys",
+        "clusterId": "cluster-alpha",
+        "clusterColor": "#4a9eff",
+        "elements": [
+          { "data": { "id": "file-api.py", "label": "api.py", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "file-client.py", "label": "client.py", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "e-api-client", "source": "file-api.py", "target": "file-client.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" }
+        ],
+        "fileCount": 2,
+        "agentCount": 0,
+        "mermaid": "graph TD\n  file_api_py[api.py]\n  file_client_py[client.py]\n  file_api_py --> file_client_py"
+      },
+      "system-b1": {
+        "id": "system-b1",
+        "label": "System B1",
+        "clusterId": "cluster-beta",
+        "clusterColor": "#ff6b4a",
+        "elements": [
+          { "data": { "id": "file-handler.py", "label": "handler.py", "kind": "file", "color": "#ff6b4a" }, "classes": "file-node" },
+          { "data": { "id": "file-model.py", "label": "model.py", "kind": "file", "color": "#ff6b4a" }, "classes": "file-node" },
+          { "data": { "id": "e-handler-model", "source": "file-handler.py", "target": "file-model.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" }
+        ],
+        "fileCount": 2,
+        "agentCount": 0,
+        "mermaid": "graph TD\n  file_handler_py[handler.py]\n  file_model_py[model.py]\n  file_handler_py --> file_model_py"
+      },
+      "system-b2": {
+        "id": "system-b2",
+        "label": "System B2",
+        "clusterId": "cluster-beta",
+        "clusterColor": "#ff6b4a",
+        "elements": [
+          { "data": { "id": "file-runner.py", "label": "runner.py", "kind": "file", "color": "#ff6b4a" }, "classes": "file-node" },
+          { "data": { "id": "file-config.py", "label": "config.py", "kind": "file", "color": "#ff6b4a" }, "classes": "file-node" },
+          { "data": { "id": "e-runner-config", "source": "file-runner.py", "target": "file-config.py", "kind": "file-import", "label": "imports" }, "classes": "file-import" }
+        ],
+        "fileCount": 2,
+        "agentCount": 0,
+        "mermaid": "graph TD\n  file_runner_py[runner.py]\n  file_config_py[config.py]\n  file_runner_py --> file_config_py"
+      }
+    }
+  },
+  "behavioral": {
+    "available": true,
+    "root": {
+      "elements": [
+        { "data": { "id": "lifecycle-design", "label": "Design", "kind": "lifecycle" }, "classes": "behavioral-lifecycle" },
+        { "data": { "id": "lifecycle-build", "label": "Build", "kind": "lifecycle" }, "classes": "behavioral-lifecycle" },
+        { "data": { "id": "e-lc-db", "source": "lifecycle-design", "target": "lifecycle-build", "kind": "lifecycle-flow", "label": "feeds" }, "classes": "behavioral-edge" }
+      ],
+      "edgeClickMap": {},
+      "mermaid": "graph TD\n  lifecycle_design[Design]\n  lifecycle_build[Build]\n  lifecycle_design --> lifecycle_build"
+    },
+    "lifecycles": {
+      "lifecycle-design": {
+        "id": "lifecycle-design",
+        "label": "Design",
+        "elements": [
+          { "data": { "id": "stage-explore", "label": "Explore", "kind": "stage" }, "classes": "behavioral-stage" },
+          { "data": { "id": "stage-propose", "label": "Propose", "kind": "stage" }, "classes": "behavioral-stage" },
+          { "data": { "id": "e-st-ep", "source": "stage-explore", "target": "stage-propose", "kind": "stage-flow", "label": "produces" }, "classes": "behavioral-edge" }
+        ],
+        "stageIds": ["stage-explore", "stage-propose"],
+        "mermaid": "graph TD\n  stage_explore[Explore]\n  stage_propose[Propose]\n  stage_explore --> stage_propose"
+      },
+      "lifecycle-build": {
+        "id": "lifecycle-build",
+        "label": "Build",
+        "elements": [
+          { "data": { "id": "stage-implement", "label": "Implement", "kind": "stage" }, "classes": "behavioral-stage" },
+          { "data": { "id": "stage-verify", "label": "Verify", "kind": "stage" }, "classes": "behavioral-stage" },
+          { "data": { "id": "e-st-iv", "source": "stage-implement", "target": "stage-verify", "kind": "stage-flow", "label": "validates" }, "classes": "behavioral-edge" }
+        ],
+        "stageIds": ["stage-implement", "stage-verify"],
+        "mermaid": "graph TD\n  stage_implement[Implement]\n  stage_verify[Verify]\n  stage_implement --> stage_verify"
+      }
+    },
+    "stages": {
+      "stage-explore": {
+        "id": "stage-explore",
+        "label": "Explore",
+        "lifecycleId": "lifecycle-design",
+        "elements": [
+          { "data": { "id": "step-research", "label": "Research", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "step-analyze", "label": "Analyze", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-ra", "source": "step-research", "target": "step-analyze", "kind": "step-flow", "label": "informs" }, "classes": "behavioral-edge" }
+        ],
+        "stepIds": ["step-research", "step-analyze"],
+        "mermaid": "graph TD\n  step_research[Research]\n  step_analyze[Analyze]\n  step_research --> step_analyze"
+      },
+      "stage-propose": {
+        "id": "stage-propose",
+        "label": "Propose",
+        "lifecycleId": "lifecycle-design",
+        "elements": [
+          { "data": { "id": "step-draft", "label": "Draft", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "step-review", "label": "Review", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-dr", "source": "step-draft", "target": "step-review", "kind": "step-flow", "label": "evaluates" }, "classes": "behavioral-edge" }
+        ],
+        "stepIds": ["step-draft", "step-review"],
+        "mermaid": "graph TD\n  step_draft[Draft]\n  step_review[Review]\n  step_draft --> step_review"
+      },
+      "stage-implement": {
+        "id": "stage-implement",
+        "label": "Implement",
+        "lifecycleId": "lifecycle-build",
+        "elements": [
+          { "data": { "id": "step-code", "label": "Code", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "step-test", "label": "Test", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-ct", "source": "step-code", "target": "step-test", "kind": "step-flow", "label": "verifies" }, "classes": "behavioral-edge" }
+        ],
+        "stepIds": ["step-code", "step-test"],
+        "mermaid": "graph TD\n  step_code[Code]\n  step_test[Test]\n  step_code --> step_test"
+      },
+      "stage-verify": {
+        "id": "stage-verify",
+        "label": "Verify",
+        "lifecycleId": "lifecycle-build",
+        "elements": [
+          { "data": { "id": "step-qa", "label": "QA", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "step-release", "label": "Release", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-qr", "source": "step-qa", "target": "step-release", "kind": "step-flow", "label": "approves" }, "classes": "behavioral-edge" }
+        ],
+        "stepIds": ["step-qa", "step-release"],
+        "mermaid": "graph TD\n  step_qa[QA]\n  step_release[Release]\n  step_qa --> step_release"
+      }
+    }
+  },
+  "details": {
+    "cluster-alpha": { "kind": "cluster", "id": "cluster-alpha", "label": "Alpha", "href": "clusters/alpha.html", "color": "#4a9eff" },
+    "cluster-beta": { "kind": "cluster", "id": "cluster-beta", "label": "Beta", "href": "clusters/beta.html", "color": "#ff6b4a" },
+    "store-config": { "kind": "store", "id": "store-config", "label": "Config Store", "href": "stores/config.html" },
+    "system-a1": { "kind": "system", "id": "system-a1", "label": "System A1", "href": "systems/a1.html" },
+    "system-a2": { "kind": "system", "id": "system-a2", "label": "System A2", "href": "systems/a2.html" },
+    "system-ext": { "kind": "system", "id": "system-ext", "label": "External Sys", "href": "systems/ext.html" },
+    "system-b1": { "kind": "system", "id": "system-b1", "label": "System B1", "href": "systems/b1.html" },
+    "system-b2": { "kind": "system", "id": "system-b2", "label": "System B2", "href": "systems/b2.html" },
+    "agent-a1": { "kind": "agent", "id": "agent-a1", "label": "agent-a1 coordinator", "description": "Coordinates module work when file-level behavior needs orchestration.", "path": "agents/agent-a1.md", "moduleId": "module-a1", "systemId": "system-a1" },
+    "file-1.py": { "kind": "module", "id": "file-1.py", "label": "file-1.py", "href": "modules/file-1.html" },
+    "file-2.py": { "kind": "module", "id": "file-2.py", "label": "file-2.py", "href": "modules/file-2.html" },
+    "file-3.py": { "kind": "module", "id": "file-3.py", "label": "file-3.py", "href": "modules/file-3.html" },
+    "file-main.py": { "kind": "module", "id": "file-main.py", "label": "main.py", "href": "modules/main.html" },
+    "file-util.py": { "kind": "module", "id": "file-util.py", "label": "util.py", "href": "modules/util.html" },
+    "file-api.py": { "kind": "module", "id": "file-api.py", "label": "api.py", "href": "modules/api.html" },
+    "file-client.py": { "kind": "module", "id": "file-client.py", "label": "client.py", "href": "modules/client.html" },
+    "file-handler.py": { "kind": "module", "id": "file-handler.py", "label": "handler.py", "href": "modules/handler.html" },
+    "file-model.py": { "kind": "module", "id": "file-model.py", "label": "model.py", "href": "modules/model.html" },
+    "file-runner.py": { "kind": "module", "id": "file-runner.py", "label": "runner.py", "href": "modules/runner.html" },
+    "file-config.py": { "kind": "module", "id": "file-config.py", "label": "config.py", "href": "modules/config.html" },
+    "e-ab": { "kind": "edge", "id": "e-ab", "label": "uses", "href": "edges/e-ab.html", "from": "cluster-alpha", "to": "cluster-beta" },
+    "e-a-store": { "kind": "edge", "id": "e-a-store", "label": "write", "href": "edges/e-a-store.html", "from": "cluster-alpha", "to": "store-config" },
+    "e-store-b": { "kind": "edge", "id": "e-store-b", "label": "read", "href": "edges/e-store-b.html", "from": "store-config", "to": "cluster-beta" },
+    "lifecycle-design": { "kind": "lifecycle", "id": "lifecycle-design", "label": "Design", "description": "Design lifecycle for product development.", "stageIds": ["stage-explore", "stage-propose"] },
+    "lifecycle-build": { "kind": "lifecycle", "id": "lifecycle-build", "label": "Build", "description": "Build lifecycle for implementation.", "stageIds": ["stage-implement", "stage-verify"] },
+    "stage-explore": { "kind": "stage", "id": "stage-explore", "label": "Explore", "description": "Explore the problem space.", "lifecycleId": "lifecycle-design", "stepIds": ["step-research", "step-analyze"] },
+    "stage-propose": { "kind": "stage", "id": "stage-propose", "label": "Propose", "description": "Shape proposals from exploration findings.", "lifecycleId": "lifecycle-design", "stepIds": ["step-draft", "step-review"] },
+    "stage-implement": { "kind": "stage", "id": "stage-implement", "label": "Implement", "description": "Execute the implementation plan.", "lifecycleId": "lifecycle-build", "stepIds": ["step-code", "step-test"] },
+    "stage-verify": { "kind": "stage", "id": "stage-verify", "label": "Verify", "description": "Verify implementation correctness.", "lifecycleId": "lifecycle-build", "stepIds": ["step-qa", "step-release"] },
+    "step-research": { "kind": "step", "id": "step-research", "label": "Research", "description": "Investigate the problem space and gather relevant information." },
+    "step-analyze": { "kind": "step", "id": "step-analyze", "label": "Analyze", "description": "Analyze findings and identify patterns." },
+    "step-draft": { "kind": "step", "id": "step-draft", "label": "Draft", "href": "steps/draft.html" },
+    "step-review": { "kind": "step", "id": "step-review", "label": "Review", "href": "steps/review.html" },
+    "step-code": { "kind": "step", "id": "step-code", "label": "Code", "href": "steps/code.html" },
+    "step-test": { "kind": "step", "id": "step-test", "label": "Test", "href": "steps/test.html" },
+    "step-qa": { "kind": "step", "id": "step-qa", "label": "QA", "href": "steps/qa.html" },
+    "step-release": { "kind": "step", "id": "step-release", "label": "Release", "href": "steps/release.html" },
+    "e-lc-db": { "kind": "edge", "id": "e-lc-db", "label": "feeds", "href": "edges/e-lc-db.html", "from": "lifecycle-design", "to": "lifecycle-build" }
+  }
+}

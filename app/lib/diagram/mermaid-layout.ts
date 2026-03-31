@@ -190,6 +190,60 @@ function lookupNodeGeo(
   );
 }
 
+const CYTOSCAPE_NODE_SIZES: Record<string, { width: number; height: number }> = {
+  cluster: { width: 160, height: 80 },
+  system: { width: 150, height: 70 },
+  external: { width: 130, height: 60 },
+  store: { width: 120, height: 60 },
+  "behavioral-lifecycle": { width: 210, height: 92 },
+  "behavioral-stage": { width: 180, height: 74 },
+  "behavioral-step": { width: 170, height: 64 },
+  "file-node": { width: 130, height: 50 },
+  "agent-node": { width: 130, height: 50 },
+};
+
+const CYTOSCAPE_KIND_SIZES: Record<string, { width: number; height: number }> = {
+  cluster: CYTOSCAPE_NODE_SIZES.cluster,
+  system: CYTOSCAPE_NODE_SIZES.system,
+  external: CYTOSCAPE_NODE_SIZES.external,
+  store: CYTOSCAPE_NODE_SIZES.store,
+  lifecycle: CYTOSCAPE_NODE_SIZES["behavioral-lifecycle"],
+  stage: CYTOSCAPE_NODE_SIZES["behavioral-stage"],
+  step: CYTOSCAPE_NODE_SIZES["behavioral-step"],
+  file: CYTOSCAPE_NODE_SIZES["file-node"],
+  agent: CYTOSCAPE_NODE_SIZES["agent-node"],
+};
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function lookupActualNodeSize(
+  element: ElementDefinition,
+): { width: number; height: number } | undefined {
+  const classNames =
+    typeof element.classes === "string"
+      ? element.classes.split(/\s+/).filter(Boolean)
+      : [];
+
+  for (const className of classNames) {
+    const size = CYTOSCAPE_NODE_SIZES[className];
+    if (size) return size;
+  }
+
+  const kind =
+    typeof element.data?.kind === "string" ? element.data.kind : undefined;
+  return kind ? CYTOSCAPE_KIND_SIZES[kind] : undefined;
+}
+
 /**
  * Apply Mermaid geometry to Cytoscape elements.
  * Per governance: use `segments` curve style, `preset` layout.
@@ -237,6 +291,98 @@ export function applyMermaidPositions(
     };
   });
 
+  const parentIds = new Set(
+    result.map((el) => el.data?.parent).filter(Boolean) as string[],
+  );
+
+  const scalableIndexes: number[] = [];
+  const scalablePositions: Array<{ x: number; y: number }> = [];
+  const mermaidWidths: number[] = [];
+  const mermaidHeights: number[] = [];
+  const actualWidths: number[] = [];
+  const actualHeights: number[] = [];
+
+  for (let i = 0; i < result.length; i++) {
+    const el = result[i];
+    const nodeId = el.data?.id;
+    if (el.data?.source || !el.position || !nodeId || parentIds.has(nodeId)) {
+      continue;
+    }
+
+    const nodeGeo = lookupNodeGeo(geometry, nodeId);
+    const actualSize = lookupActualNodeSize(el);
+    if (
+      !nodeGeo ||
+      !actualSize ||
+      nodeGeo.width <= 0 ||
+      nodeGeo.height <= 0
+    ) {
+      continue;
+    }
+
+    scalableIndexes.push(i);
+    scalablePositions.push(el.position as { x: number; y: number });
+    mermaidWidths.push(nodeGeo.width);
+    mermaidHeights.push(nodeGeo.height);
+    actualWidths.push(actualSize.width);
+    actualHeights.push(actualSize.height);
+  }
+
+  if (scalableIndexes.length > 0) {
+    const scaleX = clamp(
+      median(actualWidths) / median(mermaidWidths),
+      0.4,
+      1.0,
+    );
+    const scaleY = clamp(
+      median(actualHeights) / median(mermaidHeights),
+      0.4,
+      1.0,
+    );
+    const didScale =
+      Math.abs(scaleX - 1) > 0.001 || Math.abs(scaleY - 1) > 0.001;
+
+    if (didScale) {
+      const centroid = {
+        x:
+          scalablePositions.reduce((sum, pos) => sum + pos.x, 0) /
+          scalablePositions.length,
+        y:
+          scalablePositions.reduce((sum, pos) => sum + pos.y, 0) /
+          scalablePositions.length,
+      };
+
+      for (const index of scalableIndexes) {
+        const position = result[index].position as { x: number; y: number };
+        result[index] = {
+          ...result[index],
+          position: {
+            x: centroid.x + (position.x - centroid.x) * scaleX,
+            y: centroid.y + (position.y - centroid.y) * scaleY,
+          },
+        };
+      }
+
+      for (let i = 0; i < result.length; i++) {
+        const el = result[i];
+        if (!el.data?.source) continue;
+
+        const { _segmentWeights, _segmentDistances, ...edgeData } = el.data;
+        if (
+          _segmentWeights === undefined &&
+          _segmentDistances === undefined
+        ) {
+          continue;
+        }
+
+        result[i] = {
+          ...el,
+          data: edgeData,
+        };
+      }
+    }
+  }
+
   // Fix up unpositioned nodes: place them near their parent or a connected neighbor
   const positionMap = new Map<string, { x: number; y: number }>();
   for (const el of result) {
@@ -258,9 +404,6 @@ export function applyMermaidPositions(
         }
       : { x: 0, y: 0 };
 
-  const parentIds = new Set(
-    result.map((el) => el.data?.parent).filter(Boolean) as string[],
-  );
   const groups = new Map<
     string,
     { anchor: { x: number; y: number }; indexes: number[] }

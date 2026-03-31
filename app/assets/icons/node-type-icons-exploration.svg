@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#0d1117" />
+  
+  <style>
+    .label {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      fill: #c9d1d9;
+      text-anchor: middle;
+    }
+  </style>
+
+  <!-- 1. Cluster -->
+  <g transform="translate(50, 50)">
+    <rect x="4" y="4" width="40" height="40" rx="4" fill="none" stroke="#c9d1d9" stroke-width="2" stroke-dasharray="4 4" />
+    <rect x="12" y="12" width="24" height="24" rx="2" fill="none" stroke="#c9d1d9" stroke-width="2" />
+    <text x="24" y="70" class="label">Cluster</text>
+  </g>
+
+  <!-- 2. System -->
+  <g transform="translate(200, 50)">
+    <polygon points="24,2 44,14 44,34 24,46 4,34 4,14" fill="none" stroke="#c9d1d9" stroke-width="2" stroke-linejoin="round" />
+    <circle cx="24" cy="24" r="8" fill="none" stroke="#c9d1d9" stroke-width="2" />
+    <text x="24" y="70" class="label">System</text>
+  </g>
+
+  <!-- 3. File -->
+  <g transform="translate(350, 50)">
+    <path d="M12 4 L28 4 L36 12 L36 44 L12 44 Z" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linejoin="round" />
+    <polyline points="28,4 28,12 36,12" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linejoin="round" />
+    <line x1="18" y1="20" x2="30" y2="20" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" />
+    <line x1="18" y1="28" x2="30" y2="28" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" />
+    <line x1="18" y1="36" x2="26" y2="36" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" />
+    <text x="24" y="70" class="label">File</text>
+  </g>
+
+  <!-- 4. Agent -->
+  <g transform="translate(50, 200)">
+    <rect x="10" y="16" width="28" height="20" rx="4" fill="none" stroke="#9D7BEE" stroke-width="2" />
+    <path d="M24 16 L24 8 M20 8 L28 8" fill="none" stroke="#9D7BEE" stroke-width="2" stroke-linecap="round" />
+    <circle cx="16" cy="26" r="2" fill="#9D7BEE" />
+    <circle cx="32" cy="26" r="2" fill="#9D7BEE" />
+    <line x1="20" y1="32" x2="28" y2="32" stroke="#9D7BEE" stroke-width="2" stroke-linecap="round" />
+    <line x1="6" y1="26" x2="10" y2="26" stroke="#9D7BEE" stroke-width="2" stroke-linecap="round" />
+    <line x1="38" y1="26" x2="42" y2="26" stroke="#9D7BEE" stroke-width="2" stroke-linecap="round" />
+    <text x="24" y="70" class="label">Agent</text>
+  </g>
+
+  <!-- 5. Store -->
+  <g transform="translate(200, 200)">
+    <ellipse cx="24" cy="12" rx="16" ry="6" fill="none" stroke="#d29922" stroke-width="2" />
+    <path d="M8 12 L8 36 A16 6 0 0 0 40 36 L40 12" fill="none" stroke="#d29922" stroke-width="2" />
+    <path d="M8 24 A16 6 0 0 0 40 24" fill="none" stroke="#d29922" stroke-width="2" />
+    <text x="24" y="70" class="label">Store</text>
+  </g>
+
+  <!-- 6. Lifecycle -->
+  <g transform="translate(350, 200)">
+    <path d="M 16 16 C 6 16 6 32 16 32 C 24 32 24 16 32 16 C 42 16 42 32 32 32 C 24 32 24 16 16 16" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" />
+    <text x="24" y="70" class="label">Lifecycle</text>
+  </g>
+
+  <!-- 7. Stage -->
+  <g transform="translate(50, 350)">
+    <polygon points="8,12 30,12 40,24 30,36 8,36 18,24" fill="none" stroke="#4fa9a0" stroke-width="2" stroke-linejoin="round" />
+    <text x="24" y="70" class="label">Stage</text>
+  </g>
+
+  <!-- 8. Step -->
+  <g transform="translate(200, 350)">
+    <circle cx="24" cy="24" r="14" fill="none" stroke="#d29922" stroke-width="2" />
+    <circle cx="24" cy="24" r="4" fill="#d29922" />
+    <line x1="24" y1="4" x2="24" y2="10" stroke="#d29922" stroke-width="2" stroke-linecap="round" />
+    <line x1="24" y1="38" x2="24" y2="44" stroke="#d29922" stroke-width="2" stroke-linecap="round" />
+    <line x1="4" y1="24" x2="10" y2="24" stroke="#d29922" stroke-width="2" stroke-linecap="round" />
+    <line x1="38" y1="24" x2="44" y2="24" stroke="#d29922" stroke-width="2" stroke-linecap="round" />
+    <text x="24" y="70" class="label">Step</text>
+  </g>
+
+  <!-- 9. External -->
+  <g transform="translate(350, 350)">
+    <circle cx="24" cy="24" r="16" fill="none" stroke="#6e7681" stroke-width="2" />
+    <ellipse cx="24" cy="24" rx="6" ry="16" fill="none" stroke="#6e7681" stroke-width="2" />
+    <line x1="8" y1="24" x2="40" y2="24" stroke="#6e7681" stroke-width="2" />
+    <text x="24" y="70" class="label">External</text>
+  </g>
+</svg>

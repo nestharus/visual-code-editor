@@ -3,11 +3,10 @@ import type { Core, ElementDefinition, LayoutOptions, Stylesheet } from "cytosca
 import { createEffect, onCleanup, onMount } from "solid-js";
 import { startEdgeAnimation, stopEdgeAnimation } from "../lib/edge-animation";
 import {
-  animateCytoscapeExpandOut,
-  animateCytoscapeContractIn,
-  animateCytoscapeRevealIn,
+  animateCytoscapeCrossfade,
 } from "../lib/diagram-transition";
 import { computeMermaidLayout, applyMermaidPositions } from "../lib/diagram";
+import { setupSemanticZoom } from "../lib/semantic-zoom";
 
 type DiagramCanvasProps = {
   elements: ElementDefinition[];
@@ -83,7 +82,7 @@ function bindHighlightBehavior(cy: Core, container: HTMLDivElement) {
       delete (edge as any)._origLineStyle;
     });
 
-    cy.elements().removeClass("dimmed highlighted neighbor-highlighted hover-hidden");
+    cy.elements().removeClass("dimmed highlighted neighbor-highlighted");
   };
 
   const handleCoreMouseOut = () => clearHighlight();
@@ -119,6 +118,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
   let graph: Core | undefined;
   let resizeObserver: ResizeObserver | undefined;
   let cleanupHighlightBehavior: (() => void) | undefined;
+  let cleanupSemanticZoom: (() => void) | undefined;
   let animating = false;
   let transitionSeq = 0;
   let prevElementsRef: ElementDefinition[] | undefined;
@@ -168,7 +168,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
       elements,
       style: props.style,
       layout: chooseLayout(elements, props.layout),
-      minZoom: 0.3,
+      minZoom: 0.1,
       maxZoom: 4,
       wheelSensitivity: 1.2,
       autoungrabify: true,
@@ -181,6 +181,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
     prevElementsRef = props.elements;
 
     cleanupHighlightBehavior = bindHighlightBehavior(graph, container);
+    cleanupSemanticZoom = setupSemanticZoom(graph, () => animating);
 
     graph.on("tap", "node", (evt) => {
       const node = evt.target;
@@ -231,20 +232,28 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
 
     (async () => {
       try {
-        // Step 1: Animate OUT the current diagram
-        if (direction === "forward") {
-          await animateCytoscapeExpandOut(graph!, originId);
-        } else {
-          await animateCytoscapeContractIn(graph!);
+        // Pre-compute new element positions (mermaid layout)
+        let newElements = currentElements;
+        const mermaidText = props.mermaidText;
+        if (mermaidText) {
+          const geometry = await computeMermaidLayout(mermaidText);
+          if (geometry) {
+            newElements = applyMermaidPositions(newElements, geometry);
+          }
         }
-        if (seq !== transitionSeq) return; // interrupted by newer transition
-
-        // Step 2: Swap to new elements (with mermaid layout)
-        await swapElements();
         if (seq !== transitionSeq) return;
 
-        // Step 3: Animate IN the new diagram
-        await animateCytoscapeRevealIn(graph!);
+        // Crossfade: old elements fly out while new elements fly in simultaneously
+        await animateCytoscapeCrossfade(
+          graph!,
+          newElements,
+          direction,
+          props.style,
+          originId,
+        );
+
+        // Run layout for any elements that need positioning
+        graph!.layout(chooseLayout(newElements, props.layout)).run();
       } finally {
         if (seq === transitionSeq) animating = false;
       }
@@ -261,6 +270,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
       stopEdgeAnimation(graph);
     }
     cleanupHighlightBehavior?.();
+    cleanupSemanticZoom?.();
     resizeObserver?.disconnect();
     window.removeEventListener("resize", handleResize);
     graph?.destroy();
