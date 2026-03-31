@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "@tanstack/solid-router";
 import { Show, createEffect, createMemo } from "solid-js";
 import { useDiagramShellContext } from "../components/AppShell";
 import { useDiagramData, type DiagramData } from "../lib/diagram-data";
-import { ParentSummary } from "../components/ParentSummary";
 
 type DiagramViewProps = {
   view: "organizational" | "behavioral";
@@ -167,93 +166,6 @@ export function DiagramView(props: DiagramViewProps) {
     openPanel(panelKind, edgeId, panelLabel);
   };
 
-  const parentSummary = createMemo(() => {
-    const data = diagramQuery.data;
-    const routeParams = params();
-    if (!data || !props.level) return null;
-
-    if (props.level === "cluster") {
-      const clusterId = routeParams.clusterId || "";
-      const cluster = data.organizational.clusters[clusterId];
-      if (!cluster) return null;
-      const detail = data.details[clusterId];
-      const childCount =
-        typeof detail?.systemCount === "number"
-          ? detail.systemCount
-          : Array.isArray(detail?.systems)
-            ? detail.systems.length
-            : undefined;
-      return {
-        parentKind: "cluster",
-        parentId: clusterId,
-        parentLabel: cluster.label,
-        parentDescription:
-          typeof detail?.description === "string" ? detail.description : undefined,
-        childCount,
-      };
-    }
-
-    if (props.level === "system") {
-      const systemId = routeParams.systemId || "";
-      const system = data.organizational.systems[systemId];
-      if (!system) return null;
-      const detail = data.details[systemId];
-      const childCount =
-        (typeof detail?.fileCount === "number" ? detail.fileCount : system.fileCount || 0) +
-        (typeof detail?.agentCount === "number" ? detail.agentCount : system.agentCount || 0);
-      return {
-        parentKind: "system",
-        parentId: systemId,
-        parentLabel: system.label,
-        parentDescription:
-          typeof detail?.description === "string" ? detail.description : undefined,
-        childCount,
-      };
-    }
-
-    if (props.level === "lifecycle") {
-      const lifecycleId = routeParams.lifecycleId || "";
-      const lifecycle = data.behavioral.lifecycles[lifecycleId];
-      if (!lifecycle) return null;
-      const detail = data.details[lifecycleId];
-      const childCount = Array.isArray(lifecycle.stageIds) ? lifecycle.stageIds.length : undefined;
-      return {
-        parentKind: "lifecycle",
-        parentId: lifecycleId,
-        parentLabel: lifecycle.label,
-        parentDescription:
-          typeof lifecycle.description === "string"
-            ? lifecycle.description
-            : typeof detail?.description === "string"
-              ? detail.description
-              : undefined,
-        childCount,
-      };
-    }
-
-    if (props.level === "stage") {
-      const stageId = routeParams.stageId || "";
-      const stage = data.behavioral.stages[stageId];
-      if (!stage) return null;
-      const detail = data.details[stageId];
-      const childCount = Array.isArray(stage.stepIds) ? stage.stepIds.length : undefined;
-      return {
-        parentKind: "stage",
-        parentId: stageId,
-        parentLabel: stage.label,
-        parentDescription:
-          typeof stage.description === "string"
-            ? stage.description
-            : typeof detail?.description === "string"
-              ? detail.description
-              : undefined,
-        childCount,
-      };
-    }
-
-    return null;
-  });
-
   createEffect(() => {
     slice();
     mermaidText();
@@ -279,20 +191,6 @@ export function DiagramView(props: DiagramViewProps) {
         "pointer-events": "none",
       }}
     >
-      <Show when={parentSummary()}>
-        {(summary) => (
-          <ParentSummary
-            parentKind={summary().parentKind}
-            parentId={summary().parentId}
-            parentLabel={summary().parentLabel}
-            parentDescription={summary().parentDescription}
-            childCount={summary().childCount}
-            onExpand={() =>
-              openPanel(summary().parentKind, summary().parentId, summary().parentLabel)
-            }
-          />
-        )}
-      </Show>
       <div class="diagram-view__header">
         <h2>{title()}</h2>
       </div>
