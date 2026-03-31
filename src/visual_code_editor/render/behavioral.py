@@ -470,7 +470,9 @@ def build_behavioral_runtime(site: dict) -> dict:
         lifecycle_elements: list[dict] = []
         lifecycle_target_map: dict[str, dict] = {}
         lifecycle_edge_click_map: dict[str, dict] = {}
-        lifecycle_mermaid_lines = ["flowchart LR"]
+        stage_ids = lifecycle.get("stage_ids", [])
+        direction = "TD" if len(stage_ids) >= 3 else "LR"
+        lifecycle_mermaid_lines = [f"flowchart {direction}"]
         store_ids: set[str] = set()
 
         for stage_id in lifecycle.get("stage_ids", []):
