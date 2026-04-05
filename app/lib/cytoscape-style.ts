@@ -38,6 +38,8 @@ const nodeLabel = {
   color: "#e6edf3",
   "text-wrap": "wrap",
   cursor: "pointer",
+  "transition-property": "opacity",
+  "transition-duration": "0.3s",
 } as const;
 
 /** Edge label base — consistent across ALL edge types */
@@ -54,6 +56,8 @@ const edgeBase = {
   "curve-style": "bezier",
   "control-point-step-size": 40,
   "target-arrow-shape": "triangle",
+  "transition-property": "opacity",
+  "transition-duration": "0.3s",
 } as const;
 
 // ============================================================
