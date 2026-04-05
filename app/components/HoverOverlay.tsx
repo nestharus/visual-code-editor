@@ -17,6 +17,7 @@ type HoverCard = {
   nodeType: string;
   shape: string;
   borderColor: string;
+  borderWidth: string;
   backgroundColor: string;
   textColor: string;
   fontSize: string;
@@ -285,6 +286,7 @@ export function HoverOverlay(props: HoverOverlayProps) {
       nodeType,
       shape: readNodeStyle(node, "shape", "round-rectangle"),
       borderColor: readBorderColor(node),
+      borderWidth: readNodeStyle(node, "border-width", "2px"),
       backgroundColor: readNodeStyle(node, "background-color", "#161b22"),
       textColor: readNodeStyle(node, "color", "#e6edf3"),
       fontSize: readRenderedStyle(node, "font-size", "13px"),
@@ -392,6 +394,7 @@ export function HoverOverlay(props: HoverOverlayProps) {
               }}
               style={{
                 "border-color": activeCard().borderColor,
+                "border-width": activeCard().borderWidth,
                 "--glow-color": `${activeCard().borderColor}1a`,
                 background: activeCard().backgroundColor,
                 color: activeCard().textColor,
