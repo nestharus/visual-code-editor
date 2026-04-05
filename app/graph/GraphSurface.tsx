@@ -1,13 +1,13 @@
 import type { ElementDefinition } from "cytoscape";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
-import { applyMermaidPositions, computeMermaidLayout } from "../lib/diagram";
 import { EdgeLayer } from "./EdgeLayer";
 import { GraphViewport } from "./GraphViewport";
 import { createInteractionService } from "./InteractionService";
 import { NodeLayer } from "./NodeLayer";
 import { createTransitionService } from "./TransitionService";
-import { elementsToGraph } from "./layout/adapter";
+import { elementsToGraph, resolveGraphDirection } from "./layout/adapter";
+import { computeElkLayout } from "./layout/elk-layout";
 import type { GraphDefinition, GraphNode } from "./layout/types";
 import "./styles/graph-surface.css";
 
@@ -83,20 +83,57 @@ function normalizeGraph(graph: GraphDefinition, padding = 80): GraphDefinition {
   };
 }
 
+function hasPosition(node: GraphNode) {
+  return (
+    !!node.position &&
+    Number.isFinite(node.position.x) &&
+    Number.isFinite(node.position.y)
+  );
+}
+
+function needsElkLayout(graph: GraphDefinition) {
+  return graph.nodes.length > 0 && graph.nodes.some((node) => !hasPosition(node));
+}
+
+async function ensureElkLayout(graph: GraphDefinition): Promise<GraphDefinition> {
+  if (!needsElkLayout(graph)) {
+    return graph;
+  }
+
+  const layout = await computeElkLayout(graph);
+  return {
+    ...graph,
+    nodes: layout.nodes,
+    edges: layout.edges,
+  };
+}
+
 async function buildGraphDefinition(props: GraphSurfaceProps): Promise<GraphDefinition> {
   if (props.graph) {
-    return normalizeGraph(props.graph);
+    const graph =
+      props.graph.direction ||
+      !props.graphId ||
+      props.graph.nodes.length === 0
+        ? props.graph
+        : {
+            ...props.graph,
+            direction: resolveGraphDirection({
+              graphId: props.graphId,
+              mermaidText: props.mermaidText,
+              nodes: props.graph.nodes,
+            }),
+          };
+
+    return normalizeGraph(await ensureElkLayout(graph));
   }
 
-  let elements = props.elements ?? [];
-  if (props.mermaidText) {
-    const geometry = await computeMermaidLayout(props.mermaidText);
-    if (geometry) {
-      elements = applyMermaidPositions(elements, geometry);
-    }
-  }
+  const elements = props.elements ?? [];
+  const graph = elementsToGraph(elements, {
+    graphId: props.graphId,
+    mermaidText: props.mermaidText,
+  });
 
-  return normalizeGraph(elementsToGraph(elements, props.graphId));
+  return normalizeGraph(await ensureElkLayout(graph));
 }
 
 export function GraphSurface(props: GraphSurfaceProps) {
