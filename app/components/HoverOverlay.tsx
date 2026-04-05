@@ -1,6 +1,6 @@
 import type { Core, EventObject, NodeSingular } from "cytoscape";
 import { Show, createEffect, createSignal, onCleanup } from "solid-js";
-import { getNodeVisual, nodeVisuals } from "../lib/node-visuals";
+import { getNodeVisual, getIconSvgByKind, nodeVisuals } from "../lib/node-visuals";
 import "../styles/hover-overlay.css";
 
 type HoverOverlayProps = {
@@ -407,6 +407,12 @@ export function HoverOverlay(props: HoverOverlayProps) {
                 } : {}),
               }}
             >
+              {(() => {
+                const svg = getIconSvgByKind(activeCard().nodeType);
+                return svg ? (
+                  <span class="hover-card-icon" innerHTML={svg} />
+                ) : null;
+              })()}
               {activeCard().label}
             </div>
           </div>

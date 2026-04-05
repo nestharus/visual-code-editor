@@ -6,14 +6,10 @@ import { nodeVisuals } from "./node-visuals";
 // Type-specific selectors only override what's different.
 // ============================================================
 
-/** Shadow applied to all interactive (non-parent) nodes */
-const nodeShadow = {
-  "shadow-blur": 10,
-  "shadow-color": "#010409",
-  "shadow-offset-y": 4,
-  "shadow-offset-x": 0,
-  "shadow-opacity": 0.5,
-} as const;
+/** Shadow — Cytoscape doesn't support shadow-* properties in this version.
+ *  Visual depth is handled by the hover overlay CSS instead.
+ */
+const nodeShadow = {} as const;
 
 /** Icon slot — small subtle type indicator in top-left corner. */
 const nodeIcon = (typeKey: string) => ({
@@ -34,8 +30,6 @@ const nodeLabel = {
   color: "#e6edf3",
   "text-wrap": "wrap",
   cursor: "pointer",
-  "transition-property": "opacity",
-  "transition-duration": "0.3s",
 } as const;
 
 /** Edge label base — consistent across ALL edge types */
@@ -52,8 +46,6 @@ const edgeBase = {
   "curve-style": "bezier",
   "control-point-step-size": 40,
   "target-arrow-shape": "triangle",
-  "transition-property": "opacity",
-  "transition-duration": "0.3s",
 } as const;
 
 // ============================================================
@@ -360,22 +352,20 @@ const stateStylesheets: Stylesheet[] = [
   },
   // --- Semantic zoom tiers ---
   {
-    selector: "node.zoom-dot:not(:parent)",
+    selector: "node.zoom-dot",
     style: {
       label: "",
       "background-image-opacity": 0,
-      "shadow-opacity": 0,
     },
   },
   {
-    selector: "node.zoom-icon:not(:parent)",
+    selector: "node.zoom-icon",
     style: {
       label: "",
-      "shadow-opacity": 0,
     },
   },
   {
-    selector: "node.zoom-label:not(:parent)",
+    selector: "node.zoom-label",
     style: {
       "font-size": "10px",
     },

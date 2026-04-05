@@ -86,7 +86,11 @@ export function DetailPanel() {
     const d = diagramQuery.data;
     const id = panelId();
     if (!d || !id) return null;
-    return d.details[id] ?? null;
+    const result = d.details[id] ?? null;
+    if (!result && id) {
+      console.warn(`[DetailPanel] No detail record for panelId="${id}". Available keys sample:`, Object.keys(d.details).filter(k => k.includes(id.split('_')[1] || '')).slice(0, 5));
+    }
+    return result;
   };
 
   const isContainer = createMemo(

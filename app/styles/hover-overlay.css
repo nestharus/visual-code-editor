@@ -29,6 +29,20 @@
   box-shadow: none;
 }
 
+.hover-card-icon {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 14px;
+  height: 14px;
+  opacity: 0.35;
+}
+
+.hover-card-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 .hover-card-label {
   overflow: hidden;
   text-overflow: ellipsis;
