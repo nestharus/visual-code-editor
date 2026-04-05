@@ -11,6 +11,7 @@
     "regenerate": "python3 src/visual_code_editor/export_json_cli.py $HOME/projects/agent-implementation-skill/execution-philosophy/diagrams/workspace.json > public/data/diagram.json"
   },
   "dependencies": {
+    "@mermaid-js/layout-elk": "^0.2.1",
     "@tanstack/solid-query": "^5.95.2",
     "@tanstack/solid-router": "^1.168.3",
     "@tanstack/solid-store": "^0.9.2",

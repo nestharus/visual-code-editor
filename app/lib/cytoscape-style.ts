@@ -204,7 +204,8 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.cluster-edge",
     style: {
-      "curve-style": "bezier",
+      "curve-style": "taxi",
+      "taxi-direction": "downward",
       "control-point-step-size": 40,
       "target-arrow-shape": "triangle",
       "line-color": "#30363d",
@@ -222,7 +223,8 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.system-edge",
     style: {
-      "curve-style": "bezier",
+      "curve-style": "taxi",
+      "taxi-direction": "downward",
       "control-point-step-size": 40,
       "target-arrow-shape": "triangle",
       "line-color": "#484f58",
@@ -404,7 +406,8 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.file-import",
     style: {
-      "curve-style": "bezier",
+      "curve-style": "taxi",
+      "taxi-direction": "downward",
       "control-point-step-size": 30,
       "target-arrow-shape": "triangle",
       "line-color": "#262b33",
@@ -421,7 +424,8 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.agent-invoke",
     style: {
-      "curve-style": "bezier",
+      "curve-style": "taxi",
+      "taxi-direction": "downward",
       "control-point-step-size": 40,
       "target-arrow-shape": "triangle",
       "line-color": "#9D7BEE",
@@ -434,15 +438,6 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-background-color": "#0d1117",
       "text-background-opacity": 0.7,
       "text-background-padding": "2px",
-    },
-  },
-  {
-    selector: "edge[_segmentWeights]",
-    style: {
-      "curve-style": "unbundled-bezier",
-      "control-point-weights": "data(_segmentWeights)",
-      "control-point-distances": "data(_segmentDistances)",
-      "edge-distances": "node-position",
     },
   },
   {

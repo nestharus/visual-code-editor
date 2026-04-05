@@ -9,6 +9,7 @@
 
 import { parseSvgPath, pathToSegments, extractIntermediatePoints } from "./svg-path";
 import type { ElementDefinition } from "cytoscape";
+import elkLayouts from "@mermaid-js/layout-elk";
 
 let layoutCounter = 0;
 
@@ -143,7 +144,15 @@ export async function computeMermaidLayout(
   if (typeof window === "undefined") return null;
 
   const mermaid = await import("mermaid");
-  mermaid.default.initialize({ startOnLoad: false, theme: "dark" });
+  mermaid.default.registerLayoutLoaders(elkLayouts);
+  mermaid.default.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    flowchart: {
+      defaultRenderer: "elk",
+    },
+    layout: "elk",
+  });
 
   const sanitized = sanitizeMermaidText(mermaidText);
   const uniqueId = `mermaid-layout-${++layoutCounter}`;
