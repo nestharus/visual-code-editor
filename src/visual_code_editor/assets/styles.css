@@ -15,8 +15,8 @@
     --success: #3fb950;
     --warning: #d29922;
     --danger: #f85149;
-    --shadow: 0 20px 55px rgba(0, 0, 0, 0.34);
-    --shadow-strong: 0 30px 80px rgba(0, 0, 0, 0.55);
+    --shadow: 0 4px 12px rgba(1, 4, 9, 0.4), 0 1px 3px rgba(1, 4, 9, 0.5);
+    --shadow-strong: 0 24px 48px rgba(1, 4, 9, 0.5), 0 12px 24px rgba(1, 4, 9, 0.4), 0 4px 12px rgba(1, 4, 9, 0.4);
     --radius: 14px;
     --radius-sm: 8px;
     --font: "Inter", "Segoe UI", sans-serif;

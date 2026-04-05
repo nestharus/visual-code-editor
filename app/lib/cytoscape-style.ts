@@ -1,6 +1,14 @@
 import type { Stylesheet } from "cytoscape";
 import { nodeVisuals } from "./node-visuals";
 
+const elevatedNodeShadowStyle = {
+  "shadow-blur": 10,
+  "shadow-color": "#010409",
+  "shadow-offset-y": 4,
+  "shadow-offset-x": 0,
+  "shadow-opacity": 0.5,
+} as const;
+
 export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "node.cluster",
@@ -27,6 +35,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-max-width": "140px",
       padding: "10px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -53,6 +62,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-wrap": "wrap",
       "text-max-width": "130px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -79,6 +89,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       width: 130,
       height: 60,
       opacity: 0.7,
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -104,6 +115,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       width: 120,
       height: 60,
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -131,6 +143,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-max-width": "180px",
       padding: "10px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -157,6 +170,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-wrap": "wrap",
       "text-max-width": "160px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -184,6 +198,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-wrap": "wrap",
       "text-max-width": "150px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -328,6 +343,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "text-wrap": "wrap",
       "text-max-width": "120px",
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -353,6 +369,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       width: 130,
       height: 50,
       cursor: "pointer",
+      ...elevatedNodeShadowStyle,
     },
   },
   {
@@ -368,12 +385,14 @@ export const cytoscapeStyle: Stylesheet[] = [
     style: {
       label: "",
       "background-image-opacity": 0,
+      "shadow-opacity": 0,
     },
   },
   {
     selector: "node.zoom-icon:not(:parent)",
     style: {
       label: "",
+      "shadow-opacity": 0,
     },
   },
   {

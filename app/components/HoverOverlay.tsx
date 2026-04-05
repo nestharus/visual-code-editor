@@ -389,6 +389,7 @@ export function HoverOverlay(props: HoverOverlayProps) {
               }}
               style={{
                 "border-color": activeCard().borderColor,
+                "--glow-color": `${activeCard().borderColor}1a`,
                 background: activeCard().backgroundColor,
                 color: activeCard().textColor,
                 "font-size": activeCard().fontSize,
