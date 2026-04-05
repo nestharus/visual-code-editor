@@ -15,20 +15,19 @@ const nodeShadow = {
   "shadow-opacity": 0.5,
 } as const;
 
-/** Icon slot — consistent across ALL node types.
- *  Uses background-fit:"contain" so the 48x48 SVG scales to fit within the
- *  allocated area while maintaining aspect ratio. The area is defined as a
- *  percentage of the node, so icons scale proportionally at every zoom level.
+/** Icon slot — small subtle type indicator in top-left corner.
+ *  Uses percentage of height for both dimensions to keep square.
+ *  background-fit:"contain" preserves SVG aspect ratio.
  */
 const nodeIcon = (typeKey: string) => ({
   "background-image": nodeVisuals[typeKey]?.iconDataUri ?? "",
   "background-fit": "contain",
-  "background-width": "28%",
-  "background-height": "45%",
-  "background-position-x": "0",
-  "background-position-y": "0",
+  "background-width": "20%",
+  "background-height": "20%",
+  "background-position-x": "2px",
+  "background-position-y": "2px",
   "background-clip": "none",
-  "background-image-opacity": 0.5,
+  "background-image-opacity": 0.4,
 });
 
 /** Label slot — consistent across ALL node types */

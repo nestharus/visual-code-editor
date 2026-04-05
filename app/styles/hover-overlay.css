@@ -29,32 +29,6 @@
   box-shadow: none;
 }
 
-.hover-card-icon {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28%;
-  height: 45%;
-  opacity: 0.5;
-  transition: opacity 300ms ease, color 300ms ease;
-}
-
-.hover-card.lifting .hover-card-icon,
-.hover-card.floating .hover-card-icon {
-  opacity: 0.8;
-}
-
-.hover-card-icon svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
 .hover-card-label {
   overflow: hidden;
   text-overflow: ellipsis;
