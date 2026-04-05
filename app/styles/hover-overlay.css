@@ -31,13 +31,11 @@
 
 .hover-card-icon {
   position: absolute;
-  top: 10%;
-  left: 5%;
+  top: 6px;
+  left: 6px;
   display: block;
-  width: 22%;
-  height: 30%;
-  max-width: 28px;
-  max-height: 28px;
+  width: 16px;
+  height: 16px;
   opacity: 0.7;
   transition: opacity 300ms ease, color 300ms ease;
 }
