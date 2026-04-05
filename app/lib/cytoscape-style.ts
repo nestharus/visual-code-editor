@@ -15,19 +15,15 @@ const nodeShadow = {
   "shadow-opacity": 0.5,
 } as const;
 
-/** Icon slot — small subtle type indicator in top-left corner.
- *  Uses percentage of height for both dimensions to keep square.
- *  background-fit:"contain" preserves SVG aspect ratio.
- */
+/** Icon slot — small subtle type indicator in top-left corner. */
 const nodeIcon = (typeKey: string) => ({
   "background-image": nodeVisuals[typeKey]?.iconDataUri ?? "",
-  "background-fit": "contain",
-  "background-width": "20%",
-  "background-height": "20%",
-  "background-position-x": "2px",
-  "background-position-y": "2px",
+  "background-width": "14px",
+  "background-height": "14px",
+  "background-position-x": "4px",
+  "background-position-y": "4px",
   "background-clip": "none",
-  "background-image-opacity": 0.4,
+  "background-image-opacity": 0.35,
 });
 
 /** Label slot — consistent across ALL node types */
