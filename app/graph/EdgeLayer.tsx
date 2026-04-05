@@ -2,7 +2,7 @@ import { For, createMemo } from "solid-js";
 
 import type { InteractionService } from "./InteractionService";
 import type { TransitionService } from "./TransitionService";
-import { EdgePath } from "./EdgePath";
+import { EdgePath, getEdgeColor, getMarkerIdForKind } from "./EdgePath";
 import type { GraphDefinition } from "./layout/types";
 
 type EdgeLayerProps = {
@@ -17,6 +17,9 @@ export function EdgeLayer(props: EdgeLayerProps) {
   const nodeById = createMemo(() => {
     return new Map(props.graph.nodes.map((node) => [node.id, node]));
   });
+  const markerKinds = createMemo(() => {
+    return Array.from(new Set(["edge", ...props.graph.edges.map((edge) => edge.kind)]));
+  });
 
   return (
     <svg
@@ -29,17 +32,22 @@ export function EdgeLayer(props: EdgeLayerProps) {
       height="100%"
     >
       <defs>
-        <marker
-          id="graph-arrowhead"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e" />
-        </marker>
+        <For each={markerKinds()}>
+          {(kind) => (
+            <marker
+              id={getMarkerIdForKind(kind)}
+              viewBox="0 0 10 7"
+              refX="10"
+              refY="3.5"
+              markerWidth="10"
+              markerHeight="7"
+              orient="auto"
+              markerUnits="userSpaceOnUse"
+            >
+              <polygon points="0 0, 10 3.5, 0 7" fill={getEdgeColor(kind)} />
+            </marker>
+          )}
+        </For>
       </defs>
 
       <g>

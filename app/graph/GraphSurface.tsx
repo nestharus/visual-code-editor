@@ -69,6 +69,17 @@ function normalizeGraph(graph: GraphDefinition, padding = 80): GraphDefinition {
         },
       };
     }),
+    edges: graph.edges.map((edge) => {
+      if (!edge.bendPoints?.length) return edge;
+
+      return {
+        ...edge,
+        bendPoints: edge.bendPoints.map((point) => ({
+          x: point.x + offsetX,
+          y: point.y + offsetY,
+        })),
+      };
+    }),
   };
 }
 
