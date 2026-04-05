@@ -11,22 +11,20 @@
   z-index: 900;
 }
 
-/* Card body — the visible card with shadow underneath */
+/* Card body — transparent overlay on top of the visible canvas node.
+   The canvas node stays visible underneath with its own icon/border/text.
+   This layer only provides the shadow/glow lift effect. */
 .hover-card-body {
   position: absolute;
   inset: 0;
   border-radius: 8px;
-  border: 2px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  color: #e6edf3;
-  text-align: center;
-  word-wrap: break-word;
+  border: none;
+  background: transparent;
+  color: transparent;
   overflow: hidden;
   box-sizing: border-box;
   box-shadow: none;
+  pointer-events: none;
 }
 
 .hover-card-icon {
