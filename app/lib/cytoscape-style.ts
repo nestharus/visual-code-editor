@@ -503,15 +503,4 @@ export const cytoscapeStyle: Stylesheet[] = [
       opacity: 1,
     },
   },
-  // Mermaid edge routing: when edges have segment data from mermaid layout,
-  // override curve-style to unbundled-bezier with computed control points
-  {
-    selector: "edge[_segmentWeights]",
-    style: {
-      "curve-style": "unbundled-bezier",
-      "control-point-weights": "data(_segmentWeights)",
-      "control-point-distances": "data(_segmentDistances)",
-      "edge-distances": "node-position",
-    } as any,
-  },
 ];
