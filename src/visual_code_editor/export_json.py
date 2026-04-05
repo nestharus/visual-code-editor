@@ -257,8 +257,11 @@ def export_diagram_json(site: dict) -> dict:
             if not module_data:
                 continue
             for node in module_data.get("diagramNodes", []):
+                # Resolve agent record through diagramNodeTargetMap
+                _node_target = diagram_node_target_map.get(node["id"], {})
+                _agent_key = _node_target.get("id", node["id"]) if _node_target.get("kind") == "agent" else node["id"]
                 node_detail = {
-                    **site.get("agents", {}).get(node["id"], {}),
+                    **site.get("agents", {}).get(_agent_key, {}),
                     "kind": node.get("kind", "file"),
                     "id": node["id"],
                     "label": node.get("label", ""),
