@@ -11,6 +11,7 @@ import { DetailPanel } from "./DetailPanel";
 import { DiagramCanvas, setNavDirection } from "./DiagramCanvas";
 import { HoverOverlay } from "./HoverOverlay";
 import { NodeActionOverlay } from "./NodeActionOverlay";
+import { GraphSurface } from "../graph/GraphSurface";
 import { useWatchSubscription } from "../lib/live/useWatchSubscription";
 import { cytoscapeStyle } from "../lib/cytoscape-style";
 import { useDiagramData } from "../lib/diagram-data";
@@ -84,6 +85,11 @@ export const AppShell: ParentComponent = (props) => {
     const path = location().pathname;
     if (path.startsWith("/organizational")) return "organizational";
     return "behavioral";
+  });
+
+  const graphSurfaceEnabled = createMemo(() => {
+    const params = new URLSearchParams(location().search || "");
+    return params.get("surface") === "graph";
   });
 
   const breadcrumbs = createMemo(() => {
@@ -187,23 +193,39 @@ export const AppShell: ParentComponent = (props) => {
         <div class="diagram-and-panel">
           <main id="diagram-viewport" style={{ position: "relative" }}>
             <div style={{ position: "relative" }}>
-              <DiagramCanvas
-                elements={diagramData()?.elements() || []}
-                mermaidText={diagramData()?.mermaidText()}
-                style={cytoscapeStyle}
-                onNodeTap={(nodeId, kind, label) =>
-                  diagramData()?.onNodeTap(nodeId, kind, label)
-                }
-                onEdgeTap={(edgeId, kind, label) =>
-                  diagramData()?.onEdgeTap(edgeId, kind, label)
-                }
-                onReady={(cyInstance, containerEl) => {
-                  setCy(cyInstance);
-                  setContainer(containerEl);
-                }}
-              />
-              <HoverOverlay cy={cy()} container={container()} />
-              <NodeActionOverlay cy={cy()} container={container()} />
+              {graphSurfaceEnabled() ? (
+                <GraphSurface
+                  graphId={location().pathname}
+                  elements={diagramData()?.elements() || []}
+                  mermaidText={diagramData()?.mermaidText()}
+                  onNodeTap={(nodeId, kind, label) =>
+                    diagramData()?.onNodeTap(nodeId, kind, label)
+                  }
+                  onEdgeTap={(edgeId, kind, label) =>
+                    diagramData()?.onEdgeTap(edgeId, kind, label)
+                  }
+                />
+              ) : (
+                <>
+                  <DiagramCanvas
+                    elements={diagramData()?.elements() || []}
+                    mermaidText={diagramData()?.mermaidText()}
+                    style={cytoscapeStyle}
+                    onNodeTap={(nodeId, kind, label) =>
+                      diagramData()?.onNodeTap(nodeId, kind, label)
+                    }
+                    onEdgeTap={(edgeId, kind, label) =>
+                      diagramData()?.onEdgeTap(edgeId, kind, label)
+                    }
+                    onReady={(cyInstance, containerEl) => {
+                      setCy(cyInstance);
+                      setContainer(containerEl);
+                    }}
+                  />
+                  <HoverOverlay cy={cy()} container={container()} />
+                  <NodeActionOverlay cy={cy()} container={container()} />
+                </>
+              )}
               <div
                 style={{
                   position: "absolute",
