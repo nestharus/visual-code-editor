@@ -421,9 +421,9 @@ const stateStylesheets: Stylesheet[] = [
   {
     selector: ".hover-hidden",
     style: {
-      // Keep the canvas node visible — the hover overlay adds effects on top
-      // rather than replacing the node with a different renderer
-      opacity: 1,
+      opacity: 0,
+      "transition-property": "opacity",
+      "transition-duration": "0.05s",
     },
   },
   {
