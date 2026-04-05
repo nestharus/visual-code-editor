@@ -1,7 +1,13 @@
 import type { Stylesheet } from "cytoscape";
 import { nodeVisuals } from "./node-visuals";
 
-const elevatedNodeShadowStyle = {
+// ============================================================
+// BASE STYLES — defined once, shared by all card/edge types
+// Type-specific selectors only override what's different.
+// ============================================================
+
+/** Shadow applied to all interactive (non-parent) nodes */
+const nodeShadow = {
   "shadow-blur": 10,
   "shadow-color": "#010409",
   "shadow-offset-y": 4,
@@ -9,209 +15,215 @@ const elevatedNodeShadowStyle = {
   "shadow-opacity": 0.5,
 } as const;
 
-export const cytoscapeStyle: Stylesheet[] = [
+/** Icon slot — consistent across ALL node types */
+const nodeIcon = (typeKey: string) => ({
+  "background-image": nodeVisuals[typeKey]?.iconDataUri ?? "",
+  "background-width": "16px",
+  "background-height": "16px",
+  "background-position-x": "6px",
+  "background-position-y": "6px",
+  "background-clip": "none",
+  "background-image-opacity": 0.6,
+});
+
+/** Label slot — consistent across ALL node types */
+const nodeLabel = {
+  label: "data(label)",
+  "text-valign": "center",
+  "text-halign": "center",
+  color: "#e6edf3",
+  "text-wrap": "wrap",
+  cursor: "pointer",
+} as const;
+
+/** Edge label base — consistent across ALL edge types */
+const edgeLabelBase = {
+  label: "data(label)",
+  color: "#6e7681",
+  "text-background-color": "#0d1117",
+  "text-background-opacity": 0.8,
+  "text-background-padding": "2px",
+} as const;
+
+/** Edge routing base */
+const edgeBase = {
+  "curve-style": "bezier",
+  "control-point-step-size": 40,
+  "target-arrow-shape": "triangle",
+} as const;
+
+// ============================================================
+// NODE TYPE DEFINITIONS — only what's unique per type
+// ============================================================
+
+type NodeTypeDef = {
+  selector: string;
+  shape: string;
+  bg: string;
+  borderColor: string;
+  borderWidth: number;
+  width: number;
+  height: number;
+  fontSize: string;
+  textMaxWidth: string;
+  iconKey: string;
+  extra?: Record<string, any>;
+};
+
+const nodeTypes: NodeTypeDef[] = [
   {
     selector: "node.cluster",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#161b22",
-      "border-color": "data(color)",
-      "border-width": 3,
-      "background-image": nodeVisuals.cluster.iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "14px",
-      width: 160,
-      height: 80,
-      "text-wrap": "wrap",
-      "text-max-width": "140px",
-      padding: "10px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#161b22",
+    borderColor: "data(color)",
+    borderWidth: 3,
+    width: 160,
+    height: 80,
+    fontSize: "14px",
+    textMaxWidth: "140px",
+    iconKey: "cluster",
+    extra: { padding: "10px" },
   },
   {
     selector: "node.system",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#161b22",
-      "border-color": "data(color)",
-      "border-width": 3,
-      "background-image": nodeVisuals.system.iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "13px",
-      width: 150,
-      height: 70,
-      "text-wrap": "wrap",
-      "text-max-width": "130px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#161b22",
+    borderColor: "data(color)",
+    borderWidth: 3,
+    width: 150,
+    height: 70,
+    fontSize: "13px",
+    textMaxWidth: "130px",
+    iconKey: "system",
   },
   {
     selector: "node.external",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#0d1117",
-      "border-color": "#30363d",
-      "border-width": 1,
-      "border-style": "dashed",
-      "background-image": nodeVisuals.external.iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#6e7681",
-      "font-size": "12px",
-      width: 130,
-      height: 60,
-      opacity: 0.7,
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#0d1117",
+    borderColor: "#30363d",
+    borderWidth: 1,
+    width: 130,
+    height: 60,
+    fontSize: "12px",
+    textMaxWidth: "110px",
+    iconKey: "external",
+    extra: { "border-style": "dashed", opacity: 0.7, color: "#6e7681" },
   },
   {
     selector: "node.store",
-    style: {
-      shape: "barrel",
-      "background-color": "#1a1a10",
-      "border-color": "#d29922",
-      "border-width": 2,
-      "background-image": nodeVisuals.store.iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "12px",
-      width: 120,
-      height: 60,
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "barrel",
+    bg: "#1a1a10",
+    borderColor: "#d29922",
+    borderWidth: 2,
+    width: 120,
+    height: 60,
+    fontSize: "12px",
+    textMaxWidth: "100px",
+    iconKey: "store",
   },
   {
     selector: "node.behavioral-lifecycle",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#18222d",
-      "border-color": "#58a6ff",
-      "border-width": 3.5,
-      "background-image": nodeVisuals["behavioral-lifecycle"].iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "13px",
-      width: 210,
-      height: 92,
-      "text-wrap": "wrap",
-      "text-max-width": "180px",
-      padding: "10px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#18222d",
+    borderColor: "#58a6ff",
+    borderWidth: 3.5,
+    width: 210,
+    height: 92,
+    fontSize: "13px",
+    textMaxWidth: "180px",
+    iconKey: "behavioral-lifecycle",
+    extra: { padding: "10px" },
   },
   {
     selector: "node.behavioral-stage",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#202736",
-      "border-color": "#4fa9a0",
-      "border-width": 3,
-      "background-image": nodeVisuals["behavioral-stage"].iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "12px",
-      width: 180,
-      height: 74,
-      "text-wrap": "wrap",
-      "text-max-width": "160px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#202736",
+    borderColor: "#4fa9a0",
+    borderWidth: 3,
+    width: 180,
+    height: 74,
+    fontSize: "12px",
+    textMaxWidth: "160px",
+    iconKey: "behavioral-stage",
   },
   {
     selector: "node.behavioral-step",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#251f2f",
-      "border-color": "#d29922",
-      "border-width": 2,
-      "background-image": nodeVisuals["behavioral-step"].iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "11px",
-      width: 170,
-      height: 64,
-      "text-wrap": "wrap",
-      "text-max-width": "150px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
+    shape: "round-rectangle",
+    bg: "#251f2f",
+    borderColor: "#d29922",
+    borderWidth: 2,
+    width: 170,
+    height: 64,
+    fontSize: "11px",
+    textMaxWidth: "150px",
+    iconKey: "behavioral-step",
   },
+  {
+    selector: "node.file-node",
+    shape: "round-rectangle",
+    bg: "#161b22",
+    borderColor: "data(color)",
+    borderWidth: 2,
+    width: 170,
+    height: 50,
+    fontSize: "10px",
+    textMaxWidth: "155px",
+    iconKey: "file-node",
+    extra: { "text-wrap": "ellipsis" },
+  },
+  {
+    selector: "node.agent-node",
+    shape: "hexagon",
+    bg: "#1a1525",
+    borderColor: "#9D7BEE",
+    borderWidth: 2,
+    width: 170,
+    height: 55,
+    fontSize: "10px",
+    textMaxWidth: "120px",
+    iconKey: "agent-node",
+    extra: { "text-wrap": "ellipsis" },
+  },
+];
+
+// Build node stylesheets from definitions
+const nodeStylesheets: Stylesheet[] = nodeTypes.map((def) => ({
+  selector: def.selector,
+  style: {
+    // Shape
+    shape: def.shape,
+    "background-color": def.bg,
+    "border-color": def.borderColor,
+    "border-width": def.borderWidth,
+    width: def.width,
+    height: def.height,
+    // Icon (shared)
+    ...nodeIcon(def.iconKey),
+    // Label (shared)
+    ...nodeLabel,
+    "font-size": def.fontSize,
+    "text-max-width": def.textMaxWidth,
+    // Shadow (shared)
+    ...nodeShadow,
+    // Type-specific overrides
+    ...def.extra,
+  } as any,
+}));
+
+// ============================================================
+// EDGE DEFINITIONS
+// ============================================================
+
+const edgeStylesheets: Stylesheet[] = [
   {
     selector: "edge.cluster-edge",
     style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 40,
-      "target-arrow-shape": "triangle",
+      ...edgeBase,
+      ...edgeLabelBase,
       "line-color": "#30363d",
       "target-arrow-color": "#30363d",
       width: 2,
-      label: "data(label)",
       "font-size": "10px",
-      color: "#6e7681",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.8,
       "text-background-padding": "3px",
       cursor: "pointer",
     },
@@ -219,58 +231,45 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.system-edge",
     style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 40,
-      "target-arrow-shape": "triangle",
+      ...edgeBase,
+      ...edgeLabelBase,
       "line-color": "#484f58",
       "target-arrow-color": "#484f58",
       width: 2,
-      label: "data(label)",
       "font-size": "9px",
-      color: "#6e7681",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.8,
-      "text-background-padding": "2px",
       cursor: "pointer",
     },
   },
   {
     selector: "edge.store-edge",
     style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 40,
-      "target-arrow-shape": "triangle",
+      ...edgeBase,
+      ...edgeLabelBase,
       "line-color": "#d29922",
       "target-arrow-color": "#d29922",
       width: 1,
       "line-style": "dashed",
       opacity: 0.6,
-      label: "data(label)",
       "font-size": "10px",
       color: "#d29922",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.8,
-      "text-background-padding": "2px",
     },
   },
   {
     selector: "edge.behavioral-edge",
     style: {
-      "curve-style": "bezier",
+      ...edgeBase,
+      ...edgeLabelBase,
       "control-point-step-size": 8,
-      "target-arrow-shape": "triangle",
       "target-arrow-fill": "filled",
       "line-color": "#4fa9a0",
       "target-arrow-color": "#4fa9a0",
       "arrow-scale": 1.25,
       width: 2.4,
       opacity: 0.92,
-      label: "data(label)",
       "font-size": "11px",
       color: "#9aa4af",
       "text-max-width": "200px",
       "text-wrap": "wrap",
-      "text-background-color": "#0d1117",
       "text-background-opacity": 0.95,
       "text-background-padding": "3px",
       "text-margin-y": "-8px",
@@ -288,16 +287,47 @@ export const cytoscapeStyle: Stylesheet[] = [
       "target-arrow-color": "#d29922",
       "target-arrow-shape": "triangle",
       width: 2,
-      label: "data(label)",
+      ...edgeLabelBase,
       "font-size": "9px",
       color: "#d29922",
       "text-max-width": "120px",
       "text-wrap": "wrap",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.8,
-      "text-background-padding": "2px",
     },
   },
+  {
+    selector: "edge.file-import",
+    style: {
+      ...edgeBase,
+      ...edgeLabelBase,
+      "control-point-step-size": 30,
+      "line-color": "#262b33",
+      "target-arrow-color": "#262b33",
+      width: 1,
+      "font-size": "8px",
+      "text-background-opacity": 0.7,
+    },
+  },
+  {
+    selector: "edge.agent-invoke",
+    style: {
+      ...edgeBase,
+      ...edgeLabelBase,
+      "line-color": "#9D7BEE",
+      "target-arrow-color": "#9D7BEE",
+      width: 1.5,
+      "line-style": "dotted",
+      "font-size": "8px",
+      "text-background-opacity": 0.7,
+    },
+  },
+];
+
+// ============================================================
+// COMPOUND / STATE / ZOOM STYLES
+// ============================================================
+
+const stateStylesheets: Stylesheet[] = [
+  // Compound parent (module groups)
   {
     selector: "node.module-group",
     style: {
@@ -315,60 +345,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       events: "no",
     } as any,
   },
-  {
-    selector: "node.file-node",
-    style: {
-      shape: "round-rectangle",
-      "background-color": "#161b22",
-      "border-color": "data(color)",
-      "border-width": 2,
-      "background-image": nodeVisuals["file-node"].iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "10px",
-      width: 170,
-      height: 50,
-      "text-wrap": "ellipsis",
-      "text-max-width": "155px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
-  },
-  {
-    selector: "node.agent-node",
-    style: {
-      shape: "hexagon",
-      "background-color": "#1a1525",
-      "border-color": "#9D7BEE",
-      "border-width": 2,
-      "background-image": nodeVisuals["agent-node"].iconDataUri,
-      "background-width": "16px",
-      "background-height": "16px",
-      "background-position-x": "6px",
-      "background-position-y": "6px",
-      "background-clip": "none",
-      "background-image-opacity": 0.6,
-      label: "data(label)",
-      "text-valign": "center",
-      "text-halign": "center",
-      color: "#e6edf3",
-      "font-size": "10px",
-      width: 170,
-      height: 55,
-      "text-wrap": "ellipsis",
-      "text-max-width": "120px",
-      cursor: "pointer",
-      ...elevatedNodeShadowStyle,
-    },
-  },
+  // Panel selection
   {
     selector: "node.panel-active",
     style: {
@@ -377,6 +354,7 @@ export const cytoscapeStyle: Stylesheet[] = [
       "border-style": "double",
     },
   },
+  // --- Semantic zoom tiers ---
   {
     selector: "node.zoom-dot:not(:parent)",
     style: {
@@ -398,47 +376,14 @@ export const cytoscapeStyle: Stylesheet[] = [
       "font-size": "10px",
     },
   },
-  {
-    selector: "edge.file-import",
-    style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 30,
-      "target-arrow-shape": "triangle",
-      "line-color": "#262b33",
-      "target-arrow-color": "#262b33",
-      width: 1,
-      label: "data(label)",
-      "font-size": "8px",
-      color: "#6e7681",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.7,
-      "text-background-padding": "2px",
-    },
-  },
-  {
-    selector: "edge.agent-invoke",
-    style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 40,
-      "target-arrow-shape": "triangle",
-      "line-color": "#9D7BEE",
-      "target-arrow-color": "#9D7BEE",
-      width: 1.5,
-      "line-style": "dotted",
-      label: "data(label)",
-      "font-size": "8px",
-      color: "#6e7681",
-      "text-background-color": "#0d1117",
-      "text-background-opacity": 0.7,
-      "text-background-padding": "2px",
-    },
-  },
+  // Edge labels hidden at low zoom
   {
     selector: "edge.zoom-hide-labels",
     style: {
       label: "",
     },
   },
+  // Interaction states
   {
     selector: "node:active, node:selected",
     style: {
@@ -501,4 +446,14 @@ export const cytoscapeStyle: Stylesheet[] = [
       opacity: 1,
     },
   },
+];
+
+// ============================================================
+// EXPORT — compose all stylesheets
+// ============================================================
+
+export const cytoscapeStyle: Stylesheet[] = [
+  ...nodeStylesheets,
+  ...edgeStylesheets,
+  ...stateStylesheets,
 ];
