@@ -1,6 +1,6 @@
-import type { ElementDefinition } from "cytoscape";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
+import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { EdgeLayer } from "./EdgeLayer";
 import { GraphViewport } from "./GraphViewport";
 import { createInteractionService } from "./InteractionService";
@@ -14,7 +14,7 @@ import "./styles/graph-surface.css";
 type GraphSurfaceProps = {
   graphId: string;
   graph?: GraphDefinition;
-  elements?: ElementDefinition[];
+  elements?: DiagramElementDefinition[];
   mermaidText?: string;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;

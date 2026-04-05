@@ -1,5 +1,4 @@
-import type { ElementDefinition } from "cytoscape";
-
+import type { DiagramElementDefinition } from "../../lib/diagram-elements";
 import { DEFAULT_SIZES } from "./default-sizes";
 import type { GraphDefinition, GraphEdge, GraphNode } from "./types";
 
@@ -111,7 +110,7 @@ export function resolveGraphDirection(input: {
 }
 
 export function elementsToGraph(
-  elements: ElementDefinition[],
+  elements: DiagramElementDefinition[],
   options: string | GraphAdapterOptions,
 ): GraphDefinition {
   const config: GraphAdapterOptions =

@@ -1,5 +1,5 @@
 import { createQuery } from "@tanstack/solid-query";
-import type { ElementDefinition } from "cytoscape";
+import type { DiagramElementDefinition } from "./diagram-elements";
 
 const DEFAULT_WATCHER_URL = "http://localhost:3001";
 
@@ -30,7 +30,7 @@ export type DiagramNodeTarget = {
 export type DiagramSlice = {
   id?: string;
   label?: string;
-  elements: ElementDefinition[];
+  elements: DiagramElementDefinition[];
   mermaid?: string;
   edgeClickMap?: Record<string, DiagramEdgeRecord>;
   nodeTargetMap?: Record<string, DiagramNodeTarget>;

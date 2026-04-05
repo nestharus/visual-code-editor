@@ -176,9 +176,6 @@ export function DiagramView(props: DiagramViewProps) {
       mermaidText,
       onNodeTap,
       onEdgeTap,
-      title,
-      view: () => props.view,
-      level: () => props.level,
     });
   });
 

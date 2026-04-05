@@ -1,5 +1,4 @@
 import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
-import type { Core, ElementDefinition } from "cytoscape";
 import {
   createContext,
   createMemo,
@@ -8,28 +7,20 @@ import {
   type ParentComponent,
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
-import { DiagramCanvas, setNavDirection } from "./DiagramCanvas";
-import { HoverOverlay } from "./HoverOverlay";
-import { NodeActionOverlay } from "./NodeActionOverlay";
 import { GraphSurface } from "../graph/GraphSurface";
+import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { useWatchSubscription } from "../lib/live/useWatchSubscription";
-import { cytoscapeStyle } from "../lib/cytoscape-style";
 import { useDiagramData } from "../lib/diagram-data";
 
 type DiagramShellData = {
-  elements: () => ElementDefinition[];
+  elements: () => DiagramElementDefinition[];
   mermaidText: () => string | undefined;
   onNodeTap: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap: (edgeId: string, kind: string, label: string) => void;
-  title: () => string;
-  view: () => "organizational" | "behavioral";
-  level: () => string | undefined;
 };
 
 export const DiagramShellContext = createContext<{
   publish: (data: DiagramShellData) => void;
-  cy: () => Core | undefined;
-  container: () => HTMLDivElement | undefined;
 }>();
 
 export function useDiagramShellContext() {
@@ -40,44 +31,14 @@ export function useDiagramShellContext() {
   return context;
 }
 
-function getRouteDepth(level: string | undefined) {
-  if (!level) return 0;
-  if (level === "cluster" || level === "lifecycle") return 1;
-  return 2;
-}
-
 export const AppShell: ParentComponent = (props) => {
   useWatchSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const diagramQuery = useDiagramData();
-  const [cy, setCy] = createSignal<Core | undefined>();
-  const [container, setContainer] = createSignal<HTMLDivElement | undefined>();
   const [diagramData, setDiagramData] = createSignal<DiagramShellData | undefined>();
 
-  let previousRoute:
-    | {
-        depth: number;
-        view: "organizational" | "behavioral";
-      }
-    | undefined;
-
   const publish = (data: DiagramShellData) => {
-    const nextView = data.view();
-    const nextDepth = getRouteDepth(data.level());
-
-    if (previousRoute) {
-      if (previousRoute.view === nextView && nextDepth < previousRoute.depth) {
-        setNavDirection("back");
-      } else {
-        setNavDirection("forward");
-      }
-    }
-
-    previousRoute = {
-      depth: nextDepth,
-      view: nextView,
-    };
     setDiagramData(() => data);
   };
 
@@ -85,11 +46,6 @@ export const AppShell: ParentComponent = (props) => {
     const path = location().pathname;
     if (path.startsWith("/organizational")) return "organizational";
     return "behavioral";
-  });
-
-  const graphSurfaceEnabled = createMemo(() => {
-    const params = new URLSearchParams(location().search || "");
-    return params.get("surface") === "graph";
   });
 
   const breadcrumbs = createMemo(() => {
@@ -137,7 +93,7 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   return (
-    <DiagramShellContext.Provider value={{ publish, cy, container }}>
+    <DiagramShellContext.Provider value={{ publish }}>
       <div class="page-shell">
         <header class="toolbar">
           <div class="toolbar-title">
@@ -193,39 +149,17 @@ export const AppShell: ParentComponent = (props) => {
         <div class="diagram-and-panel">
           <main id="diagram-viewport" style={{ position: "relative" }}>
             <div style={{ position: "relative" }}>
-              {graphSurfaceEnabled() ? (
-                <GraphSurface
-                  graphId={location().pathname}
-                  elements={diagramData()?.elements() || []}
-                  mermaidText={diagramData()?.mermaidText()}
-                  onNodeTap={(nodeId, kind, label) =>
-                    diagramData()?.onNodeTap(nodeId, kind, label)
-                  }
-                  onEdgeTap={(edgeId, kind, label) =>
-                    diagramData()?.onEdgeTap(edgeId, kind, label)
-                  }
-                />
-              ) : (
-                <>
-                  <DiagramCanvas
-                    elements={diagramData()?.elements() || []}
-                    mermaidText={diagramData()?.mermaidText()}
-                    style={cytoscapeStyle}
-                    onNodeTap={(nodeId, kind, label) =>
-                      diagramData()?.onNodeTap(nodeId, kind, label)
-                    }
-                    onEdgeTap={(edgeId, kind, label) =>
-                      diagramData()?.onEdgeTap(edgeId, kind, label)
-                    }
-                    onReady={(cyInstance, containerEl) => {
-                      setCy(cyInstance);
-                      setContainer(containerEl);
-                    }}
-                  />
-                  <HoverOverlay cy={cy()} container={container()} />
-                  <NodeActionOverlay cy={cy()} container={container()} />
-                </>
-              )}
+              <GraphSurface
+                graphId={location().pathname}
+                elements={diagramData()?.elements() || []}
+                mermaidText={diagramData()?.mermaidText()}
+                onNodeTap={(nodeId, kind, label) =>
+                  diagramData()?.onNodeTap(nodeId, kind, label)
+                }
+                onEdgeTap={(edgeId, kind, label) =>
+                  diagramData()?.onEdgeTap(edgeId, kind, label)
+                }
+              />
               <div
                 style={{
                   position: "absolute",
