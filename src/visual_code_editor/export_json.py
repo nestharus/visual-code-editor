@@ -296,6 +296,31 @@ def export_diagram_json(site: dict) -> dict:
 
                 details[node["id"]] = node_detail
 
+        # System-level file/agent edge details (fe_ prefix)
+        for edge in system_data.get("internalFileEdges", []):
+            edge_kind = edge.get("kind", "import")
+            edge_id = f'fe_{edge["from"]}_{edge["to"]}'
+            source_label = node_labels.get(edge["from"], edge["from"])
+            target_label = node_labels.get(edge["to"], edge["to"])
+            edge_detail: dict = {
+                "kind": "edge",
+                "id": edge_id,
+                "label": edge.get("label", "imports" if edge_kind != "agent" else "invokes"),
+                "from": edge["from"],
+                "to": edge["to"],
+                "fromLabel": source_label,
+                "toLabel": target_label,
+                "mechanism": edge_kind,
+                "systemId": system_id,
+            }
+            edge_imports = edge.get("imports")
+            if isinstance(edge_imports, list) and edge_imports:
+                edge_detail["imports"] = edge_imports
+            edge_desc = edge.get("description")
+            if edge_desc:
+                edge_detail["description"] = edge_desc
+            details[edge_id] = edge_detail
+
     if behavioral.get("available"):
         for lc_id, lc_data in behavioral.get("lifecycles", {}).items():
             details[lc_id] = {
