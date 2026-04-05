@@ -399,6 +399,52 @@ def export_diagram_json(site: dict) -> dict:
             "href": store.get("href", ""),
         }
 
+    # --- Root and cluster edge details (aggregated edges not in site["edges"]) ---
+    cluster_labels = {c["id"]: c.get("label", c["id"]) for c in site.get("clusters", [])}
+    system_labels = {s_id: s.get("label", s_id) for s_id, s in site.get("systems", {}).items()}
+
+    # Root-level edges (cluster-to-cluster)
+    for element in root_elements:
+        edge_data = element.get("data", {})
+        if not edge_data.get("source"):
+            continue
+        edge_id = edge_data.get("id", "")
+        if not edge_id or edge_id in details:
+            continue
+        click_info = root_edge_click_map.get(edge_id, {})
+        details[edge_id] = {
+            "kind": "edge",
+            "id": edge_id,
+            "label": edge_data.get("label", click_info.get("label", "")),
+            "from": edge_data["source"],
+            "to": edge_data["target"],
+            "fromLabel": cluster_labels.get(edge_data["source"], edge_data["source"]),
+            "toLabel": cluster_labels.get(edge_data["target"], edge_data["target"]),
+            "mechanism": edge_data.get("kind", ""),
+        }
+
+    # Cluster-level edges (system-to-system within a cluster)
+    for cluster_id, cluster_data in clusters.items():
+        cluster_click_map = cluster_data.get("edgeClickMap", {})
+        for element in cluster_data.get("elements", []):
+            edge_data = element.get("data", {})
+            if not edge_data.get("source"):
+                continue
+            edge_id = edge_data.get("id", "")
+            if not edge_id or edge_id in details:
+                continue
+            click_info = cluster_click_map.get(edge_id, {})
+            details[edge_id] = {
+                "kind": "edge",
+                "id": edge_id,
+                "label": edge_data.get("label", click_info.get("label", "")),
+                "from": edge_data["source"],
+                "to": edge_data["target"],
+                "fromLabel": system_labels.get(edge_data["source"], edge_data["source"]),
+                "toLabel": system_labels.get(edge_data["target"], edge_data["target"]),
+                "mechanism": edge_data.get("kind", ""),
+            }
+
     # --- Mermaid text for organizational ---
     org_root_mermaid = render_root_mermaid(site)
 
