@@ -105,18 +105,11 @@
    Active only during float phase
    ============================================ */
 
-/* Store: gold border breathing */
+/* Store: gold glow breathing (via box-shadow, NOT border-color) */
 .hover-card.floating .hover-card-body[data-node-type="store"] {
   animation:
     shadow-breathe 8s ease-in-out infinite,
-    store-border-breathe 8s ease-in-out infinite,
     float-breathe 8s ease-in-out infinite;
-}
-
-@keyframes store-border-breathe {
-  0%   { border-color: #d29922; }
-  50%  { border-color: #e6b347; }
-  100% { border-color: #d29922; }
 }
 
 /* Agent: purple shimmer sweep */
@@ -139,21 +132,6 @@
 @keyframes agent-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
-}
-
-/* Lifecycle: blue border color cycle */
-.hover-card.floating .hover-card-body[data-node-type="behavioral-lifecycle"] {
-  animation:
-    shadow-breathe 8s ease-in-out infinite,
-    lifecycle-border-cycle 15s ease-in-out infinite,
-    float-breathe 8s ease-in-out infinite;
-}
-
-@keyframes lifecycle-border-cycle {
-  0%   { border-color: #58a6ff; }
-  33%  { border-color: #79b8ff; }
-  66%  { border-color: #4090e0; }
-  100% { border-color: #58a6ff; }
 }
 
 /* Container (cluster, system): depth shadow shift */
