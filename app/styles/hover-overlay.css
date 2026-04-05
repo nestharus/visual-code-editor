@@ -36,6 +36,12 @@
   width: 18px;
   height: 18px;
   opacity: 0.7;
+  transition: opacity 300ms ease, color 300ms ease;
+}
+
+.hover-card.lifting .hover-card-icon,
+.hover-card.floating .hover-card-icon {
+  opacity: 1;
 }
 
 .hover-card-icon svg {
@@ -46,6 +52,8 @@
 .hover-card-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity 200ms ease;
+  transition-delay: 40ms;
 }
 
 /* ============================================
@@ -75,7 +83,8 @@
     0 24px 48px rgba(1, 4, 9, 0.5),
     0 12px 24px rgba(1, 4, 9, 0.4),
     0 4px 12px rgba(1, 4, 9, 0.4),
-    0 0 20px var(--glow-color, transparent);
+    0 0 20px var(--glow-color, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* ============================================
@@ -86,7 +95,9 @@
 }
 
 .hover-card.floating .hover-card-body {
-  animation: shadow-breathe 8s ease-in-out infinite;
+  animation:
+    shadow-breathe 8s ease-in-out infinite,
+    float-breathe 8s ease-in-out infinite;
 }
 
 /* ============================================
@@ -98,7 +109,8 @@
 .hover-card.floating .hover-card-body[data-node-type="store"] {
   animation:
     shadow-breathe 8s ease-in-out infinite,
-    store-border-breathe 8s ease-in-out infinite;
+    store-border-breathe 8s ease-in-out infinite,
+    float-breathe 8s ease-in-out infinite;
 }
 
 @keyframes store-border-breathe {
@@ -109,7 +121,6 @@
 
 /* Agent: purple shimmer sweep */
 .hover-card.floating .hover-card-body[data-node-type="agent-node"] {
-  animation: shadow-breathe 8s ease-in-out infinite;
   background-image: linear-gradient(
     90deg,
     transparent 0%,
@@ -121,7 +132,8 @@
   background-size: 200% 100%;
   animation:
     shadow-breathe 8s ease-in-out infinite,
-    agent-shimmer 12s linear infinite;
+    agent-shimmer 12s linear infinite,
+    float-breathe 8s ease-in-out infinite;
 }
 
 @keyframes agent-shimmer {
@@ -133,7 +145,8 @@
 .hover-card.floating .hover-card-body[data-node-type="behavioral-lifecycle"] {
   animation:
     shadow-breathe 8s ease-in-out infinite,
-    lifecycle-border-cycle 15s ease-in-out infinite;
+    lifecycle-border-cycle 15s ease-in-out infinite,
+    float-breathe 8s ease-in-out infinite;
 }
 
 @keyframes lifecycle-border-cycle {
@@ -148,7 +161,13 @@
 .hover-card.floating .hover-card-body[data-node-type="system"] {
   animation:
     shadow-breathe 8s ease-in-out infinite,
-    container-depth 10s ease-in-out infinite;
+    container-depth 10s ease-in-out infinite,
+    float-breathe 8s ease-in-out infinite;
+}
+
+@keyframes float-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.015); }
 }
 
 @keyframes container-depth {
@@ -157,21 +176,24 @@
       0 24px 48px rgba(1, 4, 9, 0.5),
       0 12px 24px rgba(1, 4, 9, 0.4),
       0 4px 12px rgba(1, 4, 9, 0.4),
-      0 0 20px var(--glow-color, transparent);
+      0 0 20px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   50% {
     box-shadow:
       0 28px 56px rgba(1, 4, 9, 0.58),
       0 14px 28px rgba(1, 4, 9, 0.46),
       0 6px 16px rgba(1, 4, 9, 0.42),
-      0 0 24px var(--glow-color, transparent);
+      0 0 24px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   100% {
     box-shadow:
       0 24px 48px rgba(1, 4, 9, 0.5),
       0 12px 24px rgba(1, 4, 9, 0.4),
       0 4px 12px rgba(1, 4, 9, 0.4),
-      0 0 20px var(--glow-color, transparent);
+      0 0 20px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -181,35 +203,40 @@
       0 24px 48px rgba(1, 4, 9, 0.5),
       0 12px 24px rgba(1, 4, 9, 0.4),
       0 4px 12px rgba(1, 4, 9, 0.4),
-      0 0 20px var(--glow-color, transparent);
+      0 0 20px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   25% {
     box-shadow:
       0 26px 52px rgba(1, 4, 9, 0.46),
       0 13px 26px rgba(1, 4, 9, 0.36),
       0 5px 13px rgba(1, 4, 9, 0.36),
-      0 0 22px var(--glow-color, transparent);
+      0 0 22px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   50% {
     box-shadow:
       0 22px 44px rgba(1, 4, 9, 0.54),
       0 11px 22px rgba(1, 4, 9, 0.44),
       0 3px 10px rgba(1, 4, 9, 0.44),
-      0 0 18px var(--glow-color, transparent);
+      0 0 18px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   75% {
     box-shadow:
       0 25px 50px rgba(1, 4, 9, 0.48),
       0 12px 25px rgba(1, 4, 9, 0.38),
       0 5px 12px rgba(1, 4, 9, 0.38),
-      0 0 21px var(--glow-color, transparent);
+      0 0 21px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   100% {
     box-shadow:
       0 24px 48px rgba(1, 4, 9, 0.5),
       0 12px 24px rgba(1, 4, 9, 0.4),
       0 4px 12px rgba(1, 4, 9, 0.4),
-      0 0 20px var(--glow-color, transparent);
+      0 0 20px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -240,7 +267,8 @@
       0 24px 48px rgba(1, 4, 9, 0.5),
       0 12px 24px rgba(1, 4, 9, 0.4),
       0 4px 12px rgba(1, 4, 9, 0.4),
-      0 0 20px var(--glow-color, transparent);
+      0 0 20px var(--glow-color, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   .hover-card.floating .hover-card-body,

@@ -69,10 +69,20 @@ All SVGs must:
 | Research (best practices, patterns, prior art) | `gpt-high` | Best at systematic analysis and synthesis |
 | SVG generation + art direction | `gemini-high` | Best SVG output, visual reasoning, self-correcting loops |
 | SVG iteration / quick fixes | `gemini-low` | Speed over polish for tweaks |
+| Visual design RCA (shadows, colors, borders, card styling) | `gemini-high` | Visual interpretation — reads screenshots, determines shades/colors, proposes CSS values |
 | Animation design + parameterization | `gemini-high` | Visual reasoning for motion design |
 | Communication risk review | `claude-opus` | Evaluates clarity and discoverability |
-| Implementation (wiring SVGs into components) | `gpt-high` | Code generation and integration |
+| Implementation (wiring into components — NOT visual design) | `gpt-high` | Code generation and integration |
+| Algorithmic research (layout, routing, data structures) | `gpt-high` | Best at systematic algorithm analysis |
 | Quick verification / builds | `glm` | Fast command execution |
+
+### Model Boundary: Gemini vs GPT
+
+**Gemini handles visual design** — anything involving interpreting images, determining shades/colors, proposing CSS shadow/border/gradient values, art direction, SVG creation, animation curves. Gemini reads screenshots and makes visual judgments.
+
+**GPT handles code and algorithms** — implementation, wiring components, data pipeline, layout algorithms, edge routing strategies, architectural decisions. GPT does NOT do visual design interpretation.
+
+The boundary: if the task requires looking at a screenshot to decide what looks right, it's Gemini. If it requires reading code to decide what's correct, it's GPT.
 
 ---
 
