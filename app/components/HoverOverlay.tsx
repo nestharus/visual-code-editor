@@ -15,6 +15,7 @@ type HoverCard = {
   node: NodeSingular;
   label: string;
   nodeType: string;
+  shape: string;
   borderColor: string;
   backgroundColor: string;
   textColor: string;
@@ -282,6 +283,7 @@ export function HoverOverlay(props: HoverOverlayProps) {
       node,
       label: readNodeLabel(node),
       nodeType,
+      shape: readNodeStyle(node, "shape", "round-rectangle"),
       borderColor: readBorderColor(node),
       backgroundColor: readNodeStyle(node, "background-color", "#161b22"),
       textColor: readNodeStyle(node, "color", "#e6edf3"),
@@ -384,6 +386,7 @@ export function HoverOverlay(props: HoverOverlayProps) {
             <div
               class="hover-card-body"
               data-node-type={activeCard().nodeType}
+              data-node-shape={activeCard().shape}
               ref={(el) => {
                 bodyEl = el;
               }}
@@ -393,6 +396,12 @@ export function HoverOverlay(props: HoverOverlayProps) {
                 background: activeCard().backgroundColor,
                 color: activeCard().textColor,
                 "font-size": activeCard().fontSize,
+                ...(activeCard().shape === "hexagon" ? {
+                  "clip-path": "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
+                  "border-radius": "0",
+                } : activeCard().shape === "barrel" ? {
+                  "border-radius": "12px / 50%",
+                } : {}),
               }}
             >
               {(() => {
