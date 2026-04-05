@@ -239,8 +239,8 @@ export const cytoscapeStyle: Stylesheet[] = [
   {
     selector: "edge.store-edge",
     style: {
-      "curve-style": "bezier",
-      "control-point-step-size": 40,
+      "curve-style": "taxi",
+      "taxi-direction": "downward",
       "target-arrow-shape": "triangle",
       "line-color": "#d29922",
       "target-arrow-color": "#d29922",

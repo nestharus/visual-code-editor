@@ -7,30 +7,39 @@ const THROTTLE_MS = 100;
 
 const tierCache = new WeakMap<object, ZoomTier>();
 
+// Thresholds: labels stay visible much longer (down to 30px rendered)
+// dot: <16px (tiny — just a colored shape)
+// icon: 16-30px (icon visible, no label)
+// label: 30-80px (smaller text)
+// full: >80px (normal)
+const T_DOT = 16;
+const T_ICON = 30;
+const T_LABEL = 80;
+
 function computeTier(renderedWidth: number, currentTier: ZoomTier | undefined): ZoomTier {
   const h = HYSTERESIS;
 
   if (currentTier === "dot") {
-    if (renderedWidth > 24 + h) {
-      return renderedWidth > 56 + h ? (renderedWidth > 120 + h ? "full" : "label") : "icon";
+    if (renderedWidth > T_DOT + h) {
+      return renderedWidth > T_ICON + h ? (renderedWidth > T_LABEL + h ? "full" : "label") : "icon";
     }
     return "dot";
   }
 
   if (currentTier === "icon") {
-    if (renderedWidth < 24 - h) return "dot";
-    if (renderedWidth > 56 + h) return renderedWidth > 120 + h ? "full" : "label";
+    if (renderedWidth < T_DOT - h) return "dot";
+    if (renderedWidth > T_ICON + h) return renderedWidth > T_LABEL + h ? "full" : "label";
     return "icon";
   }
 
   if (currentTier === "label") {
-    if (renderedWidth < 56 - h) return renderedWidth < 24 - h ? "dot" : "icon";
-    if (renderedWidth > 120 + h) return "full";
+    if (renderedWidth < T_ICON - h) return renderedWidth < T_DOT - h ? "dot" : "icon";
+    if (renderedWidth > T_LABEL + h) return "full";
     return "label";
   }
 
-  if (renderedWidth < 120 - h) {
-    if (renderedWidth < 56 - h) return renderedWidth < 24 - h ? "dot" : "icon";
+  if (renderedWidth < T_LABEL - h) {
+    if (renderedWidth < T_ICON - h) return renderedWidth < T_DOT - h ? "dot" : "icon";
     return "label";
   }
 
