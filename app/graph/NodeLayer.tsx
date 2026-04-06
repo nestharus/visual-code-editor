@@ -1,4 +1,4 @@
-import { For, createMemo } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { captureClickRect } from "./DrillTransition";
@@ -10,13 +10,21 @@ import { CompoundCard } from "./cards/CompoundCard";
 import { getCardComponent, type GraphZoomTier } from "./cards/CardRegistry";
 import type { GraphDefinition, GraphNode } from "./layout/types";
 
+const NAVIGABLE_KINDS = new Set([
+  "cluster", "system", "external",
+  "lifecycle", "behavioral-lifecycle",
+  "stage", "behavioral-stage",
+]);
+
 type NodeLayerProps = {
   graph: GraphDefinition;
   zoom: number;
   interaction: InteractionService;
   transition: TransitionService;
   presentation: PresentationStateService;
+  playableNodeIds?: Set<string>;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
+  onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
 };
 
 type GraphNodeItemProps = {
@@ -25,6 +33,8 @@ type GraphNodeItemProps = {
   zoom: number;
   interaction: InteractionService;
   transition: TransitionService;
+  playableNodeIds?: Set<string>;
+  onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
   presentation: PresentationStateService;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   parentLeft?: number;
@@ -137,6 +147,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
                   transition={props.transition}
                   presentation={props.presentation}
                   onNodeTap={props.onNodeTap}
+                  onNodeInfo={props.onNodeInfo}
+                  playableNodeIds={props.playableNodeIds}
                   parentLeft={absoluteLeft()}
                   parentTop={absoluteTop()}
                 />
@@ -144,6 +156,29 @@ function GraphNodeItem(props: GraphNodeItemProps) {
             </For>
           </Dynamic>
         </div>
+        <Show when={
+          !hasChildren() &&
+          (zoomTier() === "label" || zoomTier() === "full")
+        }>
+          <Show when={NAVIGABLE_KINDS.has(props.node.kind)}>
+            <button
+              type="button"
+              class="graph-node-info-btn"
+              title="View details"
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onNodeInfo?.(props.node.id, props.node.kind, props.node.label);
+              }}
+            >
+              {"\u2139"}
+            </button>
+          </Show>
+          <Show when={props.playableNodeIds?.has(props.node.id)}>
+            <span class="graph-node-behavior-indicator" title="Has behaviors">
+              {"\uD83C\uDFAC"}
+            </span>
+          </Show>
+        </Show>
       </div>
     </div>
   );
@@ -187,6 +222,8 @@ export function NodeLayer(props: NodeLayerProps) {
             transition={props.transition}
             presentation={props.presentation}
             onNodeTap={props.onNodeTap}
+            onNodeInfo={props.onNodeInfo}
+            playableNodeIds={props.playableNodeIds}
           />
         )}
       </For>

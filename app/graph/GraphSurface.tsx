@@ -31,6 +31,7 @@ type GraphSurfaceProps = {
   scenarioData?: CombinedData;
   mermaidText?: string;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
+  onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
 };
 
@@ -387,10 +388,10 @@ export function GraphSurface(props: GraphSurfaceProps) {
     }
   });
 
-  const availableScenarios = createMemo(() => {
+  const playableNodeIds = createMemo(() => {
     const data = props.scenarioData;
-    if (!data?.scenarios) return [];
-    return Object.values(data.scenarios);
+    if (!data?.bindings) return new Set<string>();
+    return new Set(Object.keys(data.bindings));
   });
 
   const closeShadowbox = () => {
@@ -403,9 +404,17 @@ export function GraphSurface(props: GraphSurfaceProps) {
     setEdgesHidden(false);
   };
 
+  // Listen for play-scenario events from DetailPanel
+  const handlePlayScenario = (e: Event) => {
+    const behaviorId = (e as CustomEvent).detail?.behaviorId;
+    if (behaviorId) playback.start(behaviorId);
+  };
+  window.addEventListener("play-scenario", handlePlayScenario);
+
   onCleanup(() => {
     clearTransitionTimer();
     transition.clear();
+    window.removeEventListener("play-scenario", handlePlayScenario);
   });
 
   return (
@@ -429,6 +438,8 @@ export function GraphSurface(props: GraphSurfaceProps) {
           transition={transition}
           presentation={presentation}
           onNodeTap={props.onNodeTap}
+          onNodeInfo={props.onNodeInfo}
+          playableNodeIds={playableNodeIds()}
         />
         <OverlayLayer
           graph={activeGraph()}
@@ -454,23 +465,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
         transport={transport}
         onClose={closeShadowbox}
       />
-      <Show when={playback.status() === "idle" && availableScenarios().length > 0}>
-        <div class="scenario-picker">
-          <For each={availableScenarios()}>
-            {(scenario) => (
-              <button
-                type="button"
-                class="scenario-play-btn"
-                onClick={() => playback.start(scenario.behaviorId)}
-                title={`Play: ${scenario.title}`}
-              >
-                <span class="scenario-play-icon">{"\u25B6"}</span>
-                <span class="scenario-play-label">{scenario.title}</span>
-              </button>
-            )}
-          </For>
-        </div>
-      </Show>
+      {/* Scenario play buttons will be triggered from detail panels */}
     </div>
   );
 }

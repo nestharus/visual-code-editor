@@ -759,6 +759,57 @@ button.button:disabled {
     gap: 18px;
 }
 
+.detail-behaviors {
+    padding: 12px 16px;
+}
+
+.detail-behaviors-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-dim, #8b949e);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 10px;
+}
+
+.detail-behavior-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border, rgba(48, 54, 61, 0.4));
+}
+
+.detail-behavior-item:last-child {
+    border-bottom: none;
+}
+
+.detail-behavior-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #c9d1d9);
+}
+
+.detail-behavior-play {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(79, 169, 160, 0.1);
+    border: 1px solid rgba(79, 169, 160, 0.4);
+    border-radius: 6px;
+    color: #4fa9a0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 180ms ease, border-color 180ms ease;
+}
+
+.detail-behavior-play:hover {
+    background: rgba(79, 169, 160, 0.2);
+    border-color: rgba(79, 169, 160, 0.7);
+    color: #7ee787;
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;

@@ -109,6 +109,16 @@ export function DetailPanel() {
     return typeof value === "string" ? value : "";
   });
 
+  const panelScenarios = createMemo(() => {
+    const d = diagramQuery.data;
+    const id = panelId();
+    if (!d?.combined?.bindings || !id) return [];
+    const scenarioIds = d.combined.bindings[id] ?? [];
+    return scenarioIds
+      .map((scId) => d.combined!.scenarios[scId])
+      .filter(Boolean);
+  });
+
   const summaryFields = createMemo(() => {
     const d = detail();
     if (!d) return [] as Array<{ label: string; value: string }>;
@@ -363,6 +373,31 @@ export function DetailPanel() {
                     <div class="detail-summary-item">
                       <span class="detail-summary-label">{field.label}</span>
                       <strong class="detail-summary-value">{field.value}</strong>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
+            <Show when={panelScenarios().length > 0}>
+              <div class="detail-module detail-behaviors">
+                <h3 class="detail-behaviors-title">Behaviors</h3>
+                <For each={panelScenarios()}>
+                  {(scenario) => (
+                    <div class="detail-behavior-item">
+                      <span class="detail-behavior-label">{scenario.title}</span>
+                      <button
+                        type="button"
+                        class="detail-behavior-play"
+                        title={`Play: ${scenario.title}`}
+                        onClick={() => {
+                          // Dispatch play via custom event (GraphSurface listens)
+                          window.dispatchEvent(new CustomEvent("play-scenario", {
+                            detail: { behaviorId: scenario.behaviorId },
+                          }));
+                        }}
+                      >
+                        {"\u25B6"} Play
+                      </button>
                     </div>
                   )}
                 </For>

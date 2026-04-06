@@ -157,6 +157,16 @@ export const AppShell: ParentComponent = (props) => {
                 onNodeTap={(nodeId, kind, label) =>
                   diagramData()?.onNodeTap(nodeId, kind, label)
                 }
+                onNodeInfo={(nodeId, kind, label) => {
+                  navigate({
+                    search: (prev: Record<string, unknown>) => ({
+                      ...prev,
+                      panelKind: kind,
+                      panelId: nodeId,
+                      panelLabel: label,
+                    }),
+                  });
+                }}
                 onEdgeTap={(edgeId, kind, label) =>
                   diagramData()?.onEdgeTap(edgeId, kind, label)
                 }

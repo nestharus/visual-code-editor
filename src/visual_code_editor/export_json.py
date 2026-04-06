@@ -263,9 +263,31 @@ def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
             }
             bindings[lc_id] = [scenario_id]
 
-            # Also bind stages to the same scenario for now
+            # Also bind stages to the same scenario
             for stage_id in stage_ids:
                 bindings[stage_id] = [scenario_id]
+
+    # Bind organizational nodes (clusters) that own these lifecycles
+    for lc_id, lifecycle in lifecycles.items():
+        scenario_ids = bindings.get(lc_id, [])
+        if not scenario_ids:
+            continue
+        owning_clusters: set[str] = set()
+        for comp_id in lifecycle.get("component_ids", []):
+            sys_name = comp_id
+            if comp_id.startswith("agent:"):
+                parts = comp_id.split(":")
+                sys_name = parts[1] if len(parts) >= 2 else comp_id
+            elif ":" in comp_id:
+                continue
+            if sys_name in system_to_cluster:
+                owning_clusters.add(system_to_cluster[sys_name])
+        for cluster_id in owning_clusters:
+            existing = bindings.get(cluster_id, [])
+            for sc_id in scenario_ids:
+                if sc_id not in existing:
+                    existing.append(sc_id)
+            bindings[cluster_id] = existing
 
     return {"scenarios": scenarios, "bindings": bindings}
 

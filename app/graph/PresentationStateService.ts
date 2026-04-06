@@ -1,6 +1,6 @@
 import { createEffect, createRoot, createSignal, onCleanup, type Accessor } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
-import { createSpring } from "@solid-primitives/spring";
+import { createDerivedSpring } from "@solid-primitives/spring";
 
 import type { GraphDefinition, GraphNode } from "./layout/types";
 
@@ -78,8 +78,8 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
       const [targetTy, setTargetTy] = createSignal(0);
       const [targetScale, setTargetScale] = createSignal(1);
 
-      const springTy = createSpring(targetTy, SPRING_CONFIG);
-      const springScale = createSpring(targetScale, SPRING_CONFIG);
+      const springTy = createDerivedSpring(targetTy, SPRING_CONFIG);
+      const springScale = createDerivedSpring(targetScale, SPRING_CONFIG);
 
       createEffect(() => {
         const currentTy = springTy();
