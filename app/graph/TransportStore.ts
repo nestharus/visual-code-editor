@@ -69,6 +69,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
   const [playing, setPlaying] = createSignal(false);
   const [speed, setSpeed] = createSignal(1);
   const [timeMs, setTimeMs] = createSignal(0);
+  const [completionCount, setCompletionCount] = createSignal(0);
   const [tokens, setTokens] = createStore<TransportToken[]>([]);
   const [activeBehavior, setActiveBehavior] = createSignal<string | null>(null);
   const reducedMotion = prefersReducedMotion();
@@ -134,7 +135,6 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
         // traveling
         const metrics = lookupPath(token.edgeId, pathScope);
         if (!metrics) {
-          token.status = "done";
           continue;
         }
 
@@ -180,6 +180,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     if (allDone && tokens.length > 0) {
       stopRAF();
       setPlaying(false);
+      setCompletionCount((count) => count + 1);
     }
   }
 
@@ -207,6 +208,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
 
   function load(startNodeId: string, behaviorKey?: string) {
     stopRAF();
+    setPlaying(false);
     setActiveBehavior(behaviorKey ?? null);
     setTimeMs(0);
 
@@ -224,6 +226,25 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     }));
 
     setTokens(reconcile(initialTokens));
+  }
+
+  function loadBeat(edgeId: string, sourceNodeId: string, targetNodeId: string, behaviorKey?: string) {
+    stopRAF();
+    setPlaying(false);
+    setActiveBehavior(behaviorKey ?? null);
+    setTimeMs(0);
+
+    setTokens(reconcile([
+      {
+        id: `t${++tokenIdCounter}`,
+        edgeId,
+        sourceNodeId,
+        targetNodeId,
+        distance: 0,
+        status: "traveling" as const,
+        lineage: `flow-${tokenIdCounter}`,
+      },
+    ]));
   }
 
   function play() {
@@ -268,9 +289,11 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     activeNodeIds,
     activeEdgeIds,
     activeBehavior,
+    completionCount,
     reducedMotion,
     getTokenPosition,
     load,
+    loadBeat,
     play,
     pause,
     reset,

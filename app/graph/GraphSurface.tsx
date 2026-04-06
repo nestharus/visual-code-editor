@@ -161,6 +161,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
   const transition = createTransitionService();
   const presentation = createPresentationStateService(activeGraph);
   const transport = createTransportStore(activeGraph);
+  const modalTransport = createTransportStore(() => EMPTY_GRAPH, "modal");
 
   let viewportHandle: ViewportHandle | undefined;
   let savedCameraState: import("d3-zoom").ZoomTransform | undefined;
@@ -174,6 +175,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
   const playback = createBehaviorPlaybackController(
     () => props.scenarioData,
     transport,
+    modalTransport,
   );
 
   let transitionTimer: number | undefined;
@@ -458,7 +460,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
       />
       <ShadowboxModal
         playback={playback}
-        transport={transport}
+        transport={modalTransport}
         onClose={closeShadowbox}
       />
       {/* Scenario play buttons will be triggered from detail panels */}

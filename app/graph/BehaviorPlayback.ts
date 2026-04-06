@@ -1,4 +1,4 @@
-import { createMemo, createSignal, type Accessor } from "solid-js";
+import { createEffect, createMemo, createSignal, type Accessor } from "solid-js";
 
 import { createFocusStackService } from "./FocusStackService";
 import type { TransportStoreType } from "./TransportStore";
@@ -47,6 +47,7 @@ export type PlaybackStatus = "idle" | "loading" | "playing" | "paused" | "comple
 export function createBehaviorPlaybackController(
   scenarioData: Accessor<CombinedData | undefined>,
   transport: TransportStoreType,
+  modalTransport: TransportStoreType = transport,
 ) {
   const [activeScenarioId, setActiveScenarioId] = createSignal<string | null>(null);
   const [currentBeatIndex, setCurrentBeatIndex] = createSignal(0);
@@ -85,12 +86,27 @@ export function createBehaviorPlaybackController(
     return new Set(s?.participants ?? []);
   });
 
+  function transportForTarget() {
+    return playbackTarget() === "modal" ? modalTransport : transport;
+  }
+
   function loadBeatIntoTransport(beat: ScenarioBeat) {
     if (beat.kind !== "path") return;
     if (beat.edgeIds.length > 0) {
-      transport.load(beat.fromNodeId);
+      transportForTarget().loadBeat(beat.edgeIds[0], beat.fromNodeId, beat.toNodeId);
     }
   }
+
+  let lastModalCompletionCount = modalTransport.completionCount();
+  createEffect(() => {
+    const completionCount = modalTransport.completionCount();
+    if (completionCount === lastModalCompletionCount) return;
+    lastModalCompletionCount = completionCount;
+
+    if (playbackTarget() !== "modal" || status() !== "playing") return;
+    if (currentBeat()?.kind !== "path") return;
+    advanceBeat();
+  });
 
   function loadScenario(scenarioId: string): boolean {
     const data = scenarioData();
@@ -106,7 +122,7 @@ export function createBehaviorPlaybackController(
       enterSubScenario(firstBeat);
     } else {
       loadBeatIntoTransport(firstBeat);
-      transport.play();
+      transportForTarget().play();
     }
     return true;
   }
@@ -126,6 +142,8 @@ export function createBehaviorPlaybackController(
 
     setLastError(null);
     focusStack.clear();
+    transport.reset();
+    modalTransport.reset();
     setStatus("playing");
     setPlaybackTarget("modal");
 
@@ -176,7 +194,7 @@ export function createBehaviorPlaybackController(
       resumeParent();
     } else {
       setStatus("complete");
-      transport.pause();
+      transportForTarget().pause();
     }
   }
 
@@ -184,7 +202,7 @@ export function createBehaviorPlaybackController(
     const frame = focusStack.pop();
     if (!frame || !frame.parentScenarioId) {
       setStatus("complete");
-      transport.pause();
+      transportForTarget().pause();
       return;
     }
 
@@ -211,7 +229,7 @@ export function createBehaviorPlaybackController(
         enterSubScenario(beat);
       } else {
         loadBeatIntoTransport(beat);
-        transport.play();
+        transportForTarget().play();
       }
     }, 400);
   }
@@ -233,12 +251,13 @@ export function createBehaviorPlaybackController(
       enterSubScenario(beat);
     } else {
       loadBeatIntoTransport(beat);
-      transport.play();
+      transportForTarget().play();
     }
   }
 
   function stop() {
     transport.reset();
+    modalTransport.reset();
     focusStack.clear();
     setActiveScenarioId(null);
     setCurrentBeatIndex(0);
@@ -250,12 +269,12 @@ export function createBehaviorPlaybackController(
   }
 
   function pause() {
-    transport.pause();
+    transportForTarget().pause();
     setStatus("paused");
   }
 
   function resume() {
-    transport.play();
+    transportForTarget().play();
     setStatus("playing");
   }
 

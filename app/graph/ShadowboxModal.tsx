@@ -25,6 +25,7 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
                 currentBeatIndex={props.playback.currentBeatIndex()}
                 width={700}
                 height={400}
+                transport={props.transport}
               />
             )}
           </Show>

@@ -179,21 +179,18 @@ export function OverlayLayer(props: OverlayLayerProps) {
           <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>
             {(token) => {
               if (token.status === "done") return null;
-              const pos = () => props.transport!.getTokenPosition(token);
+              const position = props.transport!.getTokenPosition(token);
+              if (!position) return null;
               return (
-                <>
-                  {pos() ? (
-                    <circle
-                      cx={pos()!.x}
-                      cy={pos()!.y}
-                      r={token.status === "pulse" ? 8 : 5}
-                      classList={{
-                        "transport-token": true,
-                        "transport-pulse": token.status === "pulse",
-                      }}
-                    />
-                  ) : null}
-                </>
+                <circle
+                  cx={position.x}
+                  cy={position.y}
+                  r={token.status === "pulse" ? 8 : 5}
+                  classList={{
+                    "transport-token": true,
+                    "transport-pulse": token.status === "pulse",
+                  }}
+                />
               );
             }}
           </For>

@@ -1,5 +1,5 @@
-import { For, createMemo, onMount } from "solid-js";
-import { registerEdgePath } from "./TransportStore";
+import { For, createMemo, onCleanup } from "solid-js";
+import { clearPathRegistry, registerEdgePath, type TransportStoreType } from "./TransportStore";
 import type { CombinedScenario, ScenarioBeat } from "./BehaviorPlayback";
 
 type ScenarioBoxProps = {
@@ -7,6 +7,7 @@ type ScenarioBoxProps = {
   currentBeatIndex: number;
   width: number;
   height: number;
+  transport: TransportStoreType;
 };
 
 type NodePos = { id: string; x: number; y: number };
@@ -61,8 +62,12 @@ export function ScenarioBox(props: ScenarioBoxProps) {
   });
 
   const activeBeat = createMemo(() => {
-    const beats = getPathBeats(props.scenario.beats);
-    return beats[props.currentBeatIndex] ?? null;
+    const beat = props.scenario.beats[props.currentBeatIndex];
+    return beat?.kind === "path" ? beat : null;
+  });
+
+  onCleanup(() => {
+    clearPathRegistry("modal");
   });
 
   return (
@@ -113,6 +118,27 @@ export function ScenarioBox(props: ScenarioBoxProps) {
             );
           }}
         </For>
+
+        <g class="transport-layer">
+          <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>
+            {(token) => {
+              if (token.status === "done") return null;
+              const position = props.transport.getTokenPosition(token);
+              if (!position) return null;
+              return (
+                <circle
+                  cx={position.x}
+                  cy={position.y}
+                  r={token.status === "pulse" ? 8 : 5}
+                  classList={{
+                    "transport-token": true,
+                    "transport-pulse": token.status === "pulse",
+                  }}
+                />
+              );
+            }}
+          </For>
+        </g>
 
         {/* Nodes */}
         <For each={nodes()}>
