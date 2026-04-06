@@ -1,80 +1,204 @@
 import { For, createMemo } from "solid-js";
 
 import type { InteractionService } from "./InteractionService";
+import type { PresentationStateService } from "./PresentationStateService";
 import type { TransitionService } from "./TransitionService";
 import { EdgePath, getEdgeColor, getMarkerIdForKind } from "./EdgePath";
+import type { TransportStoreType } from "./TransportStore";
 import type { GraphDefinition } from "./layout/types";
+import { resolveNodeShape } from "./layout/shapes";
 
-type EdgeLayerProps = {
+function MarkerDefs(props: { kinds: string[] }) {
+  return (
+    <defs>
+      <For each={props.kinds}>
+        {(kind) => (
+          <marker
+            id={getMarkerIdForKind(kind)}
+            viewBox="0 0 10 7"
+            refX="10"
+            refY="3.5"
+            markerWidth="10"
+            markerHeight="7"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill={getEdgeColor(kind)} />
+          </marker>
+        )}
+      </For>
+    </defs>
+  );
+}
+
+// --- BaseEdgeLayer: all edges behind nodes, no interaction ---
+
+type BaseEdgeLayerProps = {
   graph: GraphDefinition;
-  zoom: number;
   interaction: InteractionService;
   transition: TransitionService;
-  onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
+  presentation: PresentationStateService;
 };
 
-export function EdgeLayer(props: EdgeLayerProps) {
-  const nodeById = createMemo(() => {
-    return new Map(props.graph.nodes.map((node) => [node.id, node]));
+export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
+  const nodeIds = createMemo(() => new Set(props.graph.nodes.map((n) => n.id)));
+  const compoundIds = createMemo(() => {
+    const parents = new Set(props.graph.nodes.map((n) => n.parent).filter(Boolean) as string[]);
+    return parents;
   });
-  const markerKinds = createMemo(() => {
-    return Array.from(new Set(["edge", ...props.graph.edges.map((edge) => edge.kind)]));
-  });
+  const nodeKind = createMemo(() => new Map(props.graph.nodes.map((n) => [n.id, n.kind])));
+  const markerKinds = createMemo(() =>
+    Array.from(new Set(["edge", ...props.graph.edges.map((e) => e.kind)])),
+  );
 
   return (
     <svg
       classList={{
-        "edge-layer": true,
+        "base-edge-layer": true,
         "is-entering": props.transition.phase() === "entering",
         "is-exiting": props.transition.phase() === "exiting",
       }}
       width="100%"
       height="100%"
     >
-      <defs>
-        <For each={markerKinds()}>
-          {(kind) => (
-            <marker
-              id={getMarkerIdForKind(kind)}
-              viewBox="0 0 10 7"
-              refX="10"
-              refY="3.5"
-              markerWidth="10"
-              markerHeight="7"
-              orient="auto"
-              markerUnits="userSpaceOnUse"
-            >
-              <polygon points="0 0, 10 3.5, 0 7" fill={getEdgeColor(kind)} />
-            </marker>
-          )}
-        </For>
-      </defs>
-
+      <MarkerDefs kinds={markerKinds()} />
       <g>
         <For each={props.graph.edges}>
           {(edge) => {
-            const source = nodeById().get(edge.source);
-            const target = nodeById().get(edge.target);
-            if (!source || !target) return null;
-
-            const hoveredNodeId = props.interaction.hoveredNodeId();
-            const highlighted = props.interaction.highlightedEdges().has(edge.id);
-            const dimmed = !!hoveredNodeId && !highlighted;
+            if (!nodeIds().has(edge.source) || !nodeIds().has(edge.target)) return null;
 
             return (
               <EdgePath
                 edge={edge}
-                source={source}
-                target={target}
-                dimmed={dimmed}
-                highlighted={highlighted}
-                labelVisible={props.zoom >= 0.5}
-                onEdgeTap={props.onEdgeTap}
+                sourceRect={props.presentation.composedRect(edge.source)}
+                targetRect={props.presentation.composedRect(edge.target)}
+                sourceShape={resolveNodeShape(nodeKind().get(edge.source) ?? "", compoundIds().has(edge.source))}
+                targetShape={resolveNodeShape(nodeKind().get(edge.target) ?? "", compoundIds().has(edge.target))}
+                sourceTx={props.presentation.tx(edge.source)}
+                sourceTy={props.presentation.ty(edge.source)}
+                targetTx={props.presentation.tx(edge.target)}
+                targetTy={props.presentation.ty(edge.target)}
+                dimmed={props.interaction.dimmedEdges().has(edge.id)}
+                highlighted={false}
+                labelVisible={false}
               />
             );
           }}
         </For>
       </g>
+    </svg>
+  );
+}
+
+// --- OverlayLayer: highlighted edges + hit targets + labels above nodes ---
+
+type OverlayLayerProps = {
+  graph: GraphDefinition;
+  zoom: number;
+  interaction: InteractionService;
+  presentation: PresentationStateService;
+  transport?: TransportStoreType;
+  onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
+};
+
+export function OverlayLayer(props: OverlayLayerProps) {
+  const nodeIds = createMemo(() => new Set(props.graph.nodes.map((n) => n.id)));
+  const compoundIds = createMemo(() => {
+    const parents = new Set(props.graph.nodes.map((n) => n.parent).filter(Boolean) as string[]);
+    return parents;
+  });
+  const nodeKind = createMemo(() => new Map(props.graph.nodes.map((n) => [n.id, n.kind])));
+  const markerKinds = createMemo(() =>
+    Array.from(new Set(["edge", ...props.graph.edges.map((e) => e.kind)])),
+  );
+  const overlayEdges = createMemo(() =>
+    props.graph.edges.filter(
+      (e) => props.interaction.overlayEdgeIds().has(e.id) && nodeIds().has(e.source) && nodeIds().has(e.target),
+    ),
+  );
+
+  return (
+    <svg class="overlay-layer" width="100%" height="100%">
+      <MarkerDefs kinds={markerKinds()} />
+
+      {/* Hit targets for ALL edges — in overlay so they're above nodes */}
+      <g>
+        <For each={props.graph.edges}>
+          {(edge) => {
+            if (!nodeIds().has(edge.source) || !nodeIds().has(edge.target)) return null;
+
+            return (
+              <EdgePath
+                edge={edge}
+                sourceRect={props.presentation.composedRect(edge.source)}
+                targetRect={props.presentation.composedRect(edge.target)}
+                sourceShape={resolveNodeShape(nodeKind().get(edge.source) ?? "", compoundIds().has(edge.source))}
+                targetShape={resolveNodeShape(nodeKind().get(edge.target) ?? "", compoundIds().has(edge.target))}
+                sourceTx={props.presentation.tx(edge.source)}
+                sourceTy={props.presentation.ty(edge.source)}
+                targetTx={props.presentation.tx(edge.target)}
+                targetTy={props.presentation.ty(edge.target)}
+                dimmed={false}
+                highlighted={false}
+                labelVisible={false}
+                hitOnly={true}
+                onEdgeTap={props.onEdgeTap}
+                onEdgeHover={(id) => props.interaction.setHoveredEdgeId(id)}
+              />
+            );
+          }}
+        </For>
+      </g>
+
+      {/* Highlighted edge strokes + labels rendered above nodes */}
+      <g>
+        <For each={overlayEdges()}>
+          {(edge) => (
+            <EdgePath
+              edge={edge}
+              sourceRect={props.presentation.composedRect(edge.source)}
+              targetRect={props.presentation.composedRect(edge.target)}
+              sourceShape={resolveNodeShape(nodeKind().get(edge.source) ?? "", compoundIds().has(edge.source))}
+              targetShape={resolveNodeShape(nodeKind().get(edge.target) ?? "", compoundIds().has(edge.target))}
+              sourceTx={props.presentation.tx(edge.source)}
+              sourceTy={props.presentation.ty(edge.source)}
+              targetTx={props.presentation.tx(edge.target)}
+              targetTy={props.presentation.ty(edge.target)}
+              dimmed={false}
+              highlighted={true}
+              labelVisible={props.zoom >= 0.5}
+              onEdgeTap={props.onEdgeTap}
+            />
+          )}
+        </For>
+      </g>
+
+      {/* Transport tokens */}
+      {props.transport ? (
+        <g class="transport-layer">
+          <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>
+            {(token) => {
+              if (token.status === "done") return null;
+              const pos = () => props.transport!.getTokenPosition(token);
+              return (
+                <>
+                  {pos() ? (
+                    <circle
+                      cx={pos()!.x}
+                      cy={pos()!.y}
+                      r={token.status === "pulse" ? 8 : 5}
+                      classList={{
+                        "transport-token": true,
+                        "transport-pulse": token.status === "pulse",
+                      }}
+                    />
+                  ) : null}
+                </>
+              );
+            }}
+          </For>
+        </g>
+      ) : null}
     </svg>
   );
 }

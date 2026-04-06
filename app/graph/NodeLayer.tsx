@@ -1,7 +1,9 @@
 import { For, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
+import { captureViewportRect } from "./DrillTransition";
 import type { InteractionService } from "./InteractionService";
+import type { PresentationStateService } from "./PresentationStateService";
 import type { TransitionService } from "./TransitionService";
 import { CompoundCard } from "./cards/CompoundCard";
 import { getCardComponent, type GraphZoomTier } from "./cards/CardRegistry";
@@ -12,6 +14,7 @@ type NodeLayerProps = {
   zoom: number;
   interaction: InteractionService;
   transition: TransitionService;
+  presentation: PresentationStateService;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
 };
 
@@ -21,10 +24,19 @@ type GraphNodeItemProps = {
   zoom: number;
   interaction: InteractionService;
   transition: TransitionService;
+  presentation: PresentationStateService;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   parentLeft?: number;
   parentTop?: number;
 };
+
+function floatSeed(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash % 100) / 100;
+}
 
 function computeZoomTier(node: GraphNode, zoom: number): GraphZoomTier {
   const renderedWidth = (node.size?.width ?? 150) * zoom;
@@ -47,15 +59,31 @@ function sortNodes(nodes: GraphNode[]) {
 function GraphNodeItem(props: GraphNodeItemProps) {
   const childNodes = () => props.childMap.get(props.node.id) ?? [];
   const hasChildren = () => childNodes().length > 0;
-  const width = () => props.node.size?.width ?? 150;
-  const height = () => props.node.size?.height ?? 60;
-  const absoluteLeft = () => (props.node.position?.x ?? 0) - width() / 2;
-  const absoluteTop = () => (props.node.position?.y ?? 0) - height() / 2;
+
+  const rect = () => props.presentation.composedRect(props.node.id);
+  const absoluteLeft = () => rect().left;
+  const absoluteTop = () => rect().top;
+  const width = () => rect().width;
+  const height = () => rect().height;
   const relativeLeft = () => absoluteLeft() - (props.parentLeft ?? 0);
   const relativeTop = () => absoluteTop() - (props.parentTop ?? 0);
+
+  const visual = () => props.presentation.state(props.node.id);
   const zoomTier = () => computeZoomTier(props.node, props.zoom);
   const Card = () =>
     hasChildren() ? CompoundCard : getCardComponent(props.node.kind);
+
+  const isFloating = () =>
+    !hasChildren() &&
+    props.interaction.hoveredNodeId() !== props.node.id &&
+    !props.interaction.dimmedNodes().has(props.node.id) &&
+    !props.transition.enteringNodeIds().has(props.node.id) &&
+    !props.transition.exitingNodeIds().has(props.node.id);
+
+  const setHovered = (hovered: boolean) => {
+    props.interaction.setHoveredNodeId(hovered ? props.node.id : null);
+    props.presentation.setHoverTarget(props.node.id, hovered, hasChildren());
+  };
 
   return (
     <div
@@ -75,30 +103,44 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         width: `${width()}px`,
         height: `${height()}px`,
         "transition-delay": props.transition.getNodeDelay(props.node.id),
+        "--float-seed": String(floatSeed(props.node.id)),
       }}
-      onMouseEnter={() => props.interaction.setHoveredNodeId(props.node.id)}
-      onMouseLeave={() => props.interaction.setHoveredNodeId(null)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={(event) => {
         event.stopPropagation();
+        const el = event.currentTarget as HTMLElement;
+        captureViewportRect(el.getBoundingClientRect());
         props.onNodeTap?.(props.node.id, props.node.kind, props.node.label);
       }}
     >
-      <Dynamic component={Card()} node={props.node} zoomTier={zoomTier()}>
-        <For each={sortNodes(childNodes())}>
-          {(child) => (
-            <GraphNodeItem
-              node={child}
-              childMap={props.childMap}
-              zoom={props.zoom}
-              interaction={props.interaction}
-              transition={props.transition}
-              onNodeTap={props.onNodeTap}
-              parentLeft={absoluteLeft()}
-              parentTop={absoluteTop()}
-            />
-          )}
-        </For>
-      </Dynamic>
+      <div
+        class="graph-node-inner"
+        style={{
+          transform: `scale(${visual().innerScale})`,
+          opacity: visual().opacity,
+        }}
+      >
+        <div classList={{ "graph-node-float": true, "is-floating": isFloating() }}>
+          <Dynamic component={Card()} node={props.node} zoomTier={zoomTier()}>
+            <For each={sortNodes(childNodes())}>
+              {(child) => (
+                <GraphNodeItem
+                  node={child}
+                  childMap={props.childMap}
+                  zoom={props.zoom}
+                  interaction={props.interaction}
+                  transition={props.transition}
+                  presentation={props.presentation}
+                  onNodeTap={props.onNodeTap}
+                  parentLeft={absoluteLeft()}
+                  parentTop={absoluteTop()}
+                />
+              )}
+            </For>
+          </Dynamic>
+        </div>
+      </div>
     </div>
   );
 }
@@ -139,6 +181,7 @@ export function NodeLayer(props: NodeLayerProps) {
             zoom={props.zoom}
             interaction={props.interaction}
             transition={props.transition}
+            presentation={props.presentation}
             onNodeTap={props.onNodeTap}
           />
         )}

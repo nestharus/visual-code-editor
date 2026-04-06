@@ -207,9 +207,9 @@ export async function computeElkLayout(
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": graph.direction === "RIGHT" ? "RIGHT" : "DOWN",
-      "elk.spacing.nodeNode": "40",
-      "elk.spacing.edgeNode": "20",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "60",
+      "elk.spacing.nodeNode": "60",
+      "elk.spacing.edgeNode": "40",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "80",
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.hierarchyHandling": "INCLUDE_CHILDREN",

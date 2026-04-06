@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 
 import { getIconSvgByKind } from "../../lib/node-visuals";
+import { resolveNodeShape, shapeClassName } from "../layout/shapes";
 import type { GraphCardProps } from "./CardRegistry";
 
 function resolveAccentColor(props: GraphCardProps) {
@@ -20,10 +21,11 @@ function resolveAccentColor(props: GraphCardProps) {
 export function DefaultCard(props: GraphCardProps) {
   const iconSvg = () => getIconSvgByKind(props.node.kind);
   const accentColor = () => resolveAccentColor(props);
+  const shape = () => resolveNodeShape(props.node.kind, false);
 
   return (
     <div
-      class="graph-card graph-card--default"
+      class={`graph-card graph-card--default ${shapeClassName(shape())}`}
       style={
         accentColor()
           ? {

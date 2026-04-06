@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/solid-router";
 import { Show, createEffect, createMemo } from "solid-js";
 import { useDiagramShellContext } from "../components/AppShell";
+import { captureAnchor } from "../graph/DrillTransition";
 import { useDiagramData, type DiagramData } from "../lib/diagram-data";
 
 type DiagramViewProps = {
@@ -106,6 +107,21 @@ export function DiagramView(props: DiagramViewProps) {
     });
   };
 
+  const captureNodeAnchor = (nodeId: string, direction: "drill" | "back") => {
+    const el = slice()?.elements?.find(
+      (e) => e.data && "id" in e.data && e.data.id === nodeId && !e.data.source,
+    );
+    const w = 150;
+    const h = 60;
+    const cx = (el?.position?.x ?? 0);
+    const cy = (el?.position?.y ?? 0);
+    captureAnchor(
+      { left: cx - w / 2, top: cy - h / 2, width: w, height: h, centerX: cx, centerY: cy },
+      nodeId,
+      direction,
+    );
+  };
+
   const onNodeTap = (nodeId: string, kind: string, label: string) => {
     const data = diagramQuery.data;
     const routeParams = params();
@@ -115,7 +131,8 @@ export function DiagramView(props: DiagramViewProps) {
     const panelLabel =
       (typeof nodeData?.label === "string" ? nodeData.label : label) || panelId;
 
-    if (kind === "cluster") {
+    if (kind === "cluster" || kind === "behavioral-lifecycle-group") {
+      captureNodeAnchor(nodeId, "drill");
       navigate({
         to: `/organizational/clusters/${nodeId}`,
         search: clearPanelSearch,
@@ -126,6 +143,7 @@ export function DiagramView(props: DiagramViewProps) {
     if (kind === "system" || kind === "external") {
       const clusterId = data?.organizational.systems[nodeId]?.clusterId || routeParams.clusterId;
       if (clusterId) {
+        captureNodeAnchor(nodeId, "drill");
         navigate({
           to: `/organizational/clusters/${clusterId}/systems/${nodeId}`,
           search: clearPanelSearch,
@@ -134,7 +152,8 @@ export function DiagramView(props: DiagramViewProps) {
       }
     }
 
-    if (kind === "lifecycle") {
+    if (kind === "lifecycle" || kind === "behavioral-lifecycle") {
+      captureNodeAnchor(nodeId, "drill");
       navigate({
         to: `/behavioral/lifecycles/${nodeId}`,
         search: clearPanelSearch,
@@ -142,9 +161,10 @@ export function DiagramView(props: DiagramViewProps) {
       return;
     }
 
-    if (kind === "stage") {
+    if (kind === "stage" || kind === "behavioral-stage") {
       const lifecycleId = data?.behavioral.stages[nodeId]?.lifecycleId || routeParams.lifecycleId;
       if (lifecycleId) {
+        captureNodeAnchor(nodeId, "drill");
         navigate({
           to: `/behavioral/lifecycles/${lifecycleId}/stages/${nodeId}`,
           search: clearPanelSearch,

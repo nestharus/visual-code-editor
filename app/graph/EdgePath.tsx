@@ -1,15 +1,25 @@
 import { createMemo } from "solid-js";
 
-import type { GraphEdge, GraphNode } from "./layout/types";
+import type { ComposedRect } from "./PresentationStateService";
+import type { GraphEdge } from "./layout/types";
+import { anchorForShape, type NodeShape } from "./layout/shapes";
 
 type EdgePathProps = {
   edge: GraphEdge;
-  source: GraphNode;
-  target: GraphNode;
+  sourceRect: ComposedRect;
+  targetRect: ComposedRect;
+  sourceShape: NodeShape;
+  targetShape: NodeShape;
+  sourceTx: number;
+  sourceTy: number;
+  targetTx: number;
+  targetTy: number;
   dimmed: boolean;
   highlighted: boolean;
   labelVisible: boolean;
+  hitOnly?: boolean;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
+  onEdgeHover?: (edgeId: string | null) => void;
 };
 
 type Point = { x: number; y: number };
@@ -34,50 +44,17 @@ export function getMarkerIdForKind(kind: string) {
   return `graph-arrowhead-${kind.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`;
 }
 
-function getNodeCenter(node: GraphNode): Point {
-  return {
-    x: node.position?.x ?? 0,
-    y: node.position?.y ?? 0,
-  };
-}
-
-function getNodeSize(node: GraphNode) {
-  return {
-    width: node.size?.width ?? 150,
-    height: node.size?.height ?? 60,
-  };
+function offsetEndpoint(point: Point, adjacent: Point | undefined, tx: number, ty: number, min = 4): Point {
+  if (!adjacent) return point;
+  const dx = adjacent.x - point.x;
+  const dy = adjacent.y - point.y;
+  return Math.hypot(dx, dy) > min ? { x: point.x + tx, y: point.y + ty } : point;
 }
 
 export function getEdgeColor(kind: string) {
   return EDGE_COLORS[kind] ?? EDGE_COLORS.edge;
 }
 
-function cardBorderPoint(
-  nodeX: number,
-  nodeY: number,
-  nodeW: number,
-  nodeH: number,
-  targetX: number,
-  targetY: number,
-): Point {
-  const dx = targetX - nodeX;
-  const dy = targetY - nodeY;
-  const halfW = nodeW / 2;
-  const halfH = nodeH / 2;
-
-  if (dx === 0 && dy === 0) {
-    return { x: nodeX, y: nodeY };
-  }
-
-  const scaleX = halfW / Math.abs(dx || 1);
-  const scaleY = halfH / Math.abs(dy || 1);
-  const scale = Math.min(scaleX, scaleY);
-
-  return {
-    x: nodeX + dx * scale,
-    y: nodeY + dy * scale,
-  };
-}
 
 function pointAtPolylineMidpoint(points: Point[]): Point {
   if (points.length === 0) return { x: 0, y: 0 };
@@ -140,54 +117,61 @@ function cubicPointAt(
   };
 }
 
-function buildBezierPath(points: Point[]) {
+function buildPolylinePath(points: Point[], cornerRadius = 6): string {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
 
   let path = `M ${points[0].x} ${points[0].y}`;
 
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const previous = index === 0 ? points[index] : points[index - 1];
-    const current = points[index];
-    const next = points[index + 1];
-    const following =
-      index + 2 < points.length ? points[index + 2] : points[index + 1];
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const next = points[i + 1];
 
-    const control1 = {
-      x: current.x + (next.x - previous.x) / 6,
-      y: current.y + (next.y - previous.y) / 6,
-    };
-    const control2 = {
-      x: next.x - (following.x - current.x) / 6,
-      y: next.y - (following.y - current.y) / 6,
-    };
+    const dx1 = curr.x - prev.x;
+    const dy1 = curr.y - prev.y;
+    const len1 = Math.hypot(dx1, dy1);
 
-    path += ` C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${next.x} ${next.y}`;
+    const dx2 = next.x - curr.x;
+    const dy2 = next.y - curr.y;
+    const len2 = Math.hypot(dx2, dy2);
+
+    const r = Math.min(cornerRadius, len1 / 2, len2 / 2);
+
+    if (r < 1 || len1 < 1 || len2 < 1) {
+      path += ` L ${curr.x} ${curr.y}`;
+      continue;
+    }
+
+    const beforeX = curr.x - (dx1 / len1) * r;
+    const beforeY = curr.y - (dy1 / len1) * r;
+    const afterX = curr.x + (dx2 / len2) * r;
+    const afterY = curr.y + (dy2 / len2) * r;
+
+    path += ` L ${beforeX} ${beforeY}`;
+    path += ` Q ${curr.x} ${curr.y}, ${afterX} ${afterY}`;
   }
+
+  const last = points[points.length - 1];
+  path += ` L ${last.x} ${last.y}`;
 
   return path;
 }
 
-function buildDirectEdgeGeometry(source: GraphNode, target: GraphNode): EdgeGeometry {
-  const sourceCenter = getNodeCenter(source);
-  const targetCenter = getNodeCenter(target);
-  const sourceSize = getNodeSize(source);
-  const targetSize = getNodeSize(target);
-  const sourceAnchor = cardBorderPoint(
-    sourceCenter.x,
-    sourceCenter.y,
-    sourceSize.width,
-    sourceSize.height,
-    targetCenter.x,
-    targetCenter.y,
+function buildDirectEdgeGeometry(
+  source: ComposedRect, target: ComposedRect,
+  sourceShape: NodeShape, targetShape: NodeShape,
+): EdgeGeometry {
+  const sourceAnchor = anchorForShape(
+    sourceShape, source.centerX, source.centerY,
+    source.width, source.height, target.centerX, target.centerY,
   );
-  const targetAnchor = cardBorderPoint(
-    targetCenter.x,
-    targetCenter.y,
-    targetSize.width,
-    targetSize.height,
-    sourceCenter.x,
-    sourceCenter.y,
+  const targetAnchor = anchorForShape(
+    targetShape, target.centerX, target.centerY,
+    target.width, target.height, source.centerX, source.centerY,
   );
   const dx = targetAnchor.x - sourceAnchor.x;
   const dy = targetAnchor.y - sourceAnchor.y;
@@ -211,54 +195,92 @@ function buildDirectEdgeGeometry(source: GraphNode, target: GraphNode): EdgeGeom
 }
 
 function buildBentEdgeGeometry(
-  source: GraphNode,
-  target: GraphNode,
+  source: ComposedRect,
+  target: ComposedRect,
+  sourceShape: NodeShape,
+  targetShape: NodeShape,
   bendPoints: Point[],
+  sourceTx: number,
+  sourceTy: number,
+  targetTx: number,
+  targetTy: number,
 ): EdgeGeometry {
-  const sourceCenter = getNodeCenter(source);
-  const targetCenter = getNodeCenter(target);
-  const sourceSize = getNodeSize(source);
-  const targetSize = getNodeSize(target);
-  const entryPoint = bendPoints[0] ?? targetCenter;
-  const exitPoint = bendPoints[bendPoints.length - 1] ?? sourceCenter;
-  const sourceAnchor = cardBorderPoint(
-    sourceCenter.x,
-    sourceCenter.y,
-    sourceSize.width,
-    sourceSize.height,
-    entryPoint.x,
-    entryPoint.y,
+  // ELK bend points include start/end positions at node boundaries.
+  // Offset only first/last points by source/target tx/ty when segment is long enough.
+  if (bendPoints.length >= 2) {
+    const points = bendPoints.map((p, i) => {
+      if (i === 0) return offsetEndpoint(p, bendPoints[1], sourceTx, sourceTy);
+      if (i === bendPoints.length - 1) return offsetEndpoint(p, bendPoints[bendPoints.length - 2], targetTx, targetTy);
+      return p;
+    });
+
+    return {
+      pathData: buildPolylinePath(points, 6),
+      labelPoint: pointAtPolylineMidpoint(points),
+    };
+  }
+
+  // Fallback: single bend point, add source/target anchors from composedRect
+  const point = bendPoints[0];
+  const sourceAnchor = anchorForShape(
+    sourceShape, source.centerX, source.centerY,
+    source.width, source.height, point.x, point.y,
   );
-  const targetAnchor = cardBorderPoint(
-    targetCenter.x,
-    targetCenter.y,
-    targetSize.width,
-    targetSize.height,
-    exitPoint.x,
-    exitPoint.y,
+  const targetAnchor = anchorForShape(
+    targetShape, target.centerX, target.centerY,
+    target.width, target.height, point.x, point.y,
   );
-  const routedPoints = [sourceAnchor, ...bendPoints, targetAnchor];
+  const routedPoints = [sourceAnchor, point, targetAnchor];
 
   return {
-    pathData: buildBezierPath(routedPoints),
+    pathData: buildPolylinePath(routedPoints, 6),
     labelPoint: pointAtPolylineMidpoint(routedPoints),
   };
 }
 
-function buildEdgeGeometry(edge: GraphEdge, source: GraphNode, target: GraphNode): EdgeGeometry {
+function buildEdgeGeometry(
+  edge: GraphEdge,
+  source: ComposedRect,
+  target: ComposedRect,
+  sourceShape: NodeShape,
+  targetShape: NodeShape,
+  sourceTx: number,
+  sourceTy: number,
+  targetTx: number,
+  targetTy: number,
+): EdgeGeometry {
   if (edge.bendPoints?.length) {
-    return buildBentEdgeGeometry(source, target, edge.bendPoints);
+    return buildBentEdgeGeometry(source, target, sourceShape, targetShape, edge.bendPoints, sourceTx, sourceTy, targetTx, targetTy);
   }
 
-  return buildDirectEdgeGeometry(source, target);
+  return buildDirectEdgeGeometry(source, target, sourceShape, targetShape);
 }
 
 export function EdgePath(props: EdgePathProps) {
   const geometry = createMemo(() =>
-    buildEdgeGeometry(props.edge, props.source, props.target),
+    buildEdgeGeometry(
+      props.edge, props.sourceRect, props.targetRect,
+      props.sourceShape, props.targetShape,
+      props.sourceTx, props.sourceTy, props.targetTx, props.targetTy,
+    ),
   );
   const markerId = () => getMarkerIdForKind(props.edge.kind);
   const labelWidth = () => Math.max(24, (props.edge.label?.length ?? 0) * 5.4 + 12);
+
+  if (props.hitOnly) {
+    return (
+      <path
+        class="edge-hit-target"
+        d={geometry().pathData}
+        onMouseEnter={() => props.onEdgeHover?.(props.edge.id)}
+        onMouseLeave={() => props.onEdgeHover?.(null)}
+        onClick={(event) => {
+          event.stopPropagation();
+          props.onEdgeTap?.(props.edge.id, props.edge.kind, props.edge.label || "");
+        }}
+      />
+    );
+  }
 
   return (
     <g
@@ -270,14 +292,6 @@ export function EdgePath(props: EdgePathProps) {
       }}
       data-kind={props.edge.kind}
     >
-      <path
-        class="edge-hit-target"
-        d={geometry().pathData}
-        onClick={(event) => {
-          event.stopPropagation();
-          props.onEdgeTap?.(props.edge.id, props.edge.kind, props.edge.label || "");
-        }}
-      />
       <path
         class="edge-path"
         data-kind={props.edge.kind}

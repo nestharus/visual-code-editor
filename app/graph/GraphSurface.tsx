@@ -1,10 +1,23 @@
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
-import { EdgeLayer } from "./EdgeLayer";
-import { GraphViewport } from "./GraphViewport";
+import { DeepCardOverlay } from "./DeepCardOverlay";
+import { BaseEdgeLayer, OverlayLayer } from "./EdgeLayer";
+import { GraphViewport, type ViewportHandle } from "./GraphViewport";
+import { ShadowboxChrome } from "./ShadowboxChrome";
+import { createBehaviorPlaybackController, type CombinedData } from "./BehaviorPlayback";
+import {
+  consumeTransitionContext,
+  killActiveTransition,
+  runDrillExit,
+  runDrillEnter,
+  runCollapseExit,
+  runCollapseEnter,
+} from "./DrillTransition";
 import { createInteractionService } from "./InteractionService";
 import { NodeLayer } from "./NodeLayer";
+import { createPresentationStateService } from "./PresentationStateService";
+import { createTransportStore } from "./TransportStore";
 import { createTransitionService } from "./TransitionService";
 import { elementsToGraph, resolveGraphDirection } from "./layout/adapter";
 import { computeElkLayout } from "./layout/elk-layout";
@@ -15,6 +28,7 @@ type GraphSurfaceProps = {
   graphId: string;
   graph?: GraphDefinition;
   elements?: DiagramElementDefinition[];
+  scenarioData?: CombinedData;
   mermaidText?: string;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
@@ -144,6 +158,22 @@ export function GraphSurface(props: GraphSurfaceProps) {
   const activeGraph = createMemo(() => displayedGraph());
   const interaction = createInteractionService(activeGraph);
   const transition = createTransitionService();
+  const presentation = createPresentationStateService(activeGraph);
+  const transport = createTransportStore(activeGraph);
+
+  let viewportHandle: ViewportHandle | undefined;
+  let savedCameraState: import("d3-zoom").ZoomTransform | undefined;
+
+  const [deepCardActive, setDeepCardActive] = createSignal(false);
+  const [deepCardRect, setDeepCardRect] = createSignal<DOMRect | null>(null);
+  const [deepCardDestRect, setDeepCardDestRect] = createSignal<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [deepCardDirection, setDeepCardDirection] = createSignal<"forward" | "reverse">("forward");
+  const [edgesHidden, setEdgesHidden] = createSignal(false);
+
+  const playback = createBehaviorPlaybackController(
+    () => props.scenarioData,
+    transport,
+  );
 
   let transitionTimer: number | undefined;
   let loadSequence = 0;
@@ -157,7 +187,9 @@ export function GraphSurface(props: GraphSurfaceProps) {
 
   const commitGraph = (nextGraph: GraphDefinition, animate: boolean) => {
     clearTransitionTimer();
+    killActiveTransition();
     interaction.setHoveredNodeId(null);
+    interaction.setHoveredEdgeId(null);
     const previousNodeCount = activeGraph().nodes.length;
 
     if (!animate || transition.prefersReducedMotion()) {
@@ -170,6 +202,101 @@ export function GraphSurface(props: GraphSurfaceProps) {
       return;
     }
 
+    // Try deep card 3D tunnel for eligible drill-down
+    const ctx = consumeTransitionContext();
+    if (ctx) {
+      const useDeepCard =
+        ctx.direction === "drill" &&
+        ctx.anchorViewportRect &&
+        ctx.nodeShape !== "hexagon" &&
+        ctx.nodeShape !== "octagon" &&
+        typeof CSS !== "undefined" &&
+        CSS.supports?.("transform-style", "preserve-3d");
+
+      if (useDeepCard && ctx.anchorViewportRect) {
+        const sequence = loadSequence;
+        setDeepCardRect(ctx.anchorViewportRect);
+        setDeepCardDirection("forward");
+        setEdgesHidden(true);
+        setDeepCardActive(true);
+
+        // Graph swap happens mid-tunnel
+        setTimeout(() => {
+          if (sequence !== loadSequence) return;
+          setDisplayedGraph(nextGraph);
+          setFitVersion((v) => v + 1);
+        }, 500);
+
+        return;
+      }
+
+      // Try reverse deep card for eligible back navigation
+      const useReverseDeepCard =
+        ctx.direction === "back" &&
+        ctx.nodeShape !== "hexagon" &&
+        ctx.nodeShape !== "octagon" &&
+        typeof CSS !== "undefined" &&
+        CSS.supports?.("transform-style", "preserve-3d") &&
+        viewportHandle;
+
+      if (useReverseDeepCard) {
+        // Swap graph first, then compute destination rect from data
+        setDisplayedGraph(nextGraph);
+        setFitVersion((v) => v + 1);
+        setEdgesHidden(true);
+
+        // Compute destination rect from graph data + viewport transform
+        const t = viewportHandle!.currentTransform();
+        const destNode = nextGraph.nodes.find((n) => n.id === ctx.anchorNodeId);
+        let destRect: { left: number; top: number; width: number; height: number } | null = null;
+        if (destNode?.position && destNode?.size) {
+          const w = destNode.size.width * t.k;
+          const h = destNode.size.height * t.k;
+          destRect = {
+            left: (destNode.position.x - destNode.size.width / 2) * t.k + t.x,
+            top: (destNode.position.y - destNode.size.height / 2) * t.k + t.y,
+            width: w,
+            height: h,
+          };
+        }
+
+        // Use entry rect as source, computed rect as destination
+        setDeepCardRect(ctx.anchorViewportRect ?? null);
+        setDeepCardDestRect(destRect);
+        setDeepCardDirection("reverse");
+        setDeepCardActive(true);
+
+        return;
+      }
+
+      const currentGraph = activeGraph();
+      const sequence = loadSequence;
+
+      void (async () => {
+        if (ctx.direction === "drill") {
+          await runDrillExit(presentation, currentGraph.nodes, ctx.anchorRect);
+        } else {
+          await runCollapseExit(presentation, currentGraph.nodes, {
+            x: ctx.anchorRect.centerX,
+            y: ctx.anchorRect.centerY,
+          });
+        }
+
+        if (sequence !== loadSequence) return;
+
+        setDisplayedGraph(nextGraph);
+        setFitVersion((version) => version + 1);
+
+        if (ctx.direction === "drill") {
+          await runDrillEnter(presentation, nextGraph.nodes, ctx.anchorRect);
+        } else {
+          await runCollapseEnter(presentation, nextGraph.nodes, ctx.anchorNodeId);
+        }
+      })();
+      return;
+    }
+
+    // CSS fallback
     const currentGraph = activeGraph();
     transition.startExit(currentGraph.nodes);
 
@@ -208,13 +335,67 @@ export function GraphSurface(props: GraphSurfaceProps) {
 
   createEffect(() => {
     const hoveredNodeId = interaction.hoveredNodeId();
-    if (!hoveredNodeId) return;
+    if (hoveredNodeId) {
+      const exists = activeGraph().nodes.some((node) => node.id === hoveredNodeId);
+      if (!exists) interaction.setHoveredNodeId(null);
+    }
 
-    const exists = activeGraph().nodes.some((node) => node.id === hoveredNodeId);
-    if (!exists) {
-      interaction.setHoveredNodeId(null);
+    const hoveredEdgeId = interaction.hoveredEdgeId();
+    if (hoveredEdgeId) {
+      const exists = activeGraph().edges.some((edge) => edge.id === hoveredEdgeId);
+      if (!exists) interaction.setHoveredEdgeId(null);
     }
   });
+
+  // Shadowbox: react to playback status changes
+  createEffect(() => {
+    const status = playback.status();
+    if (status === "playing" && viewportHandle) {
+      // Entry: save camera, lock, zoom to participants
+      if (!savedCameraState) {
+        savedCameraState = viewportHandle.saveCameraState();
+        viewportHandle.lockCamera();
+      }
+      const beat = playback.currentBeat();
+      if (beat && beat.kind === "path") {
+        interaction.setFlowFocus(
+          new Set(beat.participantNodeIds),
+          new Set(beat.edgeIds),
+        );
+        viewportHandle.zoomToNodes(beat.participantNodeIds);
+      }
+    } else if (status === "idle" && viewportHandle && savedCameraState) {
+      // Exit: restore camera, unlock, clear focus
+      interaction.clearFlowFocus();
+      viewportHandle.restoreCameraState(savedCameraState);
+      viewportHandle.unlockCamera();
+      savedCameraState = undefined;
+    }
+  });
+
+  // Beat-to-beat: update camera + highlighting when beat changes
+  createEffect(() => {
+    const beat = playback.currentBeat();
+    const status = playback.status();
+    if (!beat || status === "idle" || !viewportHandle) return;
+    if (beat.kind === "path") {
+      interaction.setFlowFocus(
+        new Set(beat.participantNodeIds),
+        new Set(beat.edgeIds),
+      );
+      viewportHandle.zoomToNodes(beat.participantNodeIds);
+    }
+  });
+
+  const closeShadowbox = () => {
+    playback.stop();
+  };
+
+  const onDeepCardComplete = () => {
+    setDeepCardActive(false);
+    setDeepCardRect(null);
+    setEdgesHidden(false);
+  };
 
   onCleanup(() => {
     clearTransitionTimer();
@@ -226,20 +407,43 @@ export function GraphSurface(props: GraphSurfaceProps) {
       graph={activeGraph()}
       fitKey={`${activeGraph().id}:${fitVersion()}`}
       onZoomChange={setZoomLevel}
+      onViewportReady={(h) => { viewportHandle = h; }}
     >
-      <EdgeLayer
+      <BaseEdgeLayer
         graph={activeGraph()}
-        zoom={zoomLevel()}
         interaction={interaction}
         transition={transition}
-        onEdgeTap={props.onEdgeTap}
+        presentation={presentation}
       />
       <NodeLayer
         graph={activeGraph()}
         zoom={zoomLevel()}
         interaction={interaction}
         transition={transition}
+        presentation={presentation}
         onNodeTap={props.onNodeTap}
+      />
+      <OverlayLayer
+        graph={activeGraph()}
+        zoom={zoomLevel()}
+        interaction={interaction}
+        presentation={presentation}
+        transport={transport}
+        onEdgeTap={props.onEdgeTap}
+      />
+      <DeepCardOverlay
+        active={deepCardActive()}
+        direction={deepCardDirection()}
+        sourceRect={deepCardRect()}
+        destinationRect={deepCardDestRect()}
+        viewportWidth={viewportHandle?.viewportSize().width ?? 800}
+        viewportHeight={viewportHandle?.viewportSize().height ?? 600}
+        onComplete={onDeepCardComplete}
+      />
+      <ShadowboxChrome
+        playback={playback}
+        transport={transport}
+        onClose={closeShadowbox}
       />
     </GraphViewport>
   );
