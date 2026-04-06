@@ -112,27 +112,28 @@ test.describe("Graph Surface Interactions", () => {
     await playBtn.click();
     await page.waitForTimeout(1000);
 
-    // Shadowbox overlay should appear
-    const overlay = page.locator(".shadowbox-overlay");
-    await expect(overlay).toBeVisible();
+    // Shadowbox modal should appear (rendered via Portal into body)
+    const backdrop = page.locator(".shadowbox-modal-backdrop");
+    await expect(backdrop).toBeVisible();
 
-    // Caption should be visible
-    const caption = page.locator(".shadowbox-caption");
+    // Scenario box with mini-diagram
+    const scenarioBox = page.locator(".scenario-box");
+    await expect(scenarioBox).toBeVisible();
+
+    // Caption
+    const caption = page.locator(".shadowbox-modal-caption");
     await expect(caption).toBeVisible();
 
-    // Controls should be visible
-    const controls = page.locator(".shadowbox-controls");
+    // Controls
+    const controls = page.locator(".shadowbox-modal-controls");
     await expect(controls).toBeVisible();
 
-    // Take screenshot for visual verification
-    await page.screenshot({ path: ".tmp/test-shadowbox-active.png" });
+    await page.screenshot({ path: ".tmp/test-shadowbox-modal.png" });
 
-    // Click overlay to close
-    await overlay.click({ position: { x: 10, y: 10 } });
+    // Click backdrop to close
+    await backdrop.click({ position: { x: 10, y: 10 } });
     await page.waitForTimeout(500);
-
-    // Overlay should be gone
-    await expect(overlay).not.toBeVisible();
+    await expect(backdrop).not.toBeVisible();
   });
 
   test("hovering a node dims unconnected nodes", async ({ page }) => {

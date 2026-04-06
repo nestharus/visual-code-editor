@@ -4,7 +4,7 @@ import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { DeepCardOverlay } from "./DeepCardOverlay";
 import { BaseEdgeLayer, OverlayLayer } from "./EdgeLayer";
 import { GraphViewport, type ViewportHandle } from "./GraphViewport";
-import { ShadowboxChrome } from "./ShadowboxChrome";
+import { ShadowboxModal } from "./ShadowboxModal";
 import { createBehaviorPlaybackController, type CombinedData } from "./BehaviorPlayback";
 import {
   consumeTransitionContext,
@@ -348,11 +348,22 @@ export function GraphSurface(props: GraphSurfaceProps) {
     }
   });
 
-  // Shadowbox: react to playback status changes
+  // Graph-mode playback effects (suppressed when modal owns playback)
   createEffect(() => {
+    const target = playback.playbackTarget();
+    if (target !== "graph") {
+      // If we had saved camera state from a previous graph-mode session, restore it
+      if (savedCameraState && viewportHandle) {
+        interaction.clearFlowFocus();
+        viewportHandle.restoreCameraState(savedCameraState);
+        viewportHandle.unlockCamera();
+        savedCameraState = undefined;
+      }
+      return;
+    }
+
     const status = playback.status();
     if (status === "playing" && viewportHandle) {
-      // Entry: save camera, lock, zoom to participants
       if (!savedCameraState) {
         savedCameraState = viewportHandle.saveCameraState();
         viewportHandle.lockCamera();
@@ -366,25 +377,10 @@ export function GraphSurface(props: GraphSurfaceProps) {
         viewportHandle.zoomToNodes(beat.participantNodeIds);
       }
     } else if (status === "idle" && viewportHandle && savedCameraState) {
-      // Exit: restore camera, unlock, clear focus
       interaction.clearFlowFocus();
       viewportHandle.restoreCameraState(savedCameraState);
       viewportHandle.unlockCamera();
       savedCameraState = undefined;
-    }
-  });
-
-  // Beat-to-beat: update camera + highlighting when beat changes
-  createEffect(() => {
-    const beat = playback.currentBeat();
-    const status = playback.status();
-    if (!beat || status === "idle" || !viewportHandle) return;
-    if (beat.kind === "path") {
-      interaction.setFlowFocus(
-        new Set(beat.participantNodeIds),
-        new Set(beat.edgeIds),
-      );
-      viewportHandle.zoomToNodes(beat.participantNodeIds);
     }
   });
 
@@ -460,7 +456,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
         viewportHeight={viewportHandle?.viewportSize().height ?? 600}
         onComplete={onDeepCardComplete}
       />
-      <ShadowboxChrome
+      <ShadowboxModal
         playback={playback}
         transport={transport}
         onClose={closeShadowbox}

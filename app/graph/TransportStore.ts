@@ -27,12 +27,21 @@ const PULSE_DURATION_MS = 300;
 const STEP_QUANTUM_MS = 250;
 const DEFAULT_SPEED_PX_PER_MS = 0.15;
 
-// --- Path registry ---
+// --- Scoped path registry ---
 
-const pathRegistry = new Map<string, EdgeMetrics>();
+const pathRegistries = new Map<string, Map<string, EdgeMetrics>>();
 
-export function registerEdgePath(edgeId: string, pathEl: SVGPathElement, source: string, target: string) {
-  pathRegistry.set(edgeId, {
+function getRegistry(scope: string): Map<string, EdgeMetrics> {
+  let reg = pathRegistries.get(scope);
+  if (!reg) {
+    reg = new Map();
+    pathRegistries.set(scope, reg);
+  }
+  return reg;
+}
+
+export function registerEdgePath(edgeId: string, pathEl: SVGPathElement, source: string, target: string, scope = "graph") {
+  getRegistry(scope).set(edgeId, {
     pathEl,
     totalLength: pathEl.getTotalLength(),
     sourceNodeId: source,
@@ -40,8 +49,12 @@ export function registerEdgePath(edgeId: string, pathEl: SVGPathElement, source:
   });
 }
 
-export function clearPathRegistry() {
-  pathRegistry.clear();
+export function clearPathRegistry(scope = "graph") {
+  pathRegistries.get(scope)?.clear();
+}
+
+function lookupPath(edgeId: string, scope: string): EdgeMetrics | undefined {
+  return getRegistry(scope).get(edgeId);
 }
 
 // --- Store ---
@@ -52,7 +65,7 @@ function prefersReducedMotion() {
   return !!(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 }
 
-export function createTransportStore(graph: Accessor<GraphDefinition>) {
+export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope = "graph") {
   const [playing, setPlaying] = createSignal(false);
   const [speed, setSpeed] = createSignal(1);
   const [timeMs, setTimeMs] = createSignal(0);
@@ -96,7 +109,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>) {
 
   function getTokenPosition(token: TransportToken): { x: number; y: number } | null {
     if (token.status !== "traveling") return null;
-    const metrics = pathRegistry.get(token.edgeId);
+    const metrics = lookupPath(token.edgeId, pathScope);
     if (!metrics) return null;
     const point = metrics.pathEl.getPointAtLength(Math.min(token.distance, metrics.totalLength));
     return { x: point.x, y: point.y };
@@ -119,7 +132,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>) {
         }
 
         // traveling
-        const metrics = pathRegistry.get(token.edgeId);
+        const metrics = lookupPath(token.edgeId, pathScope);
         if (!metrics) {
           token.status = "done";
           continue;
@@ -133,7 +146,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>) {
 
           // Branch: find outgoing edges from target
           const outgoing = edgesBySource().get(token.targetNodeId) ?? [];
-          const matching = outgoing.filter((e) => pathRegistry.has(e.id));
+          const matching = outgoing.filter((e) => !!lookupPath(e.id, pathScope));
 
           if (matching.length > 0 && draft.length + newTokens.length < TOKEN_CAP) {
             for (const edge of matching) {
@@ -198,7 +211,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>) {
     setTimeMs(0);
 
     const outgoing = edgesBySource().get(startNodeId) ?? [];
-    const starting = outgoing.filter((e) => pathRegistry.has(e.id));
+    const starting = outgoing.filter((e) => !!lookupPath(e.id, pathScope));
 
     const initialTokens: TransportToken[] = starting.slice(0, TOKEN_CAP).map((edge) => ({
       id: `t${++tokenIdCounter}`,

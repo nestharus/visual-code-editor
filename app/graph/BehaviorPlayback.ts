@@ -53,6 +53,7 @@ export function createBehaviorPlaybackController(
   const [status, setStatus] = createSignal<PlaybackStatus>("idle");
   const [lastError, setLastError] = createSignal<string | null>(null);
   const [bridgeActive, setBridgeActive] = createSignal(false);
+  const [playbackTarget, setPlaybackTarget] = createSignal<"modal" | "graph" | null>(null);
   const [scopeTransition, setScopeTransition] = createSignal<{
     direction: "drill" | "back";
     anchorNodeId: string;
@@ -126,10 +127,12 @@ export function createBehaviorPlaybackController(
     setLastError(null);
     focusStack.clear();
     setStatus("playing");
+    setPlaybackTarget("modal");
 
     if (!loadScenario(scenarioIds[0])) {
       setLastError(`Scenario ${scenarioIds[0]} has no beats`);
       setStatus("idle");
+      setPlaybackTarget(null);
     }
   }
 
@@ -243,6 +246,7 @@ export function createBehaviorPlaybackController(
     setLastError(null);
     setBridgeActive(false);
     setScopeTransition(null);
+    setPlaybackTarget(null);
   }
 
   function pause() {
@@ -265,6 +269,7 @@ export function createBehaviorPlaybackController(
     status,
     lastError,
     bridgeActive,
+    playbackTarget,
     scopeTransition,
     focusStack,
     start,
