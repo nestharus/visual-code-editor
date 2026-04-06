@@ -1,6 +1,7 @@
-import { createMemo } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 
 import type { ComposedRect } from "./PresentationStateService";
+import { registerEdgePath } from "./TransportStore";
 import type { GraphEdge } from "./layout/types";
 import { anchorForShape, type NodeShape } from "./layout/shapes";
 
@@ -294,6 +295,13 @@ export function EdgePath(props: EdgePathProps) {
     >
       <path
         class="edge-path"
+        ref={(el: SVGPathElement) => {
+          if (el && !props.hitOnly) {
+            try {
+              registerEdgePath(props.edge.id, el, props.edge.source, props.edge.target);
+            } catch { /* SVG not yet in DOM */ }
+          }
+        }}
         data-kind={props.edge.kind}
         d={geometry().pathData}
         marker-end={`url(#${markerId()})`}

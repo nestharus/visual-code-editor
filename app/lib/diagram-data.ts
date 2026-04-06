@@ -83,6 +83,28 @@ export type DiagramData = {
       }
     >;
   };
+  combined?: {
+    scenarios: Record<string, {
+      id: string;
+      behaviorId: string;
+      title: string;
+      caption?: string;
+      participants: string[];
+      beats: Array<{
+        id: string;
+        kind: "path" | "subScenario";
+        caption?: string;
+        fromNodeId?: string;
+        toNodeId?: string;
+        edgeIds?: string[];
+        participantNodeIds?: string[];
+        scenarioId?: string;
+        entryNodeId?: string;
+        exitNodeId?: string;
+      }>;
+    }>;
+    bindings: Record<string, string[]>;
+  };
   details: Record<string, DiagramDetailRecord>;
 };
 

@@ -57,6 +57,15 @@ def load_workspace(path: str) -> WorkspaceModel:
     )
 
 
+def _ws_to_dict(obj):
+    """Convert a dataclass to dict."""
+    from dataclasses import asdict
+    try:
+        return asdict(obj)
+    except Exception:
+        return obj if isinstance(obj, dict) else {}
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: export_json_cli.py <workspace.json>", file=sys.stderr)
@@ -64,6 +73,12 @@ def main() -> None:
 
     ws = load_workspace(sys.argv[1])
     site = workspace_to_site_model(ws)
+    # Attach workspace behavioral data for scenario generation
+    site["_workspace"] = {
+        "lifecycles": {k: _ws_to_dict(v) for k, v in ws.lifecycles.items()},
+        "stages": {k: _ws_to_dict(v) for k, v in ws.stages.items()},
+        "steps": {k: _ws_to_dict(v) for k, v in ws.steps.items()},
+    }
     data = export_diagram_json(site)
     json.dump(data, sys.stdout, separators=(",", ":"))
 

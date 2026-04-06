@@ -126,6 +126,150 @@ def _related_file_edges(system_data: dict, node_id: str, node_labels: dict[str, 
     return imports, imported_by
 
 
+def _extract_system_ids_from_step(step: dict) -> list[str]:
+    """Extract organizational system IDs from a step's component_ids."""
+    systems = []
+    for comp_id in step.get("component_ids", []):
+        # component_ids are like ['agent:dispatch:agent-monitor', 'dispatch']
+        # The bare system name is the one without a colon prefix
+        if ":" not in comp_id:
+            systems.append(comp_id)
+        elif comp_id.startswith("agent:"):
+            # agent:system:name -> extract system
+            parts = comp_id.split(":")
+            if len(parts) >= 2:
+                systems.append(parts[1])
+    return list(dict.fromkeys(systems))  # dedupe preserving order
+
+
+def _find_connecting_edge_id(
+    elements: list[dict], from_node: str, to_node: str,
+) -> str | None:
+    """Find an edge ID in root elements connecting two nodes."""
+    for el in elements:
+        data = el.get("data", {})
+        src = data.get("source")
+        tgt = data.get("target")
+        if src and tgt:
+            if (src == from_node and tgt == to_node) or (src == to_node and tgt == from_node):
+                return data.get("id", f"e_{src}_{tgt}")
+    return None
+
+
+def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
+    """Build CombinedScenario data from workspace behavioral+organizational data."""
+    ws = site.get("_workspace", {})
+    lifecycles = ws.get("lifecycles", {})
+    all_stages = ws.get("stages", {})
+    all_steps = ws.get("steps", {})
+
+    if not lifecycles:
+        return {"scenarios": {}, "bindings": {}}
+
+    scenarios: dict[str, dict] = {}
+    bindings: dict[str, list[str]] = {}
+
+    # Build edge lookup for root organizational diagram
+    edge_lookup: dict[tuple[str, str], str] = {}
+    for el in root_elements:
+        data = el.get("data", {})
+        src = data.get("source")
+        tgt = data.get("target")
+        if src and tgt:
+            edge_id = data.get("id", f"e_{src}_{tgt}")
+            edge_lookup[(src, tgt)] = edge_id
+            edge_lookup[(tgt, src)] = edge_id
+
+    # Build set of known org node IDs (root level = clusters + stores)
+    org_node_ids = set()
+    for el in root_elements:
+        data = el.get("data", {})
+        if data.get("id") and not data.get("source"):
+            org_node_ids.add(data["id"])
+
+    # Map system IDs to their parent cluster IDs
+    system_to_cluster: dict[str, str] = {}
+    for cluster in site.get("clusters", []):
+        cluster_id = cluster["id"]
+        for sys_id in cluster.get("systems", []):
+            system_to_cluster[sys_id] = cluster_id
+
+    for lc_id, lifecycle in lifecycles.items():
+        scenario_id = f"scenario:{lc_id.replace('lifecycle:', '')}"
+        beats: list[dict] = []
+        all_participants: set[str] = set()
+        beat_index = 0
+
+        stage_ids = lifecycle.get("stage_ids", [])
+
+        for stage_id in stage_ids:
+            stage = all_stages.get(stage_id)
+            if not stage:
+                continue
+
+            step_ids = stage.get("step_ids", [])
+            # Track the system sequence for this stage
+            prev_system = None
+
+            for step_id in step_ids:
+                step = all_steps.get(step_id)
+                if not step:
+                    continue
+
+                systems = _extract_system_ids_from_step(step)
+                # Resolve to root-level nodes: systems → clusters, or keep if already a cluster
+                resolved = []
+                for s in systems:
+                    if s in org_node_ids:
+                        resolved.append(s)
+                    elif s in system_to_cluster:
+                        resolved.append(system_to_cluster[s])
+                resolved = list(dict.fromkeys(resolved))  # dedupe
+                if not resolved:
+                    continue
+
+                current_system = resolved[0]
+                all_participants.update(resolved)
+
+                if prev_system and prev_system != current_system:
+                    # Create a path beat: flow from prev_system to current_system
+                    edge_ids = []
+                    edge_key = (prev_system, current_system)
+                    if edge_key in edge_lookup:
+                        edge_ids.append(edge_lookup[edge_key])
+
+                    beat_id = f"beat-{scenario_id}-{beat_index}"
+                    beats.append({
+                        "id": beat_id,
+                        "kind": "path",
+                        "caption": f"{step.get('label', step_id)}",
+                        "fromNodeId": prev_system,
+                        "toNodeId": current_system,
+                        "edgeIds": edge_ids,
+                        "participantNodeIds": [prev_system, current_system],
+                    })
+                    beat_index += 1
+
+                prev_system = current_system
+
+        if beats:
+            scenarios[scenario_id] = {
+                "id": scenario_id,
+                "behaviorId": lc_id,
+                "title": lifecycle.get("label", lc_id),
+                "caption": lifecycle.get("description", ""),
+                "participants": sorted(all_participants),
+                "beats": beats,
+            }
+            bindings[lc_id] = [scenario_id]
+
+            # Also bind stages to the same scenario for now
+            for stage_id in stage_ids:
+                bindings[stage_id] = [scenario_id]
+
+    return {"scenarios": scenarios, "bindings": bindings}
+
+
 def export_diagram_json(site: dict) -> dict:
     """Build a complete JSON export of all diagram data for the SolidJS app.
 
@@ -459,6 +603,9 @@ def export_diagram_json(site: dict) -> dict:
         if sys_id in systems:
             systems[sys_id]["mermaid"] = render_system_mermaid(site, sys_data)
 
+    # --- Combined scenarios ---
+    combined = _build_combined_scenarios(site, root_elements)
+
     return {
         "organizational": {
             "root": {
@@ -479,6 +626,7 @@ def export_diagram_json(site: dict) -> dict:
             "lifecycles": lifecycles,
             "stages": stages,
         },
+        "combined": combined,
         "details": details,
     }
 

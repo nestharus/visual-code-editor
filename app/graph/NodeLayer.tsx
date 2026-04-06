@@ -1,7 +1,8 @@
 import { For, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
-import { captureViewportRect } from "./DrillTransition";
+import { captureClickRect } from "./DrillTransition";
+import { resolveNodeShape } from "./layout/shapes";
 import type { InteractionService } from "./InteractionService";
 import type { PresentationStateService } from "./PresentationStateService";
 import type { TransitionService } from "./TransitionService";
@@ -110,7 +111,10 @@ function GraphNodeItem(props: GraphNodeItemProps) {
       onClick={(event) => {
         event.stopPropagation();
         const el = event.currentTarget as HTMLElement;
-        captureViewportRect(el.getBoundingClientRect());
+        captureClickRect(
+          el.getBoundingClientRect(),
+          resolveNodeShape(props.node.kind, hasChildren()),
+        );
         props.onNodeTap?.(props.node.id, props.node.kind, props.node.label);
       }}
     >

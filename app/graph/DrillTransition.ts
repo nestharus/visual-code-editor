@@ -15,27 +15,33 @@ export type TransitionContext = {
 };
 
 const [transitionContext, setTransitionContext] = createSignal<TransitionContext | null>(null);
+let lastClickedViewportRect: DOMRect | null = null;
+let lastClickedNodeShape: string | undefined;
+
+export function captureClickRect(viewportRect: DOMRect, shape?: string) {
+  lastClickedViewportRect = viewportRect;
+  lastClickedNodeShape = shape;
+}
 
 export function captureAnchor(
   rect: ComposedRect,
   nodeId: string,
   direction: "drill" | "back",
-  viewportRect?: DOMRect,
-  shape?: string,
 ) {
-  setTransitionContext({ anchorRect: rect, anchorNodeId: nodeId, direction, anchorViewportRect: viewportRect, nodeShape: shape });
-}
-
-export function captureViewportRect(viewportRect: DOMRect) {
-  const ctx = transitionContext();
-  if (ctx) {
-    setTransitionContext({ ...ctx, anchorViewportRect: viewportRect });
-  }
+  setTransitionContext({
+    anchorRect: rect,
+    anchorNodeId: nodeId,
+    direction,
+    anchorViewportRect: lastClickedViewportRect ?? undefined,
+    nodeShape: lastClickedNodeShape,
+  });
 }
 
 export function consumeTransitionContext(): TransitionContext | null {
   const ctx = transitionContext();
   setTransitionContext(null);
+  lastClickedViewportRect = null;
+  lastClickedNodeShape = undefined;
   return ctx;
 }
 

@@ -153,6 +153,7 @@ export const AppShell: ParentComponent = (props) => {
                 graphId={location().pathname}
                 elements={diagramData()?.elements() || []}
                 mermaidText={diagramData()?.mermaidText()}
+                scenarioData={diagramQuery.data?.combined}
                 onNodeTap={(nodeId, kind, label) =>
                   diagramData()?.onNodeTap(nodeId, kind, label)
                 }

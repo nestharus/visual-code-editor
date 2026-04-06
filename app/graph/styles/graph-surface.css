@@ -19,7 +19,8 @@
 }
 
 .node-layer,
-.edge-layer {
+.base-edge-layer,
+.overlay-layer {
   position: absolute;
   inset: 0;
 }
@@ -587,6 +588,47 @@
   .deep-card-vignette {
     transition: none !important;
   }
+}
+
+/* Scenario picker */
+.scenario-picker {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.scenario-play-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(13, 17, 23, 0.88);
+  border: 1px solid rgba(48, 54, 61, 0.6);
+  border-radius: 8px;
+  color: #c9d1d9;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.scenario-play-btn:hover {
+  background: rgba(88, 166, 255, 0.12);
+  border-color: rgba(88, 166, 255, 0.4);
+  color: #e6edf3;
+}
+
+.scenario-play-icon {
+  color: #58a6ff;
+  font-size: 0.7rem;
+}
+
+.scenario-play-label {
+  white-space: nowrap;
 }
 
 /* Transport tokens */

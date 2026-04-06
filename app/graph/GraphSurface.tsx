@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { DeepCardOverlay } from "./DeepCardOverlay";
@@ -387,6 +387,12 @@ export function GraphSurface(props: GraphSurfaceProps) {
     }
   });
 
+  const availableScenarios = createMemo(() => {
+    const data = props.scenarioData;
+    if (!data?.scenarios) return [];
+    return Object.values(data.scenarios);
+  });
+
   const closeShadowbox = () => {
     playback.stop();
   };
@@ -403,34 +409,37 @@ export function GraphSurface(props: GraphSurfaceProps) {
   });
 
   return (
-    <GraphViewport
-      graph={activeGraph()}
-      fitKey={`${activeGraph().id}:${fitVersion()}`}
-      onZoomChange={setZoomLevel}
-      onViewportReady={(h) => { viewportHandle = h; }}
-    >
-      <BaseEdgeLayer
+    <div class="graph-surface-root" style={{ position: "relative", width: "100%", height: "100%" }}>
+      <GraphViewport
         graph={activeGraph()}
-        interaction={interaction}
-        transition={transition}
-        presentation={presentation}
-      />
-      <NodeLayer
-        graph={activeGraph()}
-        zoom={zoomLevel()}
-        interaction={interaction}
-        transition={transition}
-        presentation={presentation}
-        onNodeTap={props.onNodeTap}
-      />
-      <OverlayLayer
-        graph={activeGraph()}
-        zoom={zoomLevel()}
-        interaction={interaction}
-        presentation={presentation}
-        transport={transport}
-        onEdgeTap={props.onEdgeTap}
-      />
+        fitKey={`${activeGraph().id}:${fitVersion()}`}
+        onZoomChange={setZoomLevel}
+        onViewportReady={(h) => { viewportHandle = h; }}
+      >
+        <BaseEdgeLayer
+          graph={activeGraph()}
+          interaction={interaction}
+          transition={transition}
+          presentation={presentation}
+        />
+        <NodeLayer
+          graph={activeGraph()}
+          zoom={zoomLevel()}
+          interaction={interaction}
+          transition={transition}
+          presentation={presentation}
+          onNodeTap={props.onNodeTap}
+        />
+        <OverlayLayer
+          graph={activeGraph()}
+          zoom={zoomLevel()}
+          interaction={interaction}
+          presentation={presentation}
+          transport={transport}
+          onEdgeTap={props.onEdgeTap}
+        />
+      </GraphViewport>
+      {/* These render OUTSIDE the zoom-transformed scene, in viewport space */}
       <DeepCardOverlay
         active={deepCardActive()}
         direction={deepCardDirection()}
@@ -445,6 +454,23 @@ export function GraphSurface(props: GraphSurfaceProps) {
         transport={transport}
         onClose={closeShadowbox}
       />
-    </GraphViewport>
+      <Show when={playback.status() === "idle" && availableScenarios().length > 0}>
+        <div class="scenario-picker">
+          <For each={availableScenarios()}>
+            {(scenario) => (
+              <button
+                type="button"
+                class="scenario-play-btn"
+                onClick={() => playback.start(scenario.behaviorId)}
+                title={`Play: ${scenario.title}`}
+              >
+                <span class="scenario-play-icon">{"\u25B6"}</span>
+                <span class="scenario-play-label">{scenario.title}</span>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
   );
 }
