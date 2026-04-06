@@ -16,15 +16,10 @@ export function ShadowboxChrome(props: ShadowboxChromeProps) {
 
   return (
     <Show when={isActive()}>
-      <div class="shadowbox-overlay is-active" />
-
-      {/* Bridge overlay placeholder — visual bridge line renders here in future polish */}
-      <Show when={props.playback.bridgeActive()}>
-        <div class="shadowbox-bridge-active" />
-      </Show>
+      {/* Click overlay to close */}
+      <div class="shadowbox-overlay" onClick={props.onClose} />
 
       <div class="shadowbox-caption">
-        {/* Breadcrumb trail for nested scenarios */}
         <Show when={crumbs().length > 0}>
           <div class="shadowbox-breadcrumb">
             <For each={crumbs()}>
@@ -51,14 +46,6 @@ export function ShadowboxChrome(props: ShadowboxChromeProps) {
 
       <div class="shadowbox-controls">
         <PlaybackControls transport={props.transport} />
-        <button
-          type="button"
-          class="playback-btn shadowbox-close"
-          onClick={props.onClose}
-          title="Close"
-        >
-          {"\u2715"}
-        </button>
       </div>
     </Show>
   );

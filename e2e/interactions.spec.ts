@@ -113,7 +113,7 @@ test.describe("Graph Surface Interactions", () => {
     await page.waitForTimeout(1000);
 
     // Shadowbox overlay should appear
-    const overlay = page.locator(".shadowbox-overlay.is-active");
+    const overlay = page.locator(".shadowbox-overlay");
     await expect(overlay).toBeVisible();
 
     // Caption should be visible
@@ -126,6 +126,13 @@ test.describe("Graph Surface Interactions", () => {
 
     // Take screenshot for visual verification
     await page.screenshot({ path: ".tmp/test-shadowbox-active.png" });
+
+    // Click overlay to close
+    await overlay.click({ position: { x: 10, y: 10 } });
+    await page.waitForTimeout(500);
+
+    // Overlay should be gone
+    await expect(overlay).not.toBeVisible();
   });
 
   test("hovering a node dims unconnected nodes", async ({ page }) => {

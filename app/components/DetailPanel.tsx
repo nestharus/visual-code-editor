@@ -390,7 +390,8 @@ export function DetailPanel() {
                         class="detail-behavior-play"
                         title={`Play: ${scenario.title}`}
                         onClick={() => {
-                          // Dispatch play via custom event (GraphSurface listens)
+                          // Close panel first, then start playback
+                          navigate({ search: clearPanelSearch });
                           window.dispatchEvent(new CustomEvent("play-scenario", {
                             detail: { behaviorId: scenario.behaviorId },
                           }));
