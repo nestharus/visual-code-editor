@@ -93,7 +93,9 @@ export function createBehaviorPlaybackController(
   function loadBeatIntoTransport(beat: ScenarioBeat) {
     if (beat.kind !== "path") return;
     if (beat.edgeIds.length > 0) {
-      transportForTarget().loadBeat(beat.edgeIds[0], beat.fromNodeId, beat.toNodeId);
+      const t = transportForTarget();
+      t.loadBeat(beat.edgeIds[0], beat.fromNodeId, beat.toNodeId);
+      t.play();
     }
   }
 

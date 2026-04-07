@@ -43,18 +43,28 @@ function getRegistry(scope: string): Map<string, EdgeMetrics> {
 export function registerEdgePath(edgeId: string, pathEl: SVGPathElement, source: string, target: string, scope = "graph") {
   getRegistry(scope).set(edgeId, {
     pathEl,
-    totalLength: pathEl.getTotalLength(),
+    totalLength: 0, // computed lazily
     sourceNodeId: source,
     targetNodeId: target,
   });
 }
 
-export function clearPathRegistry(scope = "graph") {
-  pathRegistries.get(scope)?.clear();
+function getMetricsWithLength(metrics: EdgeMetrics): EdgeMetrics {
+  if (metrics.totalLength <= 0) {
+    try {
+      metrics.totalLength = metrics.pathEl.getTotalLength();
+    } catch { /* not in DOM */ }
+  }
+  return metrics;
 }
 
-function lookupPath(edgeId: string, scope: string): EdgeMetrics | undefined {
-  return getRegistry(scope).get(edgeId);
+function lookupPathWithLength(edgeId: string, scope: string): EdgeMetrics | undefined {
+  const m = getRegistry(scope).get(edgeId);
+  return m ? getMetricsWithLength(m) : undefined;
+}
+
+export function clearPathRegistry(scope = "graph") {
+  pathRegistries.get(scope)?.clear();
 }
 
 // --- Store ---
@@ -110,7 +120,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
 
   function getTokenPosition(token: TransportToken): { x: number; y: number } | null {
     if (token.status !== "traveling") return null;
-    const metrics = lookupPath(token.edgeId, pathScope);
+    const metrics = lookupPathWithLength(token.edgeId, pathScope);
     if (!metrics) return null;
     const point = metrics.pathEl.getPointAtLength(Math.min(token.distance, metrics.totalLength));
     return { x: point.x, y: point.y };
@@ -133,7 +143,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
         }
 
         // traveling
-        const metrics = lookupPath(token.edgeId, pathScope);
+        const metrics = lookupPathWithLength(token.edgeId, pathScope);
         if (!metrics) {
           continue;
         }
@@ -146,7 +156,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
 
           // Branch: find outgoing edges from target
           const outgoing = edgesBySource().get(token.targetNodeId) ?? [];
-          const matching = outgoing.filter((e) => !!lookupPath(e.id, pathScope));
+          const matching = outgoing.filter((e) => !!lookupPathWithLength(e.id, pathScope));
 
           if (matching.length > 0 && draft.length + newTokens.length < TOKEN_CAP) {
             for (const edge of matching) {
@@ -213,7 +223,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     setTimeMs(0);
 
     const outgoing = edgesBySource().get(startNodeId) ?? [];
-    const starting = outgoing.filter((e) => !!lookupPath(e.id, pathScope));
+    const starting = outgoing.filter((e) => !!lookupPathWithLength(e.id, pathScope));
 
     const initialTokens: TransportToken[] = starting.slice(0, TOKEN_CAP).map((edge) => ({
       id: `t${++tokenIdCounter}`,
@@ -234,6 +244,8 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     setActiveBehavior(behaviorKey ?? null);
     setTimeMs(0);
 
+    // Force full replacement — don't reconcile with previous tokens
+    setTokens(reconcile([]));
     setTokens(reconcile([
       {
         id: `t${++tokenIdCounter}`,
@@ -253,11 +265,6 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     startRAF();
   }
 
-  function pause() {
-    setPlaying(false);
-    stopRAF();
-  }
-
   function reset() {
     stopRAF();
     setPlaying(false);
@@ -266,16 +273,23 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
     setActiveBehavior(null);
   }
 
+  function pause() {
+    setPlaying(false);
+    stopRAF();
+  }
+
   function step() {
     if (tokens.length === 0) return;
     batch(() => advanceTokens(reducedMotion ? 99999 : STEP_QUANTUM_MS));
   }
 
-  // Cleanup on graph change
-  createEffect(() => {
-    graph(); // track
-    reset();
-  });
+  // Cleanup on graph change (only for graph-scoped transport)
+  if (pathScope === "graph") {
+    createEffect(() => {
+      graph(); // track
+      reset();
+    });
+  }
 
   onCleanup(() => {
     stopRAF();
