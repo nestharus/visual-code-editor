@@ -1,6 +1,5 @@
 import { Show, Portal } from "solid-js/web";
 import type { BehaviorPlaybackControllerType } from "./BehaviorPlayback";
-import { PlaybackControls } from "./PlaybackControls";
 import { ScenarioBox } from "./ScenarioBox";
 import type { TransportStoreType } from "./TransportStore";
 
@@ -49,7 +48,50 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
           </div>
 
           <div class="shadowbox-modal-controls">
-            <PlaybackControls transport={props.transport} />
+            <div class="playback-controls">
+              <button
+                type="button"
+                class="playback-btn"
+                onClick={() => {
+                  const status = props.playback.status();
+                  if (status === "complete") {
+                    // Restart from beginning
+                    const scenarioId = props.playback.activeScenarioId();
+                    const scenario = props.playback.scenario();
+                    if (scenario) {
+                      props.playback.start(scenario.behaviorId);
+                    }
+                  } else if (status === "paused") {
+                    props.playback.resume();
+                  } else if (status === "playing") {
+                    props.playback.pause();
+                  }
+                }}
+                title={props.playback.status() === "playing" ? "Pause" : props.playback.status() === "complete" ? "Replay" : "Play"}
+              >
+                {props.playback.status() === "playing" ? "\u23F8" : "\u25B6"}
+              </button>
+              <button
+                type="button"
+                class="playback-btn"
+                onClick={() => props.transport.step()}
+                disabled={props.playback.status() === "playing"}
+                title="Step"
+              >
+                {"\u23ED"}
+              </button>
+              <select
+                class="playback-speed"
+                value={String(props.transport.speed())}
+                onChange={(e) => props.transport.setSpeed(Number(e.currentTarget.value))}
+              >
+                <option value="0.25">0.25x</option>
+                <option value="0.5">0.5x</option>
+                <option value="1">1x</option>
+                <option value="2">2x</option>
+                <option value="4">4x</option>
+              </select>
+            </div>
           </div>
         </div>
       </Portal>
