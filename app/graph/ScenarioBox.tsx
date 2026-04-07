@@ -121,22 +121,18 @@ export function ScenarioBox(props: ScenarioBoxProps) {
 
         <g class="transport-layer">
           <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>
-            {(token) => {
-              if (token.status === "done") return null;
-              const position = props.transport.getTokenPosition(token);
-              if (!position) return null;
-              return (
-                <circle
-                  cx={position.x}
-                  cy={position.y}
-                  r={token.status === "pulse" ? 8 : 5}
-                  classList={{
-                    "transport-token": true,
-                    "transport-pulse": token.status === "pulse",
-                  }}
-                />
-              );
-            }}
+            {(token) => (
+              <circle
+                cx={props.transport.getTokenPosition(token)?.x ?? -100}
+                cy={props.transport.getTokenPosition(token)?.y ?? -100}
+                r={token.status === "pulse" ? 8 : 5}
+                classList={{
+                  "transport-token": true,
+                  "transport-pulse": token.status === "pulse",
+                  "transport-hidden": token.status === "done",
+                }}
+              />
+            )}
           </For>
         </g>
 
