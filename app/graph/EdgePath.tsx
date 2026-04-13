@@ -21,6 +21,7 @@ type EdgePathProps = {
   highlighted: boolean;
   labelVisible: boolean;
   hitOnly?: boolean;
+  labelOnly?: boolean;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
   onEdgeHover?: (edgeId: string | null) => void;
 };
@@ -335,6 +336,27 @@ export function EdgePath(props: EdgePathProps) {
   );
   const markerId = () => getMarkerIdForKind(props.edge.kind);
   const labelWidth = () => Math.max(24, (props.edge.label?.length ?? 0) * 5.4 + 12);
+
+  if (props.labelOnly) {
+    if (!props.labelVisible || !props.edge.label) return null;
+    return (
+      <g
+        class="edge-label"
+        transform={`translate(${geometry().labelPoint.x}, ${geometry().labelPoint.y})`}
+      >
+        <rect
+          x={-labelWidth() / 2}
+          y={-10}
+          width={labelWidth()}
+          height={20}
+          rx={3}
+        />
+        <text text-anchor="middle" dominant-baseline="central">
+          {props.edge.label}
+        </text>
+      </g>
+    );
+  }
 
   if (props.hitOnly) {
     return (

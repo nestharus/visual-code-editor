@@ -26,7 +26,7 @@ type EdgeMetrics = {
 const TOKEN_CAP = 64;
 const PULSE_DURATION_MS = 300;
 const STEP_QUANTUM_MS = 250;
-const DEFAULT_SPEED_PX_PER_MS = 0.05;
+const DEFAULT_SPEED_PX_PER_MS = 0.2;
 
 // --- Scoped path registry ---
 
