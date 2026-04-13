@@ -182,10 +182,12 @@ def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
 
     # Build set of known org node IDs (root level = clusters + stores)
     org_node_ids = set()
+    org_node_labels: dict[str, str] = {}
     for el in root_elements:
         data = el.get("data", {})
         if data.get("id") and not data.get("source"):
             org_node_ids.add(data["id"])
+            org_node_labels[data["id"]] = data.get("label", data["id"])
 
     # Map system IDs to their parent cluster IDs
     system_to_cluster: dict[str, str] = {}
@@ -239,10 +241,17 @@ def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
                         edge_ids.append(edge_lookup[edge_key])
 
                     beat_id = f"beat-{scenario_id}-{beat_index}"
+                    step_label = step.get("label", step_id)
+                    step_desc = step.get("description", "")
+                    from_label = org_node_labels.get(prev_system, prev_system)
+                    to_label = org_node_labels.get(current_system, current_system)
+                    caption = f"{from_label} \u2192 {to_label}: {step_label}"
+                    if step_desc:
+                        caption += f" \u2014 {step_desc[:120]}"
                     beats.append({
                         "id": beat_id,
                         "kind": "path",
-                        "caption": f"{step.get('label', step_id)}",
+                        "caption": caption,
                         "fromNodeId": prev_system,
                         "toNodeId": current_system,
                         "edgeIds": edge_ids,
