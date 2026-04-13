@@ -213,9 +213,22 @@ export function GraphSurface(props: GraphSurfaceProps) {
     const currentGraph = activeGraph();
     const previousNodeCount = currentGraph.nodes.length;
 
-    if ((!animate && previousNodeCount > 0) || transition.prefersReducedMotion()) {
+    if (transition.prefersReducedMotion()) {
       replaceDisplayedGraph(nextGraph);
       transition.clear();
+      return;
+    }
+
+    // No previous nodes = initial load — skip exit, just do entry animation
+    if (!animate || previousNodeCount === 0) {
+      const nextNodeIds = nextGraph.nodes.map((node) => node.id);
+      replaceDisplayedGraph(nextGraph);
+      presentation.seedEnteringNodes(nextNodeIds);
+      transition.startEnter(nextGraph.nodes);
+      enterAnimationFrame = window.requestAnimationFrame(() => {
+        enterAnimationFrame = undefined;
+        presentation.animateToDefault(nextNodeIds);
+      });
       return;
     }
 

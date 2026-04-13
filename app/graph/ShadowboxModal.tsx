@@ -31,8 +31,28 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
 
           <div class="shadowbox-modal-caption">
             <Show when={props.playback.scenario()}>
-              <div class="shadowbox-modal-caption-title">
-                {props.playback.scenario()!.title}
+              {(scenario) => (
+                <div class="shadowbox-modal-caption-title">
+                  {scenario().title}
+                  <Show when={scenario().beats.length > 0}>
+                    <span class="shadowbox-modal-step-count">
+                      {" "}— {scenario().participants.length} participants, {scenario().beats.length} steps
+                    </span>
+                  </Show>
+                </div>
+              )}
+            </Show>
+            <Show when={props.playback.scenario() && props.playback.status() !== "idle"}>
+              <div class="shadowbox-modal-progress">
+                Step {props.playback.currentBeatIndex() + 1} of {props.playback.scenario()!.beats.length}
+                <div class="shadowbox-modal-progress-bar">
+                  <div
+                    class="shadowbox-modal-progress-fill"
+                    style={{
+                      width: `${((props.playback.currentBeatIndex() + 1) / Math.max(props.playback.scenario()!.beats.length, 1)) * 100}%`,
+                    }}
+                  />
+                </div>
               </div>
             </Show>
             <Show when={props.playback.captionText()}>
