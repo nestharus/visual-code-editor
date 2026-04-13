@@ -285,3 +285,30 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 }
+
+/* --- Fetched page content inside detail panel --- */
+
+.detail-page .claim-body {
+  padding: 12px 18px 18px;
+}
+
+.detail-page details summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-weight: 600;
+  color: var(--text-primary, #e6edf3);
+}
+
+.detail-page a[href^="#"] {
+  color: var(--accent, #58a6ff);
+  text-decoration: none;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+.detail-page .references li,
+.detail-page .sources li {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #c9d1d9);
+  margin-bottom: 4px;
+}

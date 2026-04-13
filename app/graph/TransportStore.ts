@@ -12,6 +12,7 @@ export type TransportToken = {
   targetNodeId: string;
   distance: number;
   status: "traveling" | "pulse" | "done";
+  pulseStartMs?: number;
   lineage: string;
 };
 
@@ -119,15 +120,19 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
   });
 
   function getTokenPosition(token: TransportToken): { x: number; y: number } | null {
-    if (token.status !== "traveling") return null;
+    if (token.status === "done") return null;
     const metrics = lookupPathWithLength(token.edgeId, pathScope);
     if (!metrics) return null;
-    const point = metrics.pathEl.getPointAtLength(Math.min(token.distance, metrics.totalLength));
+    const pointAt = token.status === "pulse"
+      ? metrics.totalLength
+      : Math.min(token.distance, metrics.totalLength);
+    const point = metrics.pathEl.getPointAtLength(pointAt);
     return { x: point.x, y: point.y };
   }
 
   function advanceTokens(deltaMs: number) {
     const effectiveDelta = deltaMs * speed();
+    const currentTimeMs = timeMs();
     const newTokens: TransportToken[] = [];
 
     setTokens(produce((draft) => {
@@ -137,8 +142,36 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
         if (token.status === "done") continue;
 
         if (token.status === "pulse") {
-          // Pulse has a fixed duration — tracked via timeMs
+          if (token.pulseStartMs == null) {
+            token.pulseStartMs = currentTimeMs;
+            continue;
+          }
+
+          if (currentTimeMs - token.pulseStartMs < PULSE_DURATION_MS) {
+            continue;
+          }
+
           token.status = "done";
+
+          // Branch after the pulse has visibly completed.
+          const outgoing = edgesBySource().get(token.targetNodeId) ?? [];
+          const matching = outgoing.filter((edge) => !!lookupPathWithLength(edge.id, pathScope));
+
+          if (matching.length > 0 && draft.length + newTokens.length < TOKEN_CAP) {
+            for (const edge of matching) {
+              newTokens.push({
+                id: `t${++tokenIdCounter}`,
+                edgeId: edge.id,
+                sourceNodeId: edge.source,
+                targetNodeId: edge.target,
+                distance: 0,
+                status: "traveling",
+                pulseStartMs: undefined,
+                lineage: token.lineage,
+              });
+            }
+          }
+
           continue;
         }
 
@@ -152,25 +185,9 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
 
         if (token.distance >= metrics.totalLength) {
           // Arrived at target
+          token.distance = metrics.totalLength;
           token.status = "pulse";
-
-          // Branch: find outgoing edges from target
-          const outgoing = edgesBySource().get(token.targetNodeId) ?? [];
-          const matching = outgoing.filter((e) => !!lookupPathWithLength(e.id, pathScope));
-
-          if (matching.length > 0 && draft.length + newTokens.length < TOKEN_CAP) {
-            for (const edge of matching) {
-              newTokens.push({
-                id: `t${++tokenIdCounter}`,
-                edgeId: edge.id,
-                sourceNodeId: edge.source,
-                targetNodeId: edge.target,
-                distance: 0,
-                status: "traveling",
-                lineage: token.lineage,
-              });
-            }
-          }
+          token.pulseStartMs = currentTimeMs;
         }
       }
     }));
@@ -183,7 +200,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
       }));
     }
 
-    setTimeMs((t) => t + effectiveDelta);
+    setTimeMs(currentTimeMs + effectiveDelta);
 
     // Check if all done
     const allDone = tokens.every((t) => t.status === "done");
@@ -232,6 +249,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
       targetNodeId: edge.target,
       distance: 0,
       status: "traveling" as const,
+      pulseStartMs: undefined,
       lineage: `flow-${tokenIdCounter}`,
     }));
 
@@ -254,6 +272,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
         targetNodeId,
         distance: 0,
         status: "traveling" as const,
+        pulseStartMs: undefined,
         lineage: `flow-${tokenIdCounter}`,
       },
     ]));

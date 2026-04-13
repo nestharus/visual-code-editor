@@ -19,12 +19,16 @@ Interactive system visualization tool. Renders organizational (clusters → syst
 
 ### Current Visual State
 
-Everything is functional but visually basic:
-- Nodes are plain colored rectangles/hexagons with text labels
-- No icons, no custom SVG cards, no visual hierarchy beyond color
-- Hover effect: CSS-driven lift/float with spring physics (works well)
-- Detail panel: plain slide-in with fetched HTML content
-- No distinction between "this card opens a diagram" vs "this card opens a panel"
+Visually basic with significant bugs identified by animation QA (2026-04-10):
+- Node shapes not differentiating by type (all render as ellipses)
+- Hover lift works but edges disconnect from lifted nodes, z-order is wrong, spring settle on unhover snaps
+- Edge hover broken inside compound nodes (mouse events swallowed by compound node priority)
+- Edge colors/dash patterns missing (parsing bug + CSS override bug)
+- Drill-down/back navigation animations non-functional (flat crossfade instead of radiate/burst)
+- Entry/exit animations broken (nodes appear instantly, no stagger)
+- Detail panel has layout/styling issues (duplicate headers, missing padding)
+- Shadowbox token pulse animation missing, pause control broken
+- Float animation works but snaps on hover instead of pausing smoothly
 
 ### Dual-View Problem
 
@@ -188,13 +192,73 @@ agents --model gpt-high --file /tmp/research-prompt.md --project ~/projects/visu
 
 ---
 
-## Implementation Workflow
+## Animation QA Workflow
 
-For bugs and feature work, use the RCA workflow from `~/projects/agent-implementation-skill/AGENTS.md`:
+Semantic animation QA using Playwright video capture + Gemini video understanding via the `agents` binary.
 
+### How It Works
+
+1. **Capture**: Playwright records short video clips of specific animations/interactions
+2. **Judge**: `agents --model gemini-video-high` analyzes the video against expected behavior described in the prompt
+3. **Human review**: Human reads Gemini's report and decides what to fix
+
+### Running Captures
+
+```bash
+# Build and serve first
+cd ~/projects/visual-code-editor
+npm run build && npm run serve &
+
+# Run all QA captures (records .webm videos to .tmp/animation-qa/captures/)
+npx playwright test e2e/animation-qa-full.capture.spec.ts
+
+# Run a single capture
+npx playwright test e2e/animation-hover-lift.capture.spec.ts
 ```
-RCA (gpt-high) → Proposal (gpt-high) → Risk (2x claude-opus, both must be LOW) → Research+Implement (gpt-high)
+
+### Sending to Gemini for QA
+
+```bash
+# Reference the video file in the prompt — gemini-video-high can read video files
+agents --model gemini-video-high -p ~/projects/visual-code-editor \
+  "Review the animation video at .tmp/animation-qa/captures/<dir>/<file>.webm
+   <describe expected behavior>
+   Report ALL visual bugs."
 ```
+
+**Important model selection:**
+- `gemini-video-high/medium/low` — uses `gemini` CLI, CAN process video files. Severely rate-limited. Run ONE at a time.
+- `gemini-high/medium/low` — uses `droid` CLI, text/code only, CANNOT process video.
+- Never run multiple gemini-video agents in parallel.
+
+### Capture Specs
+
+| Spec | Captures |
+|------|----------|
+| `e2e/animation-hover-lift.capture.spec.ts` | Single hover-lift with DOM measurements |
+| `e2e/animation-qa-full.capture.spec.ts` | 10 scenarios: org overview, behavioral overview, hover lift, edge hover, drill-down, detail panel, shadowbox modal, view toggle, entry animations, floating idle |
+
+### When to Run
+
+- Before/after animation or interaction changes
+- When investigating visual bugs
+- For pre-review QA on motion-heavy PRs
+
+Artifacts go in `.tmp/animation-qa/` (gitignored).
+
+---
+
+## Implementation & Bug-Fix Workflow
+
+All code changes follow the pipeline from `~/work/AGENTS.md`:
+
+| Step | Model | Role |
+|------|-------|------|
+| 1. RCA (bugs only) | `gpt-high` | Investigate root cause. Do NOT propose fixes. |
+| 2. Proposal | `gpt-high` | Propose a fix/feature. Do NOT implement. |
+| 3. Risk assessment | 3x `claude-opus` | Audit risk + scope risk + shortcut risk in parallel. All must be LOW. |
+| 4. Research | `gpt-high` | Research hookpoints in the codebase. |
+| 5. Implement | `gpt-high` | Launch implementation. |
 
 RCA artifacts go in `.tmp/rca/` (gitignored).
 
@@ -206,21 +270,19 @@ cd ~/projects/visual-code-editor && npm run build
 
 # Regenerate diagram data (into public/ so vite build includes it)
 npm run regenerate
-# Or manually:
-# python3 src/visual_code_editor/export_json_cli.py \
-#   $HOME/projects/agent-implementation-skill/execution-philosophy/diagrams/workspace.json \
-#   > public/data/diagram.json
 
 # Preview (user views on port 8742)
 npm run serve
 
 # Screenshot verification via Playwright
 npx playwright test
+
+# Animation QA verification
+npx playwright test e2e/animation-qa-full.capture.spec.ts
+# Then send captures to gemini-high for analysis
 ```
 
-### Visual Verification
-
-All visual changes MUST be verified by screenshot on port 8742 (vite preview build), not port 3000 (dev server). Use Playwright headless browser for automated screenshots.
+All visual changes MUST be verified on port 8742 (vite preview build), not port 3000 (dev server).
 
 ---
 
@@ -229,4 +291,4 @@ All visual changes MUST be verified by screenshot on port 8742 (vite preview bui
 - **Diagram data source**: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/`
 - **SVG-to-PNG conversion**: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/svg_to_png.py`
 - **Parent AGENTS.md** (visual creation workflows, model configs): `~/projects/agent-implementation-skill/execution-philosophy/AGENTS.md`
-- **RCA workflow**: `~/projects/agent-implementation-skill/AGENTS.md` (System Visualization section)
+- **Implementation workflow**: `~/work/AGENTS.md` (Implementation & Bug-Fix Workflow section)

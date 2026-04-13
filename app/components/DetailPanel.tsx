@@ -201,6 +201,17 @@ export function DetailPanel() {
         const article = doc.querySelector("article");
         if (article) {
           rebaseArticleLinks(article, fetchUrl);
+          // Strip elements that don't belong in the side panel
+          for (const sel of [
+            ".page-title",           // duplicate header (#15)
+            "h1",                    // duplicate header fallback
+            ".breadcrumb",           // page breadcrumb navigation (#16)
+            ".system-diagram-links", // page navigation links (#16)
+            ".cy-container",         // empty diagram container (#17)
+            ".diagram-shell",        // empty diagram wrapper (#17)
+          ]) {
+            for (const el of article.querySelectorAll(sel)) el.remove();
+          }
           setHtmlContent(article.innerHTML);
           return;
         }

@@ -25,8 +25,17 @@
   inset: 0;
 }
 
+.highlighted-edge-layer {
+  z-index: 1;
+}
+
 .node-layer {
+  z-index: 2;
   pointer-events: none;
+}
+
+.overlay-layer:not(.highlighted-edge-layer) {
+  z-index: 3;
 }
 
 .graph-node {
@@ -181,21 +190,29 @@
 .graph-node-float {
   width: 100%;
   height: 100%;
+  animation: card-float 5s ease-in-out infinite;
+  animation-delay: calc(var(--float-seed, 0) * -5s);
+  animation-play-state: paused;
 }
 
 .graph-node-float.is-floating {
-  animation: card-float 5s ease-in-out infinite;
-  animation-delay: calc(var(--float-seed, 0) * -5s);
+  animation-play-state: running;
 }
 
 .graph-node.dimmed {
   opacity: 0.18;
 }
 
+.graph-node.entering,
+.graph-node.exiting {
+  transition: top 320ms ease var(--node-transition-delay, 0ms);
+}
+
 .graph-node.entering .graph-node-inner,
 .graph-node.exiting .graph-node-inner {
-  opacity: 0;
-  transform: scale(0.82) translateY(16px);
+  transition:
+    opacity 320ms ease var(--node-transition-delay, 0ms),
+    transform 320ms ease var(--node-transition-delay, 0ms);
 }
 
 .graph-node.is-hovered {
@@ -216,6 +233,7 @@
   padding: 12px 14px;
   border: 1px solid var(--node-border);
   border-radius: 18px;
+  transition: box-shadow 400ms ease;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
     var(--node-bg);
@@ -225,7 +243,8 @@
   color: #e6edf3;
 }
 
-.graph-node:hover .graph-card {
+.graph-node.is-hovered .graph-card,
+.graph-node.is-settling .graph-card {
   box-shadow:
     0 20px 40px rgba(1, 4, 9, 0.5),
     0 8px 16px rgba(1, 4, 9, 0.4),
@@ -234,7 +253,7 @@
 
 /* --- Card shapes --- */
 .graph-card--shape-rounded { border-radius: 18px; }
-.graph-card--shape-circle { border-radius: 50%; }
+.graph-card--shape-circle { border-radius: 50%; aspect-ratio: 1 / 1; }
 .graph-card--shape-pill { border-radius: 999px; }
 
 .graph-card--shape-hexagon {
@@ -253,8 +272,10 @@
   filter: drop-shadow(0 14px 16px rgba(1, 4, 9, 0.24));
 }
 
-.graph-node:hover .graph-card--shape-hexagon,
-.graph-node:hover .graph-card--shape-octagon {
+.graph-node.is-hovered .graph-card--shape-hexagon,
+.graph-node.is-hovered .graph-card--shape-octagon,
+.graph-node.is-settling .graph-card--shape-hexagon,
+.graph-node.is-settling .graph-card--shape-octagon {
   box-shadow: none;
   filter: drop-shadow(0 20px 24px rgba(1, 4, 9, 0.5));
 }
@@ -690,7 +711,7 @@
   line-height: 1;
 }
 
-.graph-node:hover .graph-node-info-btn {
+.graph-node.is-hovered .graph-node-info-btn {
   opacity: 1;
 }
 

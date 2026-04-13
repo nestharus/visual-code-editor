@@ -78,6 +78,8 @@ export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
                 sourceTy={props.presentation.ty(edge.source)}
                 targetTx={props.presentation.tx(edge.target)}
                 targetTy={props.presentation.ty(edge.target)}
+                sourceInnerScale={props.presentation.innerScale(edge.source)}
+                targetInnerScale={props.presentation.innerScale(edge.target)}
                 dimmed={props.interaction.dimmedEdges().has(edge.id)}
                 highlighted={false}
                 labelVisible={false}
@@ -90,8 +92,6 @@ export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
   );
 }
 
-// --- OverlayLayer: highlighted edges + hit targets + labels above nodes ---
-
 type OverlayLayerProps = {
   graph: GraphDefinition;
   zoom: number;
@@ -101,7 +101,7 @@ type OverlayLayerProps = {
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
 };
 
-export function OverlayLayer(props: OverlayLayerProps) {
+function createEdgeLayerState(props: Pick<OverlayLayerProps, "graph" | "interaction">) {
   const nodeIds = createMemo(() => new Set(props.graph.nodes.map((n) => n.id)));
   const compoundIds = createMemo(() => {
     const parents = new Set(props.graph.nodes.map((n) => n.parent).filter(Boolean) as string[]);
@@ -117,11 +117,57 @@ export function OverlayLayer(props: OverlayLayerProps) {
     ),
   );
 
+  return {
+    nodeIds,
+    compoundIds,
+    nodeKind,
+    markerKinds,
+    overlayEdges,
+  };
+}
+
+// --- HighlightedEdgeLayer: highlighted edges + labels behind nodes ---
+
+export function HighlightedEdgeLayer(props: OverlayLayerProps) {
+  const { compoundIds, markerKinds, nodeKind, overlayEdges } = createEdgeLayerState(props);
+
+  return (
+    <svg class="overlay-layer highlighted-edge-layer" width="100%" height="100%">
+      <MarkerDefs kinds={markerKinds()} />
+      <g>
+        <For each={overlayEdges()}>
+          {(edge) => (
+            <EdgePath
+              edge={edge}
+              sourceRect={props.presentation.composedRect(edge.source)}
+              targetRect={props.presentation.composedRect(edge.target)}
+              sourceShape={resolveNodeShape(nodeKind().get(edge.source) ?? "", compoundIds().has(edge.source))}
+              targetShape={resolveNodeShape(nodeKind().get(edge.target) ?? "", compoundIds().has(edge.target))}
+              sourceTx={props.presentation.tx(edge.source)}
+              sourceTy={props.presentation.ty(edge.source)}
+              targetTx={props.presentation.tx(edge.target)}
+              targetTy={props.presentation.ty(edge.target)}
+              sourceInnerScale={props.presentation.innerScale(edge.source)}
+              targetInnerScale={props.presentation.innerScale(edge.target)}
+              dimmed={false}
+              highlighted={true}
+              labelVisible={props.zoom >= 0.5}
+              onEdgeTap={props.onEdgeTap}
+            />
+          )}
+        </For>
+      </g>
+    </svg>
+  );
+}
+
+// --- EdgeHitLayer: invisible hit targets above nodes ---
+
+export function EdgeHitLayer(props: OverlayLayerProps) {
+  const { compoundIds, nodeIds, nodeKind } = createEdgeLayerState(props);
+
   return (
     <svg class="overlay-layer" width="100%" height="100%">
-      <MarkerDefs kinds={markerKinds()} />
-
-      {/* Hit targets for ALL edges — in overlay so they're above nodes */}
       <g>
         <For each={props.graph.edges}>
           {(edge) => {
@@ -138,6 +184,8 @@ export function OverlayLayer(props: OverlayLayerProps) {
                 sourceTy={props.presentation.ty(edge.source)}
                 targetTx={props.presentation.tx(edge.target)}
                 targetTy={props.presentation.ty(edge.target)}
+                sourceInnerScale={props.presentation.innerScale(edge.source)}
+                targetInnerScale={props.presentation.innerScale(edge.target)}
                 dimmed={false}
                 highlighted={false}
                 labelVisible={false}
@@ -149,31 +197,15 @@ export function OverlayLayer(props: OverlayLayerProps) {
           }}
         </For>
       </g>
+    </svg>
+  );
+}
 
-      {/* Highlighted edge strokes + labels rendered above nodes */}
-      <g>
-        <For each={overlayEdges()}>
-          {(edge) => (
-            <EdgePath
-              edge={edge}
-              sourceRect={props.presentation.composedRect(edge.source)}
-              targetRect={props.presentation.composedRect(edge.target)}
-              sourceShape={resolveNodeShape(nodeKind().get(edge.source) ?? "", compoundIds().has(edge.source))}
-              targetShape={resolveNodeShape(nodeKind().get(edge.target) ?? "", compoundIds().has(edge.target))}
-              sourceTx={props.presentation.tx(edge.source)}
-              sourceTy={props.presentation.ty(edge.source)}
-              targetTx={props.presentation.tx(edge.target)}
-              targetTy={props.presentation.ty(edge.target)}
-              dimmed={false}
-              highlighted={true}
-              labelVisible={props.zoom >= 0.5}
-              onEdgeTap={props.onEdgeTap}
-            />
-          )}
-        </For>
-      </g>
+// --- TransportLayer: transport tokens above nodes ---
 
-      {/* Transport tokens */}
+export function TransportLayer(props: OverlayLayerProps) {
+  return (
+    <svg class="overlay-layer" width="100%" height="100%">
       {props.transport ? (
         <g class="transport-layer">
           <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>

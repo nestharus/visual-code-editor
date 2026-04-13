@@ -126,7 +126,7 @@ export function elementsToGraph(
         id: data.id || `${data.source}-${data.target}`,
         source: data.source as string,
         target: data.target as string,
-        kind: (el.classes as string) || data.kind || "edge",
+        kind: (el.classes as string)?.split(" ").pop() || data.kind || "edge",
         label: data.label as string | undefined,
         data: { ...data },
         bendPoints: readBendPoints(data),

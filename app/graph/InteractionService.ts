@@ -22,9 +22,24 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
 
   const edgeById = createMemo(() => new Map(graph().edges.map((edge) => [edge.id, edge])));
 
-  // Node hover takes priority over edge hover.
+  // Compound node detection: nodes that appear as a parent of other nodes.
+  const compoundIds = createMemo(() => {
+    const parents = new Set<string>();
+    for (const node of graph().nodes) {
+      if (node.parent) parents.add(node.parent);
+    }
+    return parents;
+  });
+
+  // Priority: non-compound node hover > edge hover > compound node hover > nothing
+  const hoveredNodeIsCompound = createMemo(() => {
+    const id = hoveredNodeId();
+    return id ? compoundIds().has(id) : false;
+  });
+
   const highlightedByEdgeHover = createMemo(() => {
-    if (hoveredNodeId()) return null;
+    // Non-compound node hover takes priority over edge hover
+    if (hoveredNodeId() && !hoveredNodeIsCompound()) return null;
     const edgeId = hoveredEdgeId();
     if (!edgeId) return null;
     const edge = edgeById().get(edgeId);
@@ -36,12 +51,18 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
   });
 
   const highlightedNodeIds = createMemo(() => {
+    // Edge hover takes priority over compound node hover
+    const edgeHighlight = highlightedByEdgeHover();
+    if (edgeHighlight) return edgeHighlight.nodeIds;
     const hovered = hoveredNodeId();
     if (hovered) return new Set([hovered, ...getNeighborIds(hovered, graph().edges)]);
-    return highlightedByEdgeHover()?.nodeIds ?? new Set<string>();
+    return new Set<string>();
   });
 
   const highlightedEdges = createMemo(() => {
+    // Edge hover takes priority over compound node hover
+    const edgeHighlight = highlightedByEdgeHover();
+    if (edgeHighlight) return edgeHighlight.edgeIds;
     const hovered = hoveredNodeId();
     if (hovered) {
       return new Set(
@@ -51,7 +72,7 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
           .map((edge) => edge.id),
       );
     }
-    return highlightedByEdgeHover()?.edgeIds ?? new Set<string>();
+    return new Set<string>();
   });
 
   const dimmedNodes = createMemo(() => {

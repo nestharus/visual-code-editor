@@ -2,7 +2,12 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "so
 
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { DeepCardOverlay } from "./DeepCardOverlay";
-import { BaseEdgeLayer, OverlayLayer } from "./EdgeLayer";
+import {
+  BaseEdgeLayer,
+  EdgeHitLayer,
+  HighlightedEdgeLayer,
+  TransportLayer,
+} from "./EdgeLayer";
 import { GraphViewport, type ViewportHandle } from "./GraphViewport";
 import { ShadowboxModal } from "./ShadowboxModal";
 import { createBehaviorPlaybackController, type CombinedData } from "./BehaviorPlayback";
@@ -179,6 +184,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
   );
 
   let transitionTimer: number | undefined;
+  let enterAnimationFrame: number | undefined;
   let loadSequence = 0;
 
   const clearTransitionTimer = () => {
@@ -186,22 +192,30 @@ export function GraphSurface(props: GraphSurfaceProps) {
       window.clearTimeout(transitionTimer);
       transitionTimer = undefined;
     }
+    if (enterAnimationFrame) {
+      window.cancelAnimationFrame(enterAnimationFrame);
+      enterAnimationFrame = undefined;
+    }
+  };
+
+  const replaceDisplayedGraph = (nextGraph: GraphDefinition) => {
+    setDisplayedGraph(nextGraph);
+    presentation.replaceGraph(nextGraph.nodes);
+    setFitVersion((version) => version + 1);
   };
 
   const commitGraph = (nextGraph: GraphDefinition, animate: boolean) => {
     clearTransitionTimer();
     killActiveTransition();
+    transition.clear();
     interaction.setHoveredNodeId(null);
     interaction.setHoveredEdgeId(null);
-    const previousNodeCount = activeGraph().nodes.length;
+    const currentGraph = activeGraph();
+    const previousNodeCount = currentGraph.nodes.length;
 
-    if (!animate || transition.prefersReducedMotion()) {
-      setDisplayedGraph(nextGraph);
-      setFitVersion((version) => version + 1);
+    if ((!animate && previousNodeCount > 0) || transition.prefersReducedMotion()) {
+      replaceDisplayedGraph(nextGraph);
       transition.clear();
-      if (previousNodeCount === 0) {
-        transition.startEnter(nextGraph.nodes);
-      }
       return;
     }
 
@@ -226,8 +240,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
         // Graph swap happens mid-tunnel
         setTimeout(() => {
           if (sequence !== loadSequence) return;
-          setDisplayedGraph(nextGraph);
-          setFitVersion((v) => v + 1);
+          replaceDisplayedGraph(nextGraph);
         }, 500);
 
         return;
@@ -244,8 +257,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
 
       if (useReverseDeepCard) {
         // Swap graph first, then compute destination rect from data
-        setDisplayedGraph(nextGraph);
-        setFitVersion((v) => v + 1);
+        replaceDisplayedGraph(nextGraph);
         setEdgesHidden(true);
 
         // Compute destination rect from graph data + viewport transform
@@ -272,7 +284,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
         return;
       }
 
-      const currentGraph = activeGraph();
       const sequence = loadSequence;
 
       void (async () => {
@@ -287,8 +298,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
 
         if (sequence !== loadSequence) return;
 
-        setDisplayedGraph(nextGraph);
-        setFitVersion((version) => version + 1);
+        replaceDisplayedGraph(nextGraph);
 
         if (ctx.direction === "drill") {
           await runDrillEnter(presentation, nextGraph.nodes, ctx.anchorRect);
@@ -300,15 +310,26 @@ export function GraphSurface(props: GraphSurfaceProps) {
     }
 
     // CSS fallback
-    const currentGraph = activeGraph();
-    transition.startExit(currentGraph.nodes);
+    const currentNodeIds = currentGraph.nodes.map((node) => node.id);
+    if (currentNodeIds.length > 0) {
+      for (const nodeId of currentNodeIds) {
+        presentation.patch(nodeId, { opacity: 0, innerScale: 0.82, ty: 16 });
+      }
+      transition.startExit(currentGraph.nodes);
+    } else {
+      transition.clear();
+    }
 
     transitionTimer = window.setTimeout(() => {
-      setDisplayedGraph(nextGraph);
-      setFitVersion((version) => version + 1);
-      interaction.setHoveredNodeId(null);
+      const nextNodeIds = nextGraph.nodes.map((node) => node.id);
+      replaceDisplayedGraph(nextGraph);
+      presentation.seedEnteringNodes(nextNodeIds);
       transition.startEnter(nextGraph.nodes);
-    }, transition.exitDurationMs);
+      enterAnimationFrame = window.requestAnimationFrame(() => {
+        enterAnimationFrame = undefined;
+        presentation.animateToDefault(nextNodeIds);
+      });
+    }, currentNodeIds.length > 0 ? transition.exitTotalMs() : 0);
   };
 
   createEffect(() => {
@@ -429,6 +450,14 @@ export function GraphSurface(props: GraphSurfaceProps) {
           transition={transition}
           presentation={presentation}
         />
+        <HighlightedEdgeLayer
+          graph={activeGraph()}
+          zoom={zoomLevel()}
+          interaction={interaction}
+          presentation={presentation}
+          transport={transport}
+          onEdgeTap={props.onEdgeTap}
+        />
         <NodeLayer
           graph={activeGraph()}
           zoom={zoomLevel()}
@@ -439,7 +468,15 @@ export function GraphSurface(props: GraphSurfaceProps) {
           onNodeInfo={props.onNodeInfo}
           playableNodeIds={playableNodeIds()}
         />
-        <OverlayLayer
+        <EdgeHitLayer
+          graph={activeGraph()}
+          zoom={zoomLevel()}
+          interaction={interaction}
+          presentation={presentation}
+          transport={transport}
+          onEdgeTap={props.onEdgeTap}
+        />
+        <TransportLayer
           graph={activeGraph()}
           zoom={zoomLevel()}
           interaction={interaction}

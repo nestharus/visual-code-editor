@@ -4,6 +4,8 @@ import { createDerivedSpring } from "@solid-primitives/spring";
 
 import type { GraphDefinition, GraphNode } from "./layout/types";
 
+export type HoverPhase = "idle" | "hovered" | "settling";
+
 export type PresentationState = {
   tx: number;
   ty: number;
@@ -52,6 +54,9 @@ function rectFromLayout(layout: BaseLayout, tx: number, ty: number): ComposedRec
 const FALLBACK_LAYOUT: BaseLayout = { x: 0, y: 0, width: 150, height: 60 };
 
 const SPRING_CONFIG = { stiffness: 0.15, damping: 0.7 };
+const SETTLE_REST_TY_EPSILON = 0.25;
+const SETTLE_REST_SCALE_EPSILON = 0.005;
+const MAX_SETTLE_DURATION_MS = 800;
 
 function prefersReducedMotion() {
   return !!(
@@ -66,12 +71,44 @@ type HoverSpring = {
   setTarget: (ty: number, scale: number) => void;
 };
 
-export function createPresentationStateService(graph: Accessor<GraphDefinition>) {
+function isAtRest(ty: number, innerScale: number) {
+  return (
+    Math.abs(ty) <= SETTLE_REST_TY_EPSILON &&
+    Math.abs(innerScale - 1) <= SETTLE_REST_SCALE_EPSILON
+  );
+}
+
+export function createPresentationStateService(_graph: Accessor<GraphDefinition>) {
   // Non-reactive map of layout positions — written once per graph commit.
   const layoutById = new Map<string, BaseLayout>();
   const [stateById, setStateById] = createStore<Record<string, PresentationState>>({});
+  const [hoverPhaseById, setHoverPhaseById] = createStore<Record<string, HoverPhase>>({});
   const hoverSprings = new Map<string, HoverSpring>();
+  const settleTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   const reducedMotion = prefersReducedMotion();
+
+  function cancelSettleTimeout(nodeId: string) {
+    const timeout = settleTimeouts.get(nodeId);
+    if (timeout === undefined) return;
+    clearTimeout(timeout);
+    settleTimeouts.delete(nodeId);
+  }
+
+  function finishSettling(nodeId: string) {
+    cancelSettleTimeout(nodeId);
+    if (!layoutById.has(nodeId) || hoverPhaseById[nodeId] !== "settling") return;
+    setHoverPhaseById(nodeId, "idle");
+    setStateById(nodeId, "ty", 0);
+    setStateById(nodeId, "innerScale", 1);
+  }
+
+  function scheduleSettleTimeout(nodeId: string) {
+    cancelSettleTimeout(nodeId);
+    settleTimeouts.set(
+      nodeId,
+      setTimeout(() => finishSettling(nodeId), MAX_SETTLE_DURATION_MS),
+    );
+  }
 
   function createHoverSpring(nodeId: string): HoverSpring {
     return createRoot((dispose) => {
@@ -87,6 +124,9 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
         if (!layoutById.has(nodeId)) return;
         setStateById(nodeId, "ty", currentTy);
         setStateById(nodeId, "innerScale", currentScale);
+        if (hoverPhaseById[nodeId] === "settling" && isAtRest(currentTy, currentScale)) {
+          finishSettling(nodeId);
+        }
       });
 
       return {
@@ -111,34 +151,60 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
   function setHoverTarget(nodeId: string, hovered: boolean, isCompound: boolean) {
     if (!layoutById.has(nodeId)) return;
 
-    // Glow is always instant
-    setStateById(nodeId, "glow", hovered ? 1 : 0);
+    cancelSettleTimeout(nodeId);
 
-    if (isCompound) {
-      // Compounds: no lift, no scale
+    if (hovered) {
+      setHoverPhaseById(nodeId, "hovered");
+      setStateById(nodeId, "glow", 1);
+
+      if (isCompound) {
+        // Compounds: no lift, no scale.
+        setStateById(nodeId, "ty", 0);
+        setStateById(nodeId, "innerScale", 1);
+        return;
+      }
+
+      if (reducedMotion) {
+        setStateById(nodeId, "ty", -6);
+        setStateById(nodeId, "innerScale", 1.04);
+        return;
+      }
+
+      const spring = ensureHoverSpring(nodeId);
+      spring.setTarget(-6, 1.04);
+      return;
+    }
+
+    setStateById(nodeId, "glow", 0);
+
+    if (isCompound || reducedMotion) {
+      setHoverPhaseById(nodeId, "idle");
       setStateById(nodeId, "ty", 0);
       setStateById(nodeId, "innerScale", 1);
       return;
     }
 
-    if (reducedMotion) {
-      setStateById(nodeId, "ty", hovered ? -6 : 0);
-      setStateById(nodeId, "innerScale", hovered ? 1.04 : 1);
+    setHoverPhaseById(nodeId, "settling");
+    const spring = ensureHoverSpring(nodeId);
+    spring.setTarget(0, 1);
+    if (isAtRest(stateById[nodeId]?.ty ?? 0, stateById[nodeId]?.innerScale ?? 1)) {
+      finishSettling(nodeId);
       return;
     }
-
-    const spring = ensureHoverSpring(nodeId);
-    spring.setTarget(hovered ? -6 : 0, hovered ? 1.04 : 1);
+    scheduleSettleTimeout(nodeId);
   }
 
   function replaceGraph(nodes: GraphNode[]) {
     // Dispose all hover springs
     for (const spring of hoverSprings.values()) spring.dispose();
     hoverSprings.clear();
+    for (const timeout of settleTimeouts.values()) clearTimeout(timeout);
+    settleTimeouts.clear();
 
     layoutById.clear();
 
     const nextState: Record<string, PresentationState> = {};
+    const nextHoverPhase: Record<string, HoverPhase> = {};
     for (const node of nodes) {
       const width = node.size?.width ?? 150;
       const height = node.size?.height ?? 60;
@@ -147,16 +213,33 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
 
       layoutById.set(node.id, { x, y, width, height });
       nextState[node.id] = { ...DEFAULT_STATE };
+      nextHoverPhase[node.id] = "idle";
     }
 
     setStateById(reconcile(nextState));
+    setHoverPhaseById(reconcile(nextHoverPhase));
+  }
+
+  function seedEnteringNodes(nodeIds: string[]) {
+    for (const nodeId of nodeIds) {
+      patch(nodeId, { opacity: 0, innerScale: 0.82, ty: 16 });
+    }
+  }
+
+  function animateToDefault(nodeIds: string[]) {
+    for (const nodeId of nodeIds) {
+      patch(nodeId, { opacity: 1, innerScale: 1, ty: 0 });
+    }
   }
 
   function clear() {
     for (const spring of hoverSprings.values()) spring.dispose();
     hoverSprings.clear();
+    for (const timeout of settleTimeouts.values()) clearTimeout(timeout);
+    settleTimeouts.clear();
     layoutById.clear();
     setStateById(reconcile({}));
+    setHoverPhaseById(reconcile({}));
   }
 
   function layout(id: string): BaseLayout {
@@ -167,12 +250,20 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
     return stateById[id] ?? DEFAULT_STATE;
   }
 
+  function hoverPhase(id: string): HoverPhase {
+    return hoverPhaseById[id] ?? "idle";
+  }
+
   function tx(id: string): number {
     return stateById[id]?.tx ?? 0;
   }
 
   function ty(id: string): number {
     return stateById[id]?.ty ?? 0;
+  }
+
+  function innerScale(id: string): number {
+    return stateById[id]?.innerScale ?? 1;
   }
 
   function composedRect(id: string): ComposedRect {
@@ -184,13 +275,22 @@ export function createPresentationStateService(graph: Accessor<GraphDefinition>)
     setStateById(id, (prev) => ({ ...(prev ?? DEFAULT_STATE), ...next }));
   }
 
-  createEffect(() => {
-    replaceGraph(graph().nodes);
-  });
-
   onCleanup(() => clear());
 
-  return { replaceGraph, clear, tx, ty, state, composedRect, patch, setHoverTarget };
+  return {
+    replaceGraph,
+    seedEnteringNodes,
+    animateToDefault,
+    clear,
+    tx,
+    ty,
+    innerScale,
+    state,
+    hoverPhase,
+    composedRect,
+    patch,
+    setHoverTarget,
+  };
 }
 
 export type PresentationStateService = ReturnType<typeof createPresentationStateService>;

@@ -1,11 +1,16 @@
 export type NodeShape = "rounded" | "circle" | "pill" | "hexagon" | "octagon";
 
 const KIND_TO_SHAPE: Record<string, NodeShape> = {
-  cluster: "circle",
-  "behavioral-lifecycle": "circle",
-  store: "hexagon",
+  cluster: "rounded",
+  system: "rounded",
+  "behavioral-lifecycle": "rounded",
   "behavioral-stage": "pill",
+  store: "circle",
+  "agent-node": "hexagon",
   external: "octagon",
+  "file-node": "rounded",
+  "behavioral-step": "rounded",
+  "module-group": "rounded",
 };
 
 export function resolveNodeShape(kind: string, isCompound: boolean): NodeShape {

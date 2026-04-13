@@ -15,6 +15,8 @@ type EdgePathProps = {
   sourceTy: number;
   targetTx: number;
   targetTy: number;
+  sourceInnerScale?: number;
+  targetInnerScale?: number;
   dimmed: boolean;
   highlighted: boolean;
   labelVisible: boolean;
@@ -50,6 +52,19 @@ function offsetEndpoint(point: Point, adjacent: Point | undefined, tx: number, t
   const dx = adjacent.x - point.x;
   const dy = adjacent.y - point.y;
   return Math.hypot(dx, dy) > min ? { x: point.x + tx, y: point.y + ty } : point;
+}
+
+function scaleDimension(size: number, scale: number): number {
+  return size * scale;
+}
+
+function offsetScaledBoundaryPoint(point: Point, center: Point, scale: number): Point {
+  if (scale === 1) return point;
+
+  return {
+    x: center.x + (point.x - center.x) * scale,
+    y: center.y + (point.y - center.y) * scale,
+  };
 }
 
 export function getEdgeColor(kind: string) {
@@ -165,14 +180,20 @@ function buildPolylinePath(points: Point[], cornerRadius = 6): string {
 function buildDirectEdgeGeometry(
   source: ComposedRect, target: ComposedRect,
   sourceShape: NodeShape, targetShape: NodeShape,
+  sourceInnerScale: number,
+  targetInnerScale: number,
 ): EdgeGeometry {
   const sourceAnchor = anchorForShape(
     sourceShape, source.centerX, source.centerY,
-    source.width, source.height, target.centerX, target.centerY,
+    scaleDimension(source.width, sourceInnerScale),
+    scaleDimension(source.height, sourceInnerScale),
+    target.centerX, target.centerY,
   );
   const targetAnchor = anchorForShape(
     targetShape, target.centerX, target.centerY,
-    target.width, target.height, source.centerX, source.centerY,
+    scaleDimension(target.width, targetInnerScale),
+    scaleDimension(target.height, targetInnerScale),
+    source.centerX, source.centerY,
   );
   const dx = targetAnchor.x - sourceAnchor.x;
   const dy = targetAnchor.y - sourceAnchor.y;
@@ -205,13 +226,30 @@ function buildBentEdgeGeometry(
   sourceTy: number,
   targetTx: number,
   targetTy: number,
+  sourceInnerScale: number,
+  targetInnerScale: number,
 ): EdgeGeometry {
   // ELK bend points include start/end positions at node boundaries.
-  // Offset only first/last points by source/target tx/ty when segment is long enough.
+  // Offset only first/last points by source/target tx/ty when segment is long enough,
+  // then expand from the node center to match the visible scaled boundary.
   if (bendPoints.length >= 2) {
     const points = bendPoints.map((p, i) => {
-      if (i === 0) return offsetEndpoint(p, bendPoints[1], sourceTx, sourceTy);
-      if (i === bendPoints.length - 1) return offsetEndpoint(p, bendPoints[bendPoints.length - 2], targetTx, targetTy);
+      if (i === 0) {
+        const translated = offsetEndpoint(p, bendPoints[1], sourceTx, sourceTy);
+        return offsetScaledBoundaryPoint(
+          translated,
+          { x: source.centerX, y: source.centerY },
+          sourceInnerScale,
+        );
+      }
+      if (i === bendPoints.length - 1) {
+        const translated = offsetEndpoint(p, bendPoints[bendPoints.length - 2], targetTx, targetTy);
+        return offsetScaledBoundaryPoint(
+          translated,
+          { x: target.centerX, y: target.centerY },
+          targetInnerScale,
+        );
+      }
       return p;
     });
 
@@ -225,11 +263,15 @@ function buildBentEdgeGeometry(
   const point = bendPoints[0];
   const sourceAnchor = anchorForShape(
     sourceShape, source.centerX, source.centerY,
-    source.width, source.height, point.x, point.y,
+    scaleDimension(source.width, sourceInnerScale),
+    scaleDimension(source.height, sourceInnerScale),
+    point.x, point.y,
   );
   const targetAnchor = anchorForShape(
     targetShape, target.centerX, target.centerY,
-    target.width, target.height, point.x, point.y,
+    scaleDimension(target.width, targetInnerScale),
+    scaleDimension(target.height, targetInnerScale),
+    point.x, point.y,
   );
   const routedPoints = [sourceAnchor, point, targetAnchor];
 
@@ -249,12 +291,33 @@ function buildEdgeGeometry(
   sourceTy: number,
   targetTx: number,
   targetTy: number,
+  sourceInnerScale: number,
+  targetInnerScale: number,
 ): EdgeGeometry {
   if (edge.bendPoints?.length) {
-    return buildBentEdgeGeometry(source, target, sourceShape, targetShape, edge.bendPoints, sourceTx, sourceTy, targetTx, targetTy);
+    return buildBentEdgeGeometry(
+      source,
+      target,
+      sourceShape,
+      targetShape,
+      edge.bendPoints,
+      sourceTx,
+      sourceTy,
+      targetTx,
+      targetTy,
+      sourceInnerScale,
+      targetInnerScale,
+    );
   }
 
-  return buildDirectEdgeGeometry(source, target, sourceShape, targetShape);
+  return buildDirectEdgeGeometry(
+    source,
+    target,
+    sourceShape,
+    targetShape,
+    sourceInnerScale,
+    targetInnerScale,
+  );
 }
 
 export function EdgePath(props: EdgePathProps) {
@@ -262,7 +325,12 @@ export function EdgePath(props: EdgePathProps) {
     buildEdgeGeometry(
       props.edge, props.sourceRect, props.targetRect,
       props.sourceShape, props.targetShape,
-      props.sourceTx, props.sourceTy, props.targetTx, props.targetTy,
+      props.sourceTx,
+      props.sourceTy,
+      props.targetTx,
+      props.targetTy,
+      props.sourceInnerScale ?? 1,
+      props.targetInnerScale ?? 1,
     ),
   );
   const markerId = () => getMarkerIdForKind(props.edge.kind);
@@ -305,7 +373,7 @@ export function EdgePath(props: EdgePathProps) {
         data-kind={props.edge.kind}
         d={geometry().pathData}
         marker-end={`url(#${markerId()})`}
-        style={{ color: getEdgeColor(props.edge.kind) }}
+        style={{ stroke: getEdgeColor(props.edge.kind) }}
       />
       {props.labelVisible && props.edge.label ? (
         <g

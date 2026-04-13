@@ -48,6 +48,10 @@ function buildDelayMap(nodes: GraphNode[]) {
   return next;
 }
 
+function getMaxDelay(delayMap: Map<string, number>) {
+  return Math.max(...delayMap.values(), 0);
+}
+
 export function createTransitionService() {
   const [phase, setPhase] = createSignal<"idle" | "entering" | "exiting">("idle");
   const [enteringNodeIds, setEnteringNodeIds] = createSignal<Set<string>>(new Set());
@@ -96,7 +100,7 @@ export function createTransitionService() {
     }
 
     const delays = buildDelayMap(nodes);
-    const maxDelay = Math.max(...delays.values(), 0);
+    const maxDelay = getMaxDelay(delays);
 
     setPhase("entering");
     setExitingNodeIds(new Set());
@@ -109,12 +113,16 @@ export function createTransitionService() {
   };
 
   const getNodeDelay = (nodeId: string) => `${nodeDelayMap().get(nodeId) ?? 0}ms`;
+  const getNodeDelayMs = (nodeId: string) => nodeDelayMap().get(nodeId) ?? 0;
+  const exitTotalMs = () => EXIT_DURATION_MS + getMaxDelay(nodeDelayMap());
 
   return {
     phase,
     enteringNodeIds,
     exitingNodeIds,
     getNodeDelay,
+    getNodeDelayMs,
+    exitTotalMs,
     clear,
     startExit,
     startEnter,

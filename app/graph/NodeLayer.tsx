@@ -80,13 +80,15 @@ function GraphNodeItem(props: GraphNodeItemProps) {
   const relativeTop = () => absoluteTop() - (props.parentTop ?? 0);
 
   const visual = () => props.presentation.state(props.node.id);
+  const hoverPhase = () => props.presentation.hoverPhase(props.node.id);
+  const isElevated = () => hoverPhase() !== "idle";
   const zoomTier = () => computeZoomTier(props.node, props.zoom);
   const Card = () =>
     hasChildren() ? CompoundCard : getCardComponent(props.node.kind);
 
   const isFloating = () =>
     !hasChildren() &&
-    props.interaction.hoveredNodeId() !== props.node.id &&
+    !isElevated() &&
     !props.interaction.dimmedNodes().has(props.node.id) &&
     !props.transition.enteringNodeIds().has(props.node.id) &&
     !props.transition.exitingNodeIds().has(props.node.id);
@@ -104,7 +106,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         entering: props.transition.enteringNodeIds().has(props.node.id),
         exiting: props.transition.exitingNodeIds().has(props.node.id),
         "is-compound": hasChildren(),
-        "is-hovered": props.interaction.hoveredNodeId() === props.node.id,
+        "is-hovered": hoverPhase() === "hovered",
+        "is-settling": hoverPhase() === "settling",
       }}
       data-kind={props.node.kind}
       data-zoom-tier={zoomTier()}
@@ -113,7 +116,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         top: `${relativeTop()}px`,
         width: `${width()}px`,
         height: `${height()}px`,
-        "transition-delay": props.transition.getNodeDelay(props.node.id),
+        "z-index": isElevated() ? "40" : hasChildren() ? "1" : undefined,
+        "--node-transition-delay": props.transition.getNodeDelay(props.node.id),
         "--float-seed": String(floatSeed(props.node.id)),
       }}
       onMouseEnter={() => setHovered(true)}
