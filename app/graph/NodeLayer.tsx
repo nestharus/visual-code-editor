@@ -67,9 +67,15 @@ function sortNodes(nodes: GraphNode[]) {
   });
 }
 
+const DRILLABLE_KINDS = new Set([
+  "cluster", "behavioral-lifecycle-group", "system", "external",
+  "lifecycle", "behavioral-lifecycle", "stage", "behavioral-stage",
+]);
+
 function GraphNodeItem(props: GraphNodeItemProps) {
   const childNodes = () => props.childMap.get(props.node.id) ?? [];
   const hasChildren = () => childNodes().length > 0;
+  const isDrillable = () => DRILLABLE_KINDS.has(props.node.kind);
 
   const rect = () => props.presentation.composedRect(props.node.id);
   const absoluteLeft = () => rect().left;
@@ -176,6 +182,11 @@ function GraphNodeItem(props: GraphNodeItemProps) {
             >
               {"\u2139"}
             </button>
+          </Show>
+          <Show when={isDrillable() && !hasChildren()}>
+            <span class="graph-node-drill-indicator" title="Click to explore">
+              {"\u276F"}
+            </span>
           </Show>
           <Show when={props.playableNodeIds?.has(props.node.id)}>
             <span class="graph-node-behavior-indicator" title="Has behaviors">

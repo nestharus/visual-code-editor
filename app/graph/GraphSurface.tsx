@@ -513,7 +513,30 @@ export function GraphSurface(props: GraphSurfaceProps) {
         transport={modalTransport}
         onClose={closeShadowbox}
       />
-      {/* Scenario play buttons will be triggered from detail panels */}
+      {/* Edge type legend */}
+      <div class="graph-legend">
+        <details>
+          <summary>Legend</summary>
+          <div class="graph-legend-items">
+            <div class="graph-legend-item">
+              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#8b949e" stroke-width="2" /></svg>
+              <span>Default</span>
+            </div>
+            <div class="graph-legend-item">
+              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#d29922" stroke-width="2" stroke-dasharray="4 2" /></svg>
+              <span>Store</span>
+            </div>
+            <div class="graph-legend-item">
+              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#4fa9a0" stroke-width="2" /></svg>
+              <span>Behavioral</span>
+            </div>
+            <div class="graph-legend-item">
+              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#9D7BEE" stroke-width="2" stroke-dasharray="2 2" /></svg>
+              <span>Agent</span>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
