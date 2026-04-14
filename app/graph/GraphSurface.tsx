@@ -250,10 +250,16 @@ export function GraphSurface(props: GraphSurfaceProps) {
         setEdgesHidden(true);
         setDeepCardActive(true);
 
-        // Graph swap happens mid-tunnel
+        // Graph swap happens mid-tunnel, with entry animation for new nodes
         setTimeout(() => {
           if (sequence !== loadSequence) return;
+          const nextNodeIds = nextGraph.nodes.map((n) => n.id);
           replaceDisplayedGraph(nextGraph);
+          presentation.seedEnteringNodes(nextNodeIds);
+          transition.startEnter(nextGraph.nodes);
+          requestAnimationFrame(() => {
+            presentation.animateToDefault(nextNodeIds);
+          });
         }, 500);
 
         return;
@@ -269,8 +275,14 @@ export function GraphSurface(props: GraphSurfaceProps) {
         viewportHandle;
 
       if (useReverseDeepCard) {
-        // Swap graph first, then compute destination rect from data
+        // Swap graph first with entry animation, then compute destination rect
+        const nextNodeIds = nextGraph.nodes.map((n) => n.id);
         replaceDisplayedGraph(nextGraph);
+        presentation.seedEnteringNodes(nextNodeIds);
+        transition.startEnter(nextGraph.nodes);
+        requestAnimationFrame(() => {
+          presentation.animateToDefault(nextNodeIds);
+        });
         setEdgesHidden(true);
 
         // Compute destination rect from graph data + viewport transform
