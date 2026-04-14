@@ -165,13 +165,13 @@ export function createPresentationStateService(_graph: Accessor<GraphDefinition>
       }
 
       if (reducedMotion) {
-        setStateById(nodeId, "ty", -6);
-        setStateById(nodeId, "innerScale", 1.04);
+        setStateById(nodeId, "ty", -12);
+        setStateById(nodeId, "innerScale", 1.08);
         return;
       }
 
       const spring = ensureHoverSpring(nodeId);
-      spring.setTarget(-6, 1.04);
+      spring.setTarget(-12, 1.08);
       return;
     }
 
