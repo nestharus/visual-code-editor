@@ -290,9 +290,12 @@
 .graph-node.is-hovered .graph-card,
 .graph-node.is-settling .graph-card {
   box-shadow:
+    0 0 20px rgba(88, 166, 255, 0.3),
+    0 0 40px rgba(88, 166, 255, 0.15),
     0 20px 40px rgba(1, 4, 9, 0.5),
     0 8px 16px rgba(1, 4, 9, 0.4),
     inset 0 1px 0 rgba(240, 246, 252, 0.08);
+  border-color: var(--node-accent, #58a6ff);
 }
 
 /* --- Card shapes --- */
@@ -854,13 +857,14 @@
 
 .transport-pulse {
   fill: #58a6ff;
-  opacity: 0.6;
-  animation: token-pulse 0.3s ease-out forwards;
+  opacity: 0.8;
+  animation: token-pulse 0.6s ease-out forwards;
 }
 
 @keyframes token-pulse {
-  0% { r: 5; opacity: 0.9; }
-  100% { r: 14; opacity: 0; }
+  0% { r: 8; opacity: 0.9; }
+  50% { r: 18; opacity: 0.5; }
+  100% { r: 24; opacity: 0; }
 }
 
 /* Playback controls */

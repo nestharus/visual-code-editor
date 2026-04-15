@@ -125,7 +125,7 @@ export function ScenarioBox(props: ScenarioBoxProps) {
               <circle
                 cx={props.transport.getTokenPosition(token)?.x ?? -100}
                 cy={props.transport.getTokenPosition(token)?.y ?? -100}
-                r={token.status === "pulse" ? 8 : 5}
+                r={token.status === "pulse" ? 12 : 5}
                 classList={{
                   "transport-token": true,
                   "transport-pulse": token.status === "pulse",
