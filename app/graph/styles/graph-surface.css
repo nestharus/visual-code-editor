@@ -522,6 +522,7 @@
 .scenario-node.is-waiting .scenario-node-rect { stroke: rgba(88, 166, 255, 0.15); opacity: 0.5; }
 .scenario-node.is-waiting .scenario-node-label { fill: #484f58; }
 .scenario-edge-label { fill: #58a6ff; font-size: 9px; font-weight: 500; opacity: 0.9; }
+.transport-token-label { fill: #e6edf3; font-size: 8px; font-weight: 500; pointer-events: none; }
 
 .scenario-edge-path {
   fill: none; stroke: #484f58; stroke-width: 1.5; opacity: 0.6;

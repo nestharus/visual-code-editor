@@ -131,10 +131,19 @@ export function ScenarioBox(props: ScenarioBoxProps) {
 
         <g class="transport-layer">
           <For each={props.transport.tokens as readonly import("./TransportStore").TransportToken[]}>
-            {(token) => (
+            {(token) => {
+              const pos = () => props.transport.getTokenPosition(token);
+              const tokenLabel = () => {
+                const beat = activeBeat();
+                if (!beat?.caption || token.status === "done") return null;
+                const parts = beat.caption.split(":");
+                return parts.length > 1 ? parts[1].split("\u2014")[0].trim() : null;
+              };
+              return (
+                <>
               <circle
-                cx={props.transport.getTokenPosition(token)?.x ?? -100}
-                cy={props.transport.getTokenPosition(token)?.y ?? -100}
+                cx={pos()?.x ?? -100}
+                cy={pos()?.y ?? -100}
                 r={token.status === "pulse" ? 12 : 5}
                 classList={{
                   "transport-token": true,
@@ -142,7 +151,18 @@ export function ScenarioBox(props: ScenarioBoxProps) {
                   "transport-hidden": token.status === "done",
                 }}
               />
-            )}
+              {tokenLabel() && token.status === "traveling" ? (
+                <text
+                  class="transport-token-label"
+                  x={(pos()?.x ?? 0) + 8}
+                  y={(pos()?.y ?? 0) - 8}
+                >
+                  {tokenLabel()}
+                </text>
+              ) : null}
+                </>
+              );
+            }}
           </For>
         </g>
 
