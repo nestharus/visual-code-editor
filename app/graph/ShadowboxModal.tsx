@@ -42,7 +42,27 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
                 </div>
               )}
             </Show>
-            <Show when={props.playback.scenario() && props.playback.status() !== "idle"}>
+            {/* Preamble: show scenario overview before playback starts */}
+            <Show when={props.playback.scenario() && (props.playback.status() === "idle" || props.playback.status() === "loading")}>
+              {(() => {
+                const scenario = props.playback.scenario()!;
+                return (
+                  <div class="shadowbox-modal-preamble">
+                    <Show when={scenario.caption}>
+                      <div class="shadowbox-modal-preamble-desc">{scenario.caption}</div>
+                    </Show>
+                    <div class="shadowbox-modal-preamble-meta">
+                      {scenario.participants.length} participants — {scenario.beats.length} steps
+                    </div>
+                    <div class="shadowbox-modal-preamble-hint">
+                      Press play to begin
+                    </div>
+                  </div>
+                );
+              })()}
+            </Show>
+            {/* Progress during playback */}
+            <Show when={props.playback.scenario() && props.playback.status() !== "idle" && props.playback.status() !== "loading"}>
               <div class="shadowbox-modal-progress">
                 Step {props.playback.currentBeatIndex() + 1} of {props.playback.scenario()!.beats.length}
                 <div class="shadowbox-modal-progress-bar">

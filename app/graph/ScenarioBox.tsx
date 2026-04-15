@@ -143,10 +143,24 @@ export function ScenarioBox(props: ScenarioBoxProps) {
               const beat = activeBeat();
               return beat?.fromNodeId === node.id || beat?.toNodeId === node.id;
             };
+            const wasVisited = () => {
+              const idx = props.currentBeatIndex;
+              const beats = props.scenario.beats;
+              for (let i = 0; i <= idx; i++) {
+                const b = beats[i];
+                if (b?.fromNodeId === node.id || b?.toNodeId === node.id) return true;
+              }
+              return false;
+            };
 
             return (
               <g
-                classList={{ "scenario-node": true, "is-active": isActive() }}
+                classList={{
+                  "scenario-node": true,
+                  "is-active": isActive(),
+                  "is-visited": wasVisited() && !isActive(),
+                  "is-waiting": !wasVisited() && !isActive(),
+                }}
                 transform={`translate(${node.x}, ${node.y})`}
               >
                 <rect

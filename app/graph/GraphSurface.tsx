@@ -474,6 +474,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
           interaction={interaction}
           transition={transition}
           presentation={presentation}
+          zoom={zoomLevel()}
         />
         <HighlightedEdgeLayer
           graph={activeGraph()}

@@ -38,6 +38,7 @@ type BaseEdgeLayerProps = {
   interaction: InteractionService;
   transition: TransitionService;
   presentation: PresentationStateService;
+  zoom: number;
 };
 
 export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
@@ -82,7 +83,7 @@ export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
                 targetInnerScale={props.presentation.innerScale(edge.target)}
                 dimmed={props.interaction.dimmedEdges().has(edge.id)}
                 highlighted={false}
-                labelVisible={false}
+                labelVisible={props.zoom >= 0.8}
               />
             );
           }}

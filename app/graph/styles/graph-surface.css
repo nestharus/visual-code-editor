@@ -517,6 +517,10 @@
 
 .scenario-node-label { fill: #c9d1d9; font-size: 11px; font-weight: 500; }
 .scenario-node.is-active .scenario-node-label { fill: #e6edf3; }
+.scenario-node.is-visited .scenario-node-rect { stroke: rgba(88, 166, 255, 0.3); stroke-dasharray: 3 2; }
+.scenario-node.is-visited .scenario-node-label { fill: #8b949e; }
+.scenario-node.is-waiting .scenario-node-rect { stroke: rgba(88, 166, 255, 0.15); opacity: 0.5; }
+.scenario-node.is-waiting .scenario-node-label { fill: #484f58; }
 
 .scenario-edge-path {
   fill: none; stroke: #484f58; stroke-width: 1.5; opacity: 0.6;
@@ -544,6 +548,10 @@
 .shadowbox-modal-progress { font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; justify-content: center; }
 .shadowbox-modal-progress-bar { flex: 0 0 120px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 .shadowbox-modal-progress-fill { height: 100%; background: #58a6ff; border-radius: 2px; transition: width 300ms ease; }
+.shadowbox-modal-preamble { text-align: center; padding: 4px 0; }
+.shadowbox-modal-preamble-desc { font-size: 0.85rem; line-height: 1.5; color: #c9d1d9; margin-bottom: 6px; }
+.shadowbox-modal-preamble-meta { font-size: 0.75rem; color: #8b949e; margin-bottom: 8px; }
+.shadowbox-modal-preamble-hint { font-size: 0.72rem; color: #58a6ff; opacity: 0.7; }
 .shadowbox-modal-caption-text { font-size: 0.82rem; line-height: 1.4; color: #c9d1d9; }
 .shadowbox-modal-caption-complete { font-size: 0.78rem; color: #8b949e; margin-top: 4px; }
 .shadowbox-modal-controls { pointer-events: auto; }
