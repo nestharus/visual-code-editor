@@ -42,7 +42,7 @@ function buildElkChildren(
         height: size.height,
         children: hasChildren ? children : undefined,
         layoutOptions: hasChildren
-          ? { "elk.padding": "[top=30,left=10,bottom=10,right=10]" }
+          ? { "elk.padding": "[top=36,left=20,bottom=20,right=20]" }
           : undefined,
       };
     });
@@ -207,9 +207,10 @@ export async function computeElkLayout(
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": graph.direction === "RIGHT" ? "RIGHT" : "DOWN",
-      "elk.spacing.nodeNode": "60",
-      "elk.spacing.edgeNode": "40",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+      "elk.spacing.nodeNode": "80",
+      "elk.spacing.edgeNode": "60",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+      "elk.layered.spacing.edgeNodeBetweenLayers": "40",
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.hierarchyHandling": "INCLUDE_CHILDREN",

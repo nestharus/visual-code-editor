@@ -114,6 +114,16 @@ export function ScenarioBox(props: ScenarioBoxProps) {
                   cy={edge.to.y}
                   r={4}
                 />
+                {isActive && edge.label ? (
+                  <text
+                    class="scenario-edge-label"
+                    x={(edge.from.x + edge.to.x) / 2}
+                    y={(edge.from.y + edge.to.y) / 2 - 10}
+                    text-anchor="middle"
+                  >
+                    {edge.label.split(":")[0]?.trim()}
+                  </text>
+                ) : null}
               </g>
             );
           }}
