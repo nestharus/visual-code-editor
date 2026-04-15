@@ -247,7 +247,7 @@ def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
                     to_label = org_node_labels.get(current_system, current_system)
                     caption = f"{from_label} \u2192 {to_label}: {step_label}"
                     if step_desc:
-                        caption += f" \u2014 {step_desc[:120]}"
+                        caption += f" \u2014 {step_desc}"
                     beats.append({
                         "id": beat_id,
                         "kind": "path",
