@@ -783,6 +783,31 @@
   opacity: 1;
 }
 
+.graph-node.is-selected > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow: 0 0 0 2px var(--accent, #58a6ff), 0 0 12px rgba(88, 166, 255, 0.3);
+}
+
+.graph-node.is-selected .graph-node-select-check {
+  display: flex;
+}
+
+.graph-node-select-check {
+  display: none;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent, #58a6ff);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  z-index: 5;
+  pointer-events: none;
+}
+
 .graph-node-info-btn:hover {
   background: rgba(88, 166, 255, 0.2);
   border-color: rgba(88, 166, 255, 0.5);

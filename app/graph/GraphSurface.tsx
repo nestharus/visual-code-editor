@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
 
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { DeepCardOverlay } from "./DeepCardOverlay";
@@ -38,6 +38,19 @@ type GraphSurfaceProps = {
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
+  onSelectionApi?: (api: GraphSelectionApi) => void;
+};
+
+export type PromptSelectionItem = {
+  id: string;
+  kind: string;
+  label: string;
+};
+
+export type GraphSelectionApi = {
+  selectedNodes: Accessor<PromptSelectionItem[]>;
+  toggleSelection: (nodeId: string) => void;
+  clearSelection: () => void;
 };
 
 const EMPTY_GRAPH: GraphDefinition = {
@@ -436,6 +449,47 @@ export function GraphSurface(props: GraphSurfaceProps) {
     const data = props.scenarioData;
     if (!data?.bindings) return new Set<string>();
     return new Set(Object.keys(data.bindings));
+  });
+
+  const selectedNodes = createMemo<PromptSelectionItem[]>(() => {
+    const selectedIds = interaction.selectedNodeIds();
+    if (selectedIds.size === 0) return [];
+
+    const nodesById = new Map(activeGraph().nodes.map((node) => [node.id, node]));
+    const next: PromptSelectionItem[] = [];
+    for (const nodeId of selectedIds) {
+      const node = nodesById.get(nodeId);
+      if (!node) continue;
+      next.push({
+        id: node.id,
+        kind: node.kind,
+        label: node.label,
+      });
+    }
+    return next;
+  });
+
+  const selectionApi: GraphSelectionApi = {
+    selectedNodes,
+    toggleSelection: interaction.toggleSelection,
+    clearSelection: interaction.clearSelection,
+  };
+
+  createEffect(() => {
+    props.onSelectionApi?.(selectionApi);
+  });
+
+  createEffect(() => {
+    const selectedIds = interaction.selectedNodeIds();
+    if (selectedIds.size === 0) return;
+
+    const nodeIds = new Set(activeGraph().nodes.map((node) => node.id));
+    for (const nodeId of selectedIds) {
+      if (!nodeIds.has(nodeId)) {
+        interaction.clearSelection();
+        return;
+      }
+    }
   });
 
   const closeShadowbox = () => {

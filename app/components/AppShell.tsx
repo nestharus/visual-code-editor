@@ -1,14 +1,17 @@
 import { useNavigate, useLocation, Link } from "@tanstack/solid-router";
 import {
   createContext,
+  createEffect,
   createMemo,
   createSignal,
+  Show,
   useContext,
   type ParentComponent,
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
+import { PromptDock } from "./PromptDock";
 import { SearchOverlay } from "./SearchOverlay";
-import { GraphSurface } from "../graph/GraphSurface";
+import { GraphSurface, type GraphSelectionApi } from "../graph/GraphSurface";
 import type { GraphDefinition } from "../graph/layout/types";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { useWatchSubscription } from "../lib/live/useWatchSubscription";
@@ -65,6 +68,8 @@ export const AppShell: ParentComponent = (props) => {
   const [searchLoading, setSearchLoading] = createSignal(false);
   const [searchResultCount, setSearchResultCount] = createSignal(0);
   const [searchOpenRequest, setSearchOpenRequest] = createSignal(0);
+  const [selectionApi, setSelectionApi] = createSignal<GraphSelectionApi | undefined>();
+  const [promptDockOpen, setPromptDockOpen] = createSignal(false);
   let searchRequestVersion = 0;
 
   const publish = (data: DiagramShellData) => {
@@ -132,6 +137,20 @@ export const AppShell: ParentComponent = (props) => {
     );
   });
 
+  const selectedPromptNodes = createMemo(() => selectionApi()?.selectedNodes() ?? []);
+
+  createEffect(() => {
+    location().pathname;
+    selectionApi()?.clearSelection();
+    setPromptDockOpen(false);
+  });
+
+  createEffect(() => {
+    if (selectedPromptNodes().length === 0) {
+      setPromptDockOpen(false);
+    }
+  });
+
   const handleSearch = async (query: string) => {
     const requestVersion = ++searchRequestVersion;
     setSearchQuery(query);
@@ -178,9 +197,42 @@ export const AppShell: ParentComponent = (props) => {
     setSearchResultCount(0);
   };
 
+  const handlePromptSubmit = async (prompt: string) => {
+    const selection = selectedPromptNodes();
+    if (selection.length === 0) {
+      throw new Error("Select at least one entity before prompting.");
+    }
+
+    const response = await fetch(`${WATCHER_URL}/api/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pathname: location().pathname,
+        prompt,
+        selection,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Prompt request failed");
+    }
+
+    const data = await response.json();
+    if (!data || typeof data.response !== "string") {
+      throw new Error("Prompt response missing text");
+    }
+
+    return data.response;
+  };
+
   return (
     <DiagramShellContext.Provider value={{ publish }}>
-      <div class="page-shell">
+      <div
+        classList={{
+          "page-shell": true,
+          "has-prompt-dock": promptDockOpen() && selectedPromptNodes().length > 0,
+        }}
+      >
         <SearchOverlay
           onSearch={handleSearch}
           onClear={handleClearSearch}
@@ -213,6 +265,19 @@ export const AppShell: ParentComponent = (props) => {
               </svg>
               <span>Search</span>
             </button>
+            <Show when={selectedPromptNodes().length > 0}>
+              <button
+                type="button"
+                classList={{
+                  button: true,
+                  "toolbar-prompt-btn": true,
+                  "is-open": promptDockOpen(),
+                }}
+                onClick={() => setPromptDockOpen(true)}
+              >
+                {`Prompt (${selectedPromptNodes().length})`}
+              </button>
+            </Show>
             <div class="view-toggle" role="tablist">
               <button
                 type="button"
@@ -301,6 +366,7 @@ export const AppShell: ParentComponent = (props) => {
                     : (edgeId, kind, label) =>
                         diagramData()?.onEdgeTap(edgeId, kind, label)
                 }
+                onSelectionApi={(api) => setSelectionApi(() => api)}
               />
               <div
                 style={{
@@ -316,6 +382,14 @@ export const AppShell: ParentComponent = (props) => {
           </main>
           <DetailPanel />
         </div>
+        <PromptDock
+          isOpen={promptDockOpen() && selectedPromptNodes().length > 0}
+          selection={selectedPromptNodes()}
+          onToggleSelection={(nodeId) => selectionApi()?.toggleSelection(nodeId)}
+          onClearSelection={() => selectionApi()?.clearSelection()}
+          onSubmit={handlePromptSubmit}
+          onClose={() => setPromptDockOpen(false)}
+        />
       </div>
     </DiagramShellContext.Provider>
   );

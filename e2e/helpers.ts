@@ -99,6 +99,20 @@ export async function setupMockApi(page: Page) {
     });
   });
 
+  await page.route("**/api/prompt", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    const selected = Array.isArray(body.selection) ? body.selection : [];
+    const labels = selected.map((s: any) => s.label).join(", ");
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        response: `Analysis of ${selected.length} entities (${labels}): These entities are part of the system architecture and interact through defined edges. The selected components handle core functionality.`,
+      }),
+    });
+  });
+
   // Static site pages for panel content — return template HTML for any entity
   await page.route("**/site/**", async (route) => {
     const url = new URL(route.request().url());

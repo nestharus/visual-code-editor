@@ -111,6 +111,25 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
     setFlowEdgeIds(new Set());
   }
 
+  const [selectedNodeIds, setSelectedNodeIds] = createSignal<Set<string>>(new Set());
+
+  function toggleSelection(nodeId: string) {
+    setSelectedNodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        if (next.size >= 10) return prev;
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedNodeIds(new Set());
+  }
+
   const isFlowActive = createMemo(() => flowNodeIds().size > 0 || flowEdgeIds().size > 0);
 
   const overlayEdgeIds = createMemo(() => {
@@ -135,6 +154,9 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
     setFlowFocus,
     clearFlowFocus,
     isFlowActive,
+    selectedNodeIds,
+    toggleSelection,
+    clearSelection,
   };
 }
 

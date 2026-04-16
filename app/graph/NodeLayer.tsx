@@ -113,6 +113,7 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         exiting: props.transition.exitingNodeIds().has(props.node.id),
         "is-compound": hasChildren(),
         "is-hovered": hoverPhase() === "hovered",
+        "is-selected": props.interaction.selectedNodeIds().has(props.node.id),
         "is-settling": hoverPhase() === "settling",
       }}
       data-kind={props.node.kind}
@@ -130,6 +131,10 @@ function GraphNodeItem(props: GraphNodeItemProps) {
       onMouseLeave={() => setHovered(false)}
       onClick={(event) => {
         event.stopPropagation();
+        if (event.ctrlKey || event.metaKey) {
+          props.interaction.toggleSelection(props.node.id);
+          return;
+        }
         const el = event.currentTarget as HTMLElement;
         captureClickRect(
           el.getBoundingClientRect(),
@@ -145,6 +150,9 @@ function GraphNodeItem(props: GraphNodeItemProps) {
           opacity: visual().opacity,
         }}
       >
+        <span class="graph-node-select-check" aria-hidden="true">
+          {"\u2713"}
+        </span>
         <div classList={{ "graph-node-float": true, "is-floating": isFloating() }}>
           <Dynamic component={Card()} node={props.node} zoomTier={zoomTier()}>
             <For each={sortNodes(childNodes())}>

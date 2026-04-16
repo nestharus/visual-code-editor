@@ -149,6 +149,55 @@ test.describe("Graph Surface Interactions", () => {
   });
 });
 
+test.describe("Card Selection + Prompting", () => {
+  test("Ctrl+click selects a card", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    const node = nodeByText(page, "cluster", "Alpha");
+    await node.click({ modifiers: ["Control"] });
+    await expect(node).toHaveClass(/is-selected/);
+  });
+
+  test("plain click still drills down (not select)", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    const node = nodeByText(page, "cluster", "Alpha");
+    await node.click({ force: true });
+    await page.waitForURL("**/organizational/clusters/cluster-alpha");
+  });
+
+  test("multiple cards can be selected", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    await nodeByText(page, "cluster", "Alpha").click({ modifiers: ["Control"] });
+    await nodeByText(page, "cluster", "Beta").click({ modifiers: ["Control"] });
+
+    await expect(page.locator(".graph-node.is-selected")).toHaveCount(2);
+  });
+
+  test("prompt dock opens when selection exists and prompt button clicked", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    await nodeByText(page, "cluster", "Alpha").click({ modifiers: ["Control"] });
+    await page.locator(".toolbar-prompt-btn").click();
+
+    await expect(page.locator(".prompt-dock")).toBeVisible();
+  });
+
+  test("submitting prompt shows response", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    await nodeByText(page, "cluster", "Alpha").click({ modifiers: ["Control"] });
+    await page.locator(".toolbar-prompt-btn").click();
+    await page.locator(".prompt-dock-input").fill("Summarize this entity");
+    await page.locator(".prompt-dock-submit").click();
+    await page.waitForTimeout(1000);
+
+    await expect(page.locator(".prompt-dock-response")).toBeVisible();
+    await expect(page.locator(".prompt-dock-response")).toContainText("Analysis of 1 entities");
+  });
+});
+
 test.describe("CTRL+F Search", () => {
   test("Ctrl+F opens search overlay", async ({ page }) => {
     await gotoDiagram(page, "/organizational");

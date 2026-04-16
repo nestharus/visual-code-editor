@@ -202,6 +202,17 @@ app.get("/api/diagram", async (_req, res) => {
   }
 });
 
+app.post("/api/prompt", (req, res) => {
+  const selection = Array.isArray(req.body?.selection) ? req.body.selection : [];
+  const labels = selection
+    .map((item) => (item && typeof item.label === "string" ? item.label : "unnamed"))
+    .join(", ");
+
+  res.json({
+    response: `Analysis of ${selection.length} entities (${labels}): These entities are part of the system architecture and interact through defined edges. The selected components handle core functionality.`,
+  });
+});
+
 // Serve static site pages
 const SITE_DIR = join(PROJECT_ROOT, "..", "agent-implementation-skill", "execution-philosophy", "diagrams", "site");
 app.use("/site", express.static(SITE_DIR));
