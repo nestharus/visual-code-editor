@@ -1,5 +1,6 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
 
+import type { DiagramEntityTestRecord } from "../lib/diagram-data";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import { DeepCardOverlay } from "./DeepCardOverlay";
 import {
@@ -39,6 +40,8 @@ type GraphSurfaceProps = {
   onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap?: (edgeId: string, kind: string, label: string) => void;
   onSelectionApi?: (api: GraphSelectionApi) => void;
+  testByEntity?: Record<string, DiagramEntityTestRecord>;
+  testsVisible?: boolean;
 };
 
 export type PromptSelectionItem = {
@@ -547,6 +550,8 @@ export function GraphSurface(props: GraphSurfaceProps) {
           onNodeTap={props.onNodeTap}
           onNodeInfo={props.onNodeInfo}
           playableNodeIds={playableNodeIds()}
+          testByEntity={props.testByEntity}
+          testsVisible={props.testsVisible}
         />
         <EdgeHitLayer
           graph={activeGraph()}

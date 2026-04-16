@@ -52,6 +52,28 @@ export type DiagramCodeIndex = {
   blocks: Record<string, DiagramCodeBlock>;
 };
 
+export type DiagramEntityTestRecord = {
+  status: "failed" | "passed" | "skipped" | "not-run";
+  passing: number;
+  failing: number;
+  skipped?: number;
+  coveragePct?: number | null;
+  scope?: "direct" | "rollup";
+};
+
+export type DiagramTests = {
+  run: {
+    id: string;
+    source: "fixture";
+    generatedAt: string;
+    status: "failed" | "passed";
+    passed: number;
+    failed: number;
+    skipped: number;
+  };
+  byEntity: Record<string, DiagramEntityTestRecord>;
+};
+
 export type DiagramData = {
   organizational: {
     root: DiagramSlice;
@@ -120,6 +142,7 @@ export type DiagramData = {
     }>;
     bindings: Record<string, string[]>;
   };
+  tests?: DiagramTests;
   code?: DiagramCodeIndex;
   details: Record<string, DiagramDetailRecord>;
 };

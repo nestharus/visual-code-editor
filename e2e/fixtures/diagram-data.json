@@ -378,6 +378,61 @@
       "system-a3": ["scenario:replay-pipeline"]
     }
   },
+  "tests": {
+    "run": {
+      "id": "fixture-run-2026-04-16",
+      "source": "fixture",
+      "generatedAt": "2026-04-16T03:00:00Z",
+      "status": "failed",
+      "passed": 118,
+      "failed": 4,
+      "skipped": 2
+    },
+    "byEntity": {
+      "file-entry.ts": {
+        "status": "passed",
+        "passing": 14,
+        "failing": 0,
+        "coveragePct": 92,
+        "scope": "direct"
+      },
+      "file-router.ts": {
+        "status": "passed",
+        "passing": 9,
+        "failing": 0,
+        "coveragePct": 76,
+        "scope": "direct"
+      },
+      "file-replay-worker.ts": {
+        "status": "failed",
+        "passing": 6,
+        "failing": 2,
+        "coveragePct": 41,
+        "scope": "direct"
+      },
+      "file-dead-letter.ts": {
+        "status": "failed",
+        "passing": 3,
+        "failing": 1,
+        "coveragePct": 35,
+        "scope": "direct"
+      },
+      "agent-replay": {
+        "status": "passed",
+        "passing": 4,
+        "failing": 0,
+        "coveragePct": 88,
+        "scope": "direct"
+      },
+      "system-a3": {
+        "status": "failed",
+        "passing": 31,
+        "failing": 3,
+        "coveragePct": 68,
+        "scope": "rollup"
+      }
+    }
+  },
   "code": {
     "byEntity": {
       "file-entry.ts": ["cb-entry-bootstrap"],

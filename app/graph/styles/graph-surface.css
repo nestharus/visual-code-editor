@@ -957,3 +957,67 @@
     min-height: 420px;
   }
 }
+
+/* Test runner overlay */
+.graph-node-test-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 6;
+  color: #fff;
+}
+
+.graph-node-test-badge--failed {
+  background: #f85149;
+  box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.8);
+}
+
+.graph-node-test-badge--passed {
+  background: #3fb950;
+  box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.8);
+  opacity: 0.8;
+}
+
+/* Coverage shading — only when not dimmed or selected */
+.graph-node[data-test-coverage="high"]:not(.dimmed):not(.is-selected) > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow:
+    0 14px 32px rgba(1, 4, 9, 0.24),
+    inset 0 1px 0 rgba(240, 246, 252, 0.06),
+    inset 0 0 0 1px rgba(63, 185, 80, calc(var(--test-coverage-alpha, 0) * 3));
+  background:
+    linear-gradient(180deg, rgba(63, 185, 80, var(--test-coverage-alpha, 0)), rgba(63, 185, 80, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+}
+
+.graph-node[data-test-coverage="medium"]:not(.dimmed):not(.is-selected) > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow:
+    0 14px 32px rgba(1, 4, 9, 0.24),
+    inset 0 1px 0 rgba(240, 246, 252, 0.06),
+    inset 0 0 0 1px rgba(210, 153, 34, calc(var(--test-coverage-alpha, 0) * 3));
+  background:
+    linear-gradient(180deg, rgba(210, 153, 34, var(--test-coverage-alpha, 0)), rgba(210, 153, 34, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+}
+
+.graph-node[data-test-coverage="low"]:not(.dimmed):not(.is-selected) > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow:
+    0 14px 32px rgba(1, 4, 9, 0.24),
+    inset 0 1px 0 rgba(240, 246, 252, 0.06),
+    inset 0 0 0 1px rgba(248, 81, 73, calc(var(--test-coverage-alpha, 0) * 3));
+  background:
+    linear-gradient(180deg, rgba(248, 81, 73, var(--test-coverage-alpha, 0)), rgba(248, 81, 73, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+}

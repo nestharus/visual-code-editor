@@ -828,6 +828,30 @@
   font-size: 0.82rem;
 }
 
+.toolbar-tests-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  border-color: rgba(72, 79, 88, 0.5);
+}
+
+.toolbar-tests-btn.is-active {
+  border-color: rgba(88, 166, 255, 0.55);
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.16), rgba(88, 166, 255, 0.08));
+}
+
+.toolbar-tests-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b949e;
+}
+
+.toolbar-tests-dot[data-status="passed"] { background: #3fb950; }
+.toolbar-tests-dot[data-status="failed"] { background: #f85149; }
+
 .watcher-status-dot {
   display: inline-block;
   width: 8px;

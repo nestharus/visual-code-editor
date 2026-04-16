@@ -75,7 +75,15 @@ export const AppShell: ParentComponent = (props) => {
   const [selectionApi, setSelectionApi] = createSignal<GraphSelectionApi | undefined>();
   const [watcherPanelOpen, setWatcherPanelOpen] = createSignal(false);
   const [promptDockOpen, setPromptDockOpen] = createSignal(false);
+  const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
   let searchRequestVersion = 0;
+
+  function initialTestsVisible(): boolean {
+    if (typeof window === "undefined") return true;
+    const stored = window.sessionStorage?.getItem("testsVisible");
+    if (stored === "false") return false;
+    return true;
+  }
 
   const publish = (data: DiagramShellData) => {
     setDiagramData(() => data);
@@ -143,6 +151,9 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   const selectedPromptNodes = createMemo(() => selectionApi()?.selectedNodes() ?? []);
+  const testsData = createMemo(() => diagramQuery.data?.tests ?? null);
+  const testByEntity = createMemo(() => testsData()?.byEntity ?? {});
+  const hasTests = createMemo(() => Object.keys(testByEntity()).length > 0);
 
   createEffect(() => {
     location().pathname;
@@ -154,6 +165,11 @@ export const AppShell: ParentComponent = (props) => {
     if (selectedPromptNodes().length === 0) {
       setPromptDockOpen(false);
     }
+  });
+
+  createEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage?.setItem("testsVisible", testsVisible() ? "true" : "false");
   });
 
   const handleSearch = async (query: string) => {
@@ -277,6 +293,23 @@ export const AppShell: ParentComponent = (props) => {
                 <span class="watcher-refresh-badge">↻</span>
               </Show>
             </button>
+            <Show when={hasTests()}>
+              <button
+                type="button"
+                classList={{
+                  button: true,
+                  "toolbar-tests-btn": true,
+                  "is-active": testsVisible(),
+                }}
+                role="switch"
+                aria-checked={testsVisible()}
+                aria-label={`Test overlays ${testsVisible() ? "on" : "off"}`}
+                onClick={() => setTestsVisible((value) => !value)}
+              >
+                <span class="toolbar-tests-dot" data-status={testsData()?.run.status} />
+                <span>Tests</span>
+              </button>
+            </Show>
             <button
               type="button"
               class="button toolbar-search-btn"
@@ -365,6 +398,8 @@ export const AppShell: ParentComponent = (props) => {
                 elements={searchActive() ? undefined : diagramData()?.elements() || []}
                 mermaidText={searchActive() ? undefined : diagramData()?.mermaidText()}
                 scenarioData={searchActive() ? undefined : diagramQuery.data?.combined}
+                testByEntity={testByEntity()}
+                testsVisible={testsVisible()}
                 onNodeTap={(nodeId, kind, label) => {
                   if (searchActive()) {
                     navigate({

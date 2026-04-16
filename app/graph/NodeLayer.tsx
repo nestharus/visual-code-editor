@@ -1,6 +1,7 @@
 import { For, Show, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
+import type { DiagramEntityTestRecord } from "../lib/diagram-data";
 import { captureClickRect } from "./DrillTransition";
 import { resolveNodeShape } from "./layout/shapes";
 import type { InteractionService } from "./InteractionService";
@@ -9,6 +10,7 @@ import type { TransitionService } from "./TransitionService";
 import { CompoundCard } from "./cards/CompoundCard";
 import { getCardComponent, type GraphZoomTier } from "./cards/CardRegistry";
 import type { GraphDefinition, GraphNode } from "./layout/types";
+import { coverageAlpha, coverageBucket, safeCoverage } from "./test-overlay";
 
 const NAVIGABLE_KINDS = new Set([
   "cluster", "system", "external",
@@ -23,6 +25,8 @@ type NodeLayerProps = {
   transition: TransitionService;
   presentation: PresentationStateService;
   playableNodeIds?: Set<string>;
+  testByEntity?: Record<string, DiagramEntityTestRecord>;
+  testsVisible?: boolean;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
 };
@@ -37,6 +41,8 @@ type GraphNodeItemProps = {
   onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
   presentation: PresentationStateService;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
+  testByEntity?: Record<string, DiagramEntityTestRecord>;
+  testsVisible?: boolean;
   parentLeft?: number;
   parentTop?: number;
 };
@@ -91,6 +97,13 @@ function GraphNodeItem(props: GraphNodeItemProps) {
   const zoomTier = () => computeZoomTier(props.node, props.zoom);
   const Card = () =>
     hasChildren() ? CompoundCard : getCardComponent(props.node.kind);
+  const testRecord = () => {
+    if (!props.testsVisible) return null;
+    return props.testByEntity?.[props.node.id] ?? null;
+  };
+  const testStatus = () => testRecord()?.status ?? null;
+  const cov = () => safeCoverage(testRecord()?.coveragePct);
+  const bucket = () => coverageBucket(cov());
 
   const isFloating = () =>
     !hasChildren() &&
@@ -117,6 +130,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         "is-settling": hoverPhase() === "settling",
       }}
       data-kind={props.node.kind}
+      data-test-status={testStatus() ?? undefined}
+      data-test-coverage={bucket() === "none" ? undefined : bucket()}
       data-zoom-tier={zoomTier()}
       style={{
         left: `${relativeLeft()}px`,
@@ -126,6 +141,7 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         "z-index": isElevated() ? "40" : hasChildren() ? "1" : undefined,
         "--node-transition-delay": props.transition.getNodeDelay(props.node.id),
         "--float-seed": String(floatSeed(props.node.id)),
+        "--test-coverage-alpha": String(coverageAlpha(cov())),
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -153,6 +169,18 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         <span class="graph-node-select-check" aria-hidden="true">
           {"\u2713"}
         </span>
+        <Show when={testStatus() === "failed" || testStatus() === "passed"}>
+          <span
+            class="graph-node-test-badge"
+            classList={{
+              "graph-node-test-badge--failed": testStatus() === "failed",
+              "graph-node-test-badge--passed": testStatus() === "passed",
+            }}
+            aria-hidden="true"
+          >
+            {testStatus() === "failed" ? "\u2715" : "\u2713"}
+          </span>
+        </Show>
         <div classList={{ "graph-node-float": true, "is-floating": isFloating() }}>
           <Dynamic component={Card()} node={props.node} zoomTier={zoomTier()}>
             <For each={sortNodes(childNodes())}>
@@ -167,6 +195,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
                   onNodeTap={props.onNodeTap}
                   onNodeInfo={props.onNodeInfo}
                   playableNodeIds={props.playableNodeIds}
+                  testByEntity={props.testByEntity}
+                  testsVisible={props.testsVisible}
                   parentLeft={absoluteLeft()}
                   parentTop={absoluteTop()}
                 />
@@ -247,6 +277,8 @@ export function NodeLayer(props: NodeLayerProps) {
             onNodeTap={props.onNodeTap}
             onNodeInfo={props.onNodeInfo}
             playableNodeIds={props.playableNodeIds}
+            testByEntity={props.testByEntity}
+            testsVisible={props.testsVisible}
           />
         )}
       </For>
