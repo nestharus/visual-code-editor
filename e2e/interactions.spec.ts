@@ -149,6 +149,45 @@ test.describe("Graph Surface Interactions", () => {
   });
 });
 
+test.describe("CTRL+F Search", () => {
+  test("Ctrl+F opens search overlay", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+    await page.keyboard.press("Control+f");
+    await expect(page.locator(".search-overlay")).toBeVisible();
+  });
+
+  test("search returns matching nodes", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+    await page.keyboard.press("Control+f");
+    await page.locator(".search-overlay-input").fill("Alpha");
+    await page.locator(".search-overlay-btn").first().click();
+
+    await expect(page.locator(".search-overlay-count")).toBeVisible();
+    await expect(page.locator(".graph-node")).toHaveCount(1);
+  });
+
+  test("clear search restores original graph", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+    const originalCount = await page.locator(".graph-node").count();
+
+    await page.keyboard.press("Control+f");
+    await page.locator(".search-overlay-input").fill("Alpha");
+    await page.locator(".search-overlay-btn").first().click();
+    await expect(page.locator(".graph-node")).toHaveCount(1);
+
+    await page.locator(".search-overlay-clear").click();
+    await expect(page.locator(".graph-node")).toHaveCount(originalCount);
+  });
+
+  test("Escape closes search overlay", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+    await page.keyboard.press("Control+f");
+    await expect(page.locator(".search-overlay")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".search-overlay")).not.toBeVisible();
+  });
+});
+
 test.describe("Behavioral View", () => {
   test("behavioral root renders lifecycle cards", async ({ page }) => {
     await gotoDiagram(page, "/behavioral");

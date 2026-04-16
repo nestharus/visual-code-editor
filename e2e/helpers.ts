@@ -47,6 +47,58 @@ export async function setupMockApi(page: Page) {
     });
   });
 
+  // Search endpoint — return mock search results
+  await page.route("**/api/search", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    const query = (body.query || "").toLowerCase();
+
+    // Build a simple lexical search result from fixture data
+    const allElements = fixtureData.organizational.root.elements || [];
+    const matchedNodes = allElements.filter((el: any) => {
+      if (el.data.source) return false;
+      return (
+        (el.data.label || "").toLowerCase().includes(query) ||
+        (el.data.kind || "").toLowerCase().includes(query)
+      );
+    });
+    const matchedNodeIds = new Set(matchedNodes.map((el: any) => el.data.id));
+    const matchedEdges = allElements.filter((el: any) => {
+      if (!el.data.source) return false;
+      return (
+        matchedNodeIds.has(el.data.source) || matchedNodeIds.has(el.data.target)
+      );
+    });
+
+    const graph = {
+      id: `search:${query}`,
+      nodes: matchedNodes.map((el: any) => ({
+        id: el.data.id,
+        kind: (el.classes || "").split(" ")[0] || el.data.kind || "default",
+        label: el.data.label || el.data.id,
+        data: el.data,
+        size: { width: 150, height: 60 },
+      })),
+      edges: matchedEdges.map((el: any) => ({
+        id: el.data.id,
+        source: el.data.source,
+        target: el.data.target,
+        kind: (el.classes || "").split(" ").pop() || el.data.kind || "edge",
+        label: el.data.label,
+        data: el.data,
+      })),
+    };
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        query,
+        graph,
+        summary: `Found ${graph.nodes.length} matches`,
+      }),
+    });
+  });
+
   // Static site pages for panel content — return template HTML for any entity
   await page.route("**/site/**", async (route) => {
     const url = new URL(route.request().url());
