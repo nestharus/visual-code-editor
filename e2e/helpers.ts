@@ -113,6 +113,67 @@ export async function setupMockApi(page: Page) {
     });
   });
 
+  // Panel prompt endpoint — deterministic mock responses
+  await page.route("**/api/panel-prompt", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    const mode = body.mode || "ask";
+    const panelId = body.panel?.id || "unknown";
+    const panelLabel = body.panel?.label || panelId;
+    const panelKind = body.panel?.kind || "unknown";
+    const promptText = body.prompt || "";
+    const focusBlockIds = body.focus?.blockIds || [];
+    const codeBlocks = body.context?.codeBlocks || [];
+
+    if (mode === "edit" && focusBlockIds.length > 0) {
+      const blockId = focusBlockIds[0];
+      const block = codeBlocks.find((b: any) => b.id === blockId);
+      const before = block?.content || "(no content)";
+      const after = before + "\n// Added by panel prompt";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          kind: "code-edit",
+          response: `Suggested edit for ${block?.symbol || blockId} in ${block?.path || "unknown file"}.`,
+          edits: [{
+            blockId,
+            path: block?.path || "unknown",
+            language: block?.language,
+            symbol: block?.symbol,
+            before,
+            after,
+          }],
+        }),
+      });
+      return;
+    }
+
+    // XSS test case
+    if (promptText.includes("script-test")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          kind: "answer",
+          response: '<script>alert("xss")</script> This should render as text, not execute.',
+        }),
+      });
+      return;
+    }
+
+    // Default ask response
+    const scenarioCount = body.context?.scenarios?.length || 0;
+    const codeBlockCount = codeBlocks.length;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        kind: "answer",
+        response: `Analysis of ${panelKind} "${panelLabel}": This entity has ${codeBlockCount} code block(s) and ${scenarioCount} scenario(s). ${promptText}`,
+      }),
+    });
+  });
+
   // Static site pages for panel content — return template HTML for any entity
   await page.route("**/site/**", async (route) => {
     const url = new URL(route.request().url());

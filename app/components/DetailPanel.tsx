@@ -6,6 +6,7 @@ import { useDiagramData } from "../lib/diagram-data";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
 import { IconSvg } from "./IconSvg";
+import { PanelPrompt } from "./PanelPrompt";
 
 const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
 const SUMMARY_ONLY_FIELDS = new Set([
@@ -73,6 +74,7 @@ export function DetailPanel() {
   const routeParams = useParams({ strict: false });
   const diagramQuery = useDiagramData();
   const [htmlContent, setHtmlContent] = createSignal("");
+  const [focusedBlockId, setFocusedBlockId] = createSignal<string | null>(null);
   let panelBodyRef: HTMLDivElement | undefined;
 
   const s = () => (search as any)() as Record<string, string | undefined>;
@@ -288,6 +290,11 @@ export function DetailPanel() {
     });
   });
 
+  createEffect(() => {
+    panelId();
+    setFocusedBlockId(null);
+  });
+
   const viewDiagram = () => {
     const id = panelId();
     const kind = panelKind();
@@ -399,6 +406,20 @@ export function DetailPanel() {
                 </For>
               </div>
             </Show>
+            <PanelPrompt
+              entityId={panelId() || ""}
+              entityKind={panelKind() || ""}
+              entityLabel={panelLabel() || detail()?.label || ""}
+              description={description()}
+              codeBlocks={codeBlocks()}
+              scenarios={panelScenarios().map((scenario) => ({
+                behaviorId: scenario.behaviorId,
+                title: scenario.title,
+              }))}
+              focusedBlockId={focusedBlockId()}
+              onClearFocus={() => setFocusedBlockId(null)}
+              accent={panelAccent()}
+            />
             <Show when={panelScenarios().length > 0}>
               <div class="detail-module detail-behaviors">
                 <h3 class="detail-behaviors-title">Behaviors</h3>
@@ -444,6 +465,14 @@ export function DetailPanel() {
                         <Show when={block.lineStart && block.lineEnd}>
                           <span class="detail-code-lines">L{block.lineStart}–{block.lineEnd}</span>
                         </Show>
+                        <button
+                          type="button"
+                          class="detail-code-use-btn"
+                          onClick={() => setFocusedBlockId(block.id)}
+                          aria-pressed={focusedBlockId() === block.id}
+                        >
+                          Use in Prompt
+                        </button>
                       </div>
                       <pre class="detail-code-pre"><code>{block.content || "(code not available)"}</code></pre>
                     </div>

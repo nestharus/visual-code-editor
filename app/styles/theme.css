@@ -247,7 +247,6 @@
 
 .detail-code-lines {
   color: var(--text-dim, #8b949e);
-  margin-left: auto;
 }
 
 .detail-code-pre {
@@ -266,6 +265,218 @@
 .detail-code-pre code {
   white-space: pre;
   tab-size: 2;
+}
+
+/* Panel Prompt */
+.detail-prompt {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(22, 27, 34, 0.48);
+  display: grid;
+  gap: 12px;
+}
+
+.detail-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detail-prompt-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim, #8b949e);
+}
+
+.detail-prompt-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim, #8b949e);
+  padding: 2px 8px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 999px;
+  background: rgba(13, 17, 23, 0.6);
+}
+
+.detail-prompt-mode {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.detail-prompt-mode-btn {
+  appearance: none;
+  border: none;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  background: var(--bg-card, #161b22);
+  color: var(--text-dim, #8b949e);
+}
+
+.detail-prompt-mode-btn.is-active {
+  background: rgba(88, 166, 255, 0.16);
+  color: var(--text, #e6edf3);
+}
+
+.detail-prompt-focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(88, 166, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(88, 166, 255, 0.08);
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary, #c9d1d9);
+}
+
+.detail-prompt-focus-clear {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text-dim, #8b949e);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0 4px;
+}
+
+.detail-prompt-focus-clear:hover {
+  color: var(--text, #e6edf3);
+}
+
+.detail-prompt-input {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 10px;
+  background: rgba(13, 17, 23, 0.86);
+  color: var(--text, #e6edf3);
+  font: inherit;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.detail-prompt-input:focus {
+  border-color: var(--accent, #58a6ff);
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.32);
+}
+
+.detail-prompt-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.detail-prompt-submit {
+  padding: 6px 16px;
+  font-size: 0.82rem;
+}
+
+.detail-prompt-error {
+  margin: 0;
+  color: #ffb4ab;
+  font-size: 0.84rem;
+}
+
+.detail-prompt-result {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-prompt-result-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim, #8b949e);
+}
+
+.detail-prompt-answer {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 10px;
+  background: rgba(13, 17, 23, 0.82);
+  color: var(--text, #e6edf3);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.detail-prompt-edit-block {
+  border: 1px solid var(--border, #30363d);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.detail-prompt-edit-label {
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border, #30363d);
+}
+
+.detail-prompt-edit-label.is-before {
+  background: rgba(248, 81, 73, 0.08);
+  color: #f85149;
+}
+
+.detail-prompt-edit-label.is-after {
+  background: rgba(63, 185, 80, 0.08);
+  color: #3fb950;
+}
+
+.detail-prompt-edit-code {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary, #c9d1d9);
+  background: var(--bg, #0d1117);
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.detail-code-use-btn {
+  appearance: none;
+  border: 1px solid rgba(88, 166, 255, 0.22);
+  border-radius: 4px;
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--accent, #58a6ff);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  margin-left: auto;
+}
+
+.detail-code-use-btn:hover {
+  background: rgba(88, 166, 255, 0.18);
+  border-color: rgba(88, 166, 255, 0.4);
 }
 
 .detail-module p {
