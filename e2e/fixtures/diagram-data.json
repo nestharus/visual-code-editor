@@ -258,6 +258,70 @@
       }
     }
   },
+  "ui": {
+    "available": true,
+    "root": {
+      "id": "ui-root",
+      "label": "UI Exploration",
+      "elements": [
+        { "data": { "id": "ui-screen-org", "label": "Organizational Overview", "kind": "ui-screen" }, "classes": "ui-screen" },
+        { "data": { "id": "ui-screen-system", "label": "System Detail", "kind": "ui-screen" }, "classes": "ui-screen" },
+        { "data": { "id": "ui-screen-panel", "label": "Detail Panel", "kind": "ui-screen" }, "classes": "ui-screen" }
+      ]
+    },
+    "screens": {
+      "ui-screen-org": {
+        "id": "ui-screen-org",
+        "label": "Organizational Overview",
+        "routePath": "/organizational",
+        "description": "Top-level view showing cluster cards and their relationships.",
+        "componentIds": ["ui-component-view-toggle", "ui-component-search-btn"],
+        "elements": [
+          { "data": { "id": "ui-component-view-toggle", "label": "View Toggle", "kind": "ui-component", "parent": "ui-screen-org" }, "classes": "ui-component" },
+          { "data": { "id": "ui-component-search-btn", "label": "Search Button", "kind": "ui-component", "parent": "ui-screen-org" }, "classes": "ui-component" },
+          { "data": { "id": "file-entry.ts", "label": "entry.ts", "kind": "file" }, "classes": "file-node" },
+          { "data": { "id": "e-ui-toggle-entry", "source": "ui-component-view-toggle", "target": "file-entry.ts", "kind": "ui-implements", "label": "implemented by" }, "classes": "ui-implements" },
+          { "data": { "id": "e-ui-search-entry", "source": "ui-component-search-btn", "target": "file-entry.ts", "kind": "ui-implements", "label": "implemented by" }, "classes": "ui-implements" }
+        ]
+      },
+      "ui-screen-system": {
+        "id": "ui-screen-system",
+        "label": "System Detail",
+        "routePath": "/organizational/clusters/:clusterId/systems/:systemId",
+        "description": "Shows module groups, files, and agents within a system.",
+        "componentIds": ["ui-component-module-group", "ui-component-agent-card"],
+        "elements": [
+          { "data": { "id": "ui-component-module-group", "label": "Module Group Card", "kind": "ui-component", "parent": "ui-screen-system" }, "classes": "ui-component" },
+          { "data": { "id": "ui-component-agent-card", "label": "Agent Node Card", "kind": "ui-component", "parent": "ui-screen-system" }, "classes": "ui-component" },
+          { "data": { "id": "file-router.ts", "label": "router.ts", "kind": "file" }, "classes": "file-node" },
+          { "data": { "id": "e-ui-module-router", "source": "ui-component-module-group", "target": "file-router.ts", "kind": "ui-implements", "label": "implemented by" }, "classes": "ui-implements" },
+          { "data": { "id": "e-ui-agent-router", "source": "ui-component-agent-card", "target": "file-router.ts", "kind": "ui-implements", "label": "implemented by" }, "classes": "ui-implements" }
+        ]
+      },
+      "ui-screen-panel": {
+        "id": "ui-screen-panel",
+        "label": "Detail Panel",
+        "routePath": "*?panelKind=*&panelId=*",
+        "description": "Right-side detail panel with metadata, code, and prompt.",
+        "componentIds": ["ui-component-prompt-dock", "ui-component-code-block"],
+        "elements": [
+          { "data": { "id": "ui-component-prompt-dock", "label": "Panel Prompt", "kind": "ui-component", "parent": "ui-screen-panel" }, "classes": "ui-component" },
+          { "data": { "id": "ui-component-code-block", "label": "Code Block", "kind": "ui-component", "parent": "ui-screen-panel" }, "classes": "ui-component" },
+          { "data": { "id": "agent-replay", "label": "replay-agent", "kind": "agent" }, "classes": "agent-node" },
+          { "data": { "id": "e-ui-prompt-agent", "source": "ui-component-prompt-dock", "target": "agent-replay", "kind": "ui-implements", "label": "backed by" }, "classes": "ui-implements" },
+          { "data": { "id": "e-ui-code-agent", "source": "ui-component-code-block", "target": "agent-replay", "kind": "ui-implements", "label": "backed by" }, "classes": "ui-implements" }
+        ]
+      }
+    },
+    "components": {
+      "ui-component-view-toggle": { "id": "ui-component-view-toggle", "kind": "ui-component", "label": "View Toggle", "screenId": "ui-screen-org", "componentType": "toolbar", "implementationIds": ["file-entry.ts"], "description": "Three-way toggle switching between organizational, behavioral, and UI views." },
+      "ui-component-search-btn": { "id": "ui-component-search-btn", "kind": "ui-component", "label": "Search Button", "screenId": "ui-screen-org", "componentType": "button", "implementationIds": ["file-entry.ts"], "description": "Opens the search overlay via Ctrl+F." },
+      "ui-component-module-group": { "id": "ui-component-module-group", "kind": "ui-component", "label": "Module Group Card", "screenId": "ui-screen-system", "componentType": "card", "implementationIds": ["file-router.ts"], "description": "Card representing a system module grouping in the detail view." },
+      "ui-component-agent-card": { "id": "ui-component-agent-card", "kind": "ui-component", "label": "Agent Node Card", "screenId": "ui-screen-system", "componentType": "card", "implementationIds": ["file-router.ts"], "description": "Card representing an agent node within a system diagram." },
+      "ui-component-prompt-dock": { "id": "ui-component-prompt-dock", "kind": "ui-component", "label": "Panel Prompt", "screenId": "ui-screen-panel", "componentType": "dock", "implementationIds": ["agent-replay"], "description": "Prompt surface for asking questions about the focused entity." },
+      "ui-component-code-block": { "id": "ui-component-code-block", "kind": "ui-component", "label": "Code Block", "screenId": "ui-screen-panel", "componentType": "panel", "implementationIds": [], "description": "Inline code preview shown in the right-side panel." }
+    }
+  },
   "combined": {
     "scenarios": {
       "scenario:alpha-flow": {
@@ -634,6 +698,90 @@
     "step-release": { "kind": "step", "id": "step-release", "label": "Release", "href": "steps/release.html" },
     "step-patch": { "kind": "step", "id": "step-patch", "label": "Patch", "href": "steps/patch.html" },
     "step-rerun": { "kind": "step", "id": "step-rerun", "label": "Re-run", "href": "steps/rerun.html" },
+    "ui-screen-org": {
+      "kind": "ui-screen",
+      "id": "ui-screen-org",
+      "label": "Organizational Overview",
+      "description": "Top-level view showing cluster cards and their relationships.",
+      "routePath": "/organizational",
+      "componentIds": ["ui-component-view-toggle", "ui-component-search-btn"]
+    },
+    "ui-screen-system": {
+      "kind": "ui-screen",
+      "id": "ui-screen-system",
+      "label": "System Detail",
+      "description": "Shows module groups, files, and agents within a system.",
+      "routePath": "/organizational/clusters/:clusterId/systems/:systemId",
+      "componentIds": ["ui-component-module-group", "ui-component-agent-card"]
+    },
+    "ui-screen-panel": {
+      "kind": "ui-screen",
+      "id": "ui-screen-panel",
+      "label": "Detail Panel",
+      "description": "Right-side detail panel with metadata, code, and prompt.",
+      "routePath": "*?panelKind=*&panelId=*",
+      "componentIds": ["ui-component-prompt-dock", "ui-component-code-block"]
+    },
+    "ui-component-view-toggle": {
+      "kind": "ui-component",
+      "id": "ui-component-view-toggle",
+      "label": "View Toggle",
+      "description": "Three-way toggle switching between organizational, behavioral, and UI views.",
+      "screenId": "ui-screen-org",
+      "componentType": "toolbar",
+      "implementationIds": ["file-entry.ts"]
+    },
+    "ui-component-search-btn": {
+      "kind": "ui-component",
+      "id": "ui-component-search-btn",
+      "label": "Search Button",
+      "description": "Opens the search overlay via Ctrl+F.",
+      "screenId": "ui-screen-org",
+      "componentType": "button",
+      "implementationIds": ["file-entry.ts"]
+    },
+    "ui-component-module-group": {
+      "kind": "ui-component",
+      "id": "ui-component-module-group",
+      "label": "Module Group Card",
+      "description": "Card representing a system module grouping in the detail view.",
+      "screenId": "ui-screen-system",
+      "componentType": "card",
+      "implementationIds": ["file-router.ts"]
+    },
+    "ui-component-agent-card": {
+      "kind": "ui-component",
+      "id": "ui-component-agent-card",
+      "label": "Agent Node Card",
+      "description": "Card representing an agent node within a system diagram.",
+      "screenId": "ui-screen-system",
+      "componentType": "card",
+      "implementationIds": ["file-router.ts"]
+    },
+    "ui-component-prompt-dock": {
+      "kind": "ui-component",
+      "id": "ui-component-prompt-dock",
+      "label": "Panel Prompt",
+      "description": "Prompt surface for asking questions about the focused entity.",
+      "screenId": "ui-screen-panel",
+      "componentType": "dock",
+      "implementationIds": ["agent-replay"]
+    },
+    "ui-component-code-block": {
+      "kind": "ui-component",
+      "id": "ui-component-code-block",
+      "label": "Code Block",
+      "description": "Inline code preview shown in the right-side panel.",
+      "screenId": "ui-screen-panel",
+      "componentType": "panel",
+      "implementationIds": []
+    },
+    "e-ui-toggle-entry": { "kind": "ui-implements", "id": "e-ui-toggle-entry", "label": "implemented by", "from": "ui-component-view-toggle", "to": "file-entry.ts" },
+    "e-ui-search-entry": { "kind": "ui-implements", "id": "e-ui-search-entry", "label": "implemented by", "from": "ui-component-search-btn", "to": "file-entry.ts" },
+    "e-ui-module-router": { "kind": "ui-implements", "id": "e-ui-module-router", "label": "implemented by", "from": "ui-component-module-group", "to": "file-router.ts" },
+    "e-ui-agent-router": { "kind": "ui-implements", "id": "e-ui-agent-router", "label": "implemented by", "from": "ui-component-agent-card", "to": "file-router.ts" },
+    "e-ui-prompt-agent": { "kind": "ui-implements", "id": "e-ui-prompt-agent", "label": "backed by", "from": "ui-component-prompt-dock", "to": "agent-replay" },
+    "e-ui-code-agent": { "kind": "ui-implements", "id": "e-ui-code-agent", "label": "backed by", "from": "ui-component-code-block", "to": "agent-replay" },
     "e-lc-db": { "kind": "edge", "id": "e-lc-db", "label": "feeds", "href": "edges/e-lc-db.html", "from": "lifecycle-design", "to": "lifecycle-build" }
   }
 }

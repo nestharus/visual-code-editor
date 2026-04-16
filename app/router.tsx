@@ -61,6 +61,18 @@ const stageRoute = createRoute({
   component: () => <DiagramView view="behavioral" level="stage" />,
 });
 
+const uiRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ui",
+  component: () => <DiagramView view="ui" />,
+});
+
+const uiScreenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ui/screens/$screenId",
+  component: () => <DiagramView view="ui" level="screen" />,
+});
+
 // Build route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -70,6 +82,8 @@ const routeTree = rootRoute.addChildren([
   behavioralRoute,
   lifecycleRoute,
   stageRoute,
+  uiRoute,
+  uiScreenRoute,
 ]);
 
 export const router = createRouter({ routeTree });

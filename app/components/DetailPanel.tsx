@@ -40,6 +40,10 @@ function metadataFieldLabel(key: string): string {
     mechanism: "Mechanism",
     from: "From",
     to: "To",
+    routePath: "Route",
+    screenId: "Screen",
+    componentType: "Component Type",
+    implementationIds: "Implementations",
   };
   return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
 }
@@ -338,6 +342,14 @@ export function DetailPanel() {
           search: clearPanelSearch,
         });
       }
+      return;
+    }
+
+    if (kind === "ui-screen") {
+      navigate({
+        to: `/ui/screens/${id}`,
+        search: clearPanelSearch,
+      });
     }
   };
 

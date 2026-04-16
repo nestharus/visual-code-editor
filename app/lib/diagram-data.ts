@@ -102,6 +102,34 @@ export type DiagramDiffs = {
   byId: Record<string, DiagramDiffRecord>;
 };
 
+export type DiagramUiScreen = {
+  id: string;
+  label: string;
+  routePath?: string;
+  description?: string;
+  componentIds: string[];
+  elements: DiagramElementDefinition[];
+  mermaid?: string;
+};
+
+export type DiagramUiComponent = {
+  id: string;
+  kind: "ui-component";
+  label: string;
+  screenId: string;
+  componentType: "button" | "panel" | "card" | "list" | "toolbar" | "nav" | "input" | "dock";
+  routePath?: string;
+  implementationIds: string[];
+  description?: string;
+};
+
+export type DiagramUiData = {
+  available: boolean;
+  root: DiagramSlice;
+  screens: Record<string, DiagramUiScreen>;
+  components: Record<string, DiagramUiComponent>;
+};
+
 export type DiagramData = {
   organizational: {
     root: DiagramSlice;
@@ -148,6 +176,7 @@ export type DiagramData = {
       }
     >;
   };
+  ui?: DiagramUiData;
   combined?: {
     scenarios: Record<string, {
       id: string;

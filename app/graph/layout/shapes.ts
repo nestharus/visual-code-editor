@@ -11,6 +11,8 @@ const KIND_TO_SHAPE: Record<string, NodeShape> = {
   "file-node": "rounded",
   "behavioral-step": "rounded",
   "module-group": "rounded",
+  "ui-screen": "rounded",
+  "ui-component": "pill",
 };
 
 export function resolveNodeShape(kind: string, isCompound: boolean): NodeShape {

@@ -9,4 +9,6 @@ export const DEFAULT_SIZES: Record<string, { width: number; height: number }> = 
   "behavioral-step": { width: 170, height: 64 },
   external: { width: 130, height: 60 },
   "module-group": { width: 200, height: 100 },
+  "ui-screen": { width: 200, height: 90 },
+  "ui-component": { width: 160, height: 52 },
 };

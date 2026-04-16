@@ -108,6 +108,20 @@ export const nodeVisuals: Record<string, NodeVisual> = {
     frameStyle: { borderWidth: 2 },
     zoomTiers: defaultZoomTiers,
   },
+  "ui-screen": {
+    iconDataUri: "",
+    isContainer: true,
+    hasDetail: true,
+    frameStyle: { borderWidth: 2 },
+    zoomTiers: defaultZoomTiers,
+  },
+  "ui-component": {
+    iconDataUri: "",
+    isContainer: false,
+    hasDetail: true,
+    frameStyle: { borderWidth: 1.5 },
+    zoomTiers: defaultZoomTiers,
+  },
 };
 
 const kindToKey: Record<string, string | undefined> = {
@@ -120,6 +134,8 @@ const kindToKey: Record<string, string | undefined> = {
   agent: "agent-node",
   store: "store",
   external: "external",
+  "ui-screen": "ui-screen",
+  "ui-component": "ui-component",
   edge: undefined,
 };
 

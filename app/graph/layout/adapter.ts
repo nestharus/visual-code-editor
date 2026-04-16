@@ -70,10 +70,18 @@ function inferDirectionFromGraphId(graphId: string): GraphDirection {
     return graphId.includes("/lifecycles/") ? "DOWN" : "RIGHT";
   }
 
+  if (graphId.startsWith("/ui")) {
+    return graphId.includes("/screens/") ? "DOWN" : "RIGHT";
+  }
+
   return undefined;
 }
 
 function inferDirectionFromNodes(nodes: GraphNode[]): GraphDirection {
+  if (nodes.some((node) => ["ui-component"].includes(node.kind))) {
+    return "DOWN";
+  }
+
   if (
     nodes.some((node) =>
       ["module-group", "file-node", "agent-node", "behavioral-stage", "behavioral-step"].includes(
@@ -86,7 +94,7 @@ function inferDirectionFromNodes(nodes: GraphNode[]): GraphDirection {
 
   if (
     nodes.some((node) =>
-      ["cluster", "system", "external", "store", "behavioral-lifecycle"].includes(
+      ["cluster", "system", "external", "store", "behavioral-lifecycle", "ui-screen"].includes(
         node.kind,
       ),
     )

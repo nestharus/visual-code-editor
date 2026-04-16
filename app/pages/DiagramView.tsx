@@ -5,8 +5,8 @@ import { captureAnchor } from "../graph/DrillTransition";
 import { useDiagramData, type DiagramData } from "../lib/diagram-data";
 
 type DiagramViewProps = {
-  view: "organizational" | "behavioral";
-  level?: "cluster" | "system" | "lifecycle" | "stage";
+  view: "organizational" | "behavioral" | "ui";
+  level?: "cluster" | "system" | "lifecycle" | "stage" | "screen";
 };
 
 type DiagramSlice =
@@ -15,7 +15,9 @@ type DiagramSlice =
   | DiagramData["organizational"]["systems"][string]
   | DiagramData["behavioral"]["root"]
   | DiagramData["behavioral"]["lifecycles"][string]
-  | DiagramData["behavioral"]["stages"][string];
+  | DiagramData["behavioral"]["stages"][string]
+  | NonNullable<DiagramData["ui"]>["root"]
+  | NonNullable<DiagramData["ui"]>["screens"][string];
 
 type SearchState = Record<string, unknown>;
 
@@ -36,7 +38,10 @@ function routeFallbackTitle(
   if (level === "system") return params.systemId || "System";
   if (level === "lifecycle") return params.lifecycleId || "Lifecycle";
   if (level === "stage") return params.stageId || "Stage";
-  return view === "behavioral" ? "Behavioral Root" : "Organizational Root";
+  if (level === "screen") return params.screenId || "Screen";
+  if (view === "behavioral") return "Behavioral Root";
+  if (view === "ui") return "UI Exploration";
+  return "Organizational Root";
 }
 
 export function DiagramView(props: DiagramViewProps) {
@@ -58,6 +63,14 @@ export function DiagramView(props: DiagramViewProps) {
         return data.organizational.systems[routeParams.systemId || ""];
       }
       return data.organizational.root;
+    }
+
+    if (props.view === "ui") {
+      if (!data.ui) return undefined;
+      if (props.level === "screen") {
+        return data.ui.screens[routeParams.screenId || ""];
+      }
+      return data.ui.root;
     }
 
     if (props.level === "lifecycle") {
@@ -171,6 +184,15 @@ export function DiagramView(props: DiagramViewProps) {
         });
         return;
       }
+    }
+
+    if (kind === "ui-screen") {
+      captureNodeAnchor(nodeId, "drill");
+      navigate({
+        to: `/ui/screens/${nodeId}`,
+        search: clearPanelSearch,
+      });
+      return;
     }
 
     openPanel(kind || "node", panelId, panelLabel);

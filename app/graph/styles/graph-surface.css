@@ -1085,3 +1085,22 @@
 .graph-node[data-diff-status="removed"]:hover {
   opacity: 0.6;
 }
+
+.graph-node[data-kind="ui-screen"] > .graph-node-inner > .graph-node-float > .graph-card {
+  --node-accent: #8b5cf6;
+  --node-border: rgba(139, 92, 246, 0.6);
+}
+
+.graph-node[data-kind="ui-component"] > .graph-node-inner > .graph-node-float > .graph-card {
+  --node-accent: #a78bfa;
+  --node-border: rgba(167, 139, 250, 0.55);
+  background:
+    linear-gradient(180deg, rgba(139, 92, 246, 0.08), transparent 42%),
+    var(--node-bg);
+}
+
+.edge-path[data-kind="ui-implements"] {
+  stroke: #a78bfa;
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+}

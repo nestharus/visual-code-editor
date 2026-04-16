@@ -42,6 +42,7 @@ export const EDGE_COLORS: Record<string, string> = {
   "behavioral-back-edge": "#d29922",
   "file-import": "#262b33",
   "agent-invoke": "#9D7BEE",
+  "ui-implements": "#a78bfa",
 };
 
 export function getMarkerIdForKind(kind: string) {

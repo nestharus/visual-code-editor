@@ -99,6 +99,7 @@ export const AppShell: ParentComponent = (props) => {
   const activeView = createMemo(() => {
     const path = location().pathname;
     if (path.startsWith("/organizational")) return "organizational";
+    if (path.startsWith("/ui")) return "ui";
     return "behavioral";
   });
 
@@ -124,23 +125,36 @@ export const AppShell: ParentComponent = (props) => {
           label: data?.organizational.systems[systemId]?.label || systemId,
         });
       }
-    } else {
-      parts.push({ label: "Behavioral", href: "/behavioral" });
-      const lifecycleMatch = path.match(/\/lifecycles\/([^/]+)/);
-      if (lifecycleMatch) {
-        const lifecycleId = decodeURIComponent(lifecycleMatch[1]);
+      return parts;
+    }
+
+    if (path.startsWith("/ui")) {
+      parts.push({ label: "UI Exploration", href: "/ui" });
+      const screenMatch = path.match(/\/screens\/([^/]+)/);
+      if (screenMatch) {
+        const screenId = decodeURIComponent(screenMatch[1]);
         parts.push({
-          label: data?.behavioral.lifecycles[lifecycleId]?.label || lifecycleId,
-          href: `/behavioral/lifecycles/${lifecycleMatch[1]}`,
+          label: data?.ui?.screens[screenId]?.label || screenId,
         });
       }
-      const stageMatch = path.match(/\/stages\/([^/]+)/);
-      if (stageMatch) {
-        const stageId = decodeURIComponent(stageMatch[1]);
-        parts.push({
-          label: data?.behavioral.stages[stageId]?.label || stageId,
-        });
-      }
+      return parts;
+    }
+
+    parts.push({ label: "Behavioral", href: "/behavioral" });
+    const lifecycleMatch = path.match(/\/lifecycles\/([^/]+)/);
+    if (lifecycleMatch) {
+      const lifecycleId = decodeURIComponent(lifecycleMatch[1]);
+      parts.push({
+        label: data?.behavioral.lifecycles[lifecycleId]?.label || lifecycleId,
+        href: `/behavioral/lifecycles/${lifecycleMatch[1]}`,
+      });
+    }
+    const stageMatch = path.match(/\/stages\/([^/]+)/);
+    if (stageMatch) {
+      const stageId = decodeURIComponent(stageMatch[1]);
+      parts.push({
+        label: data?.behavioral.stages[stageId]?.label || stageId,
+      });
     }
 
     return parts;
@@ -405,6 +419,19 @@ export const AppShell: ParentComponent = (props) => {
                 data-view-toggle="organizational"
               >
                 Organizational
+              </button>
+              <button
+                type="button"
+                role="tab"
+                classList={{
+                  "view-toggle-btn": true,
+                  "is-active": activeView() === "ui",
+                }}
+                aria-selected={activeView() === "ui"}
+                onClick={() => navigate({ to: "/ui" })}
+                data-view-toggle="ui"
+              >
+                UI
               </button>
             </div>
           </div>
