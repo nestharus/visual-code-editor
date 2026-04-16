@@ -174,6 +174,119 @@ export async function setupMockApi(page: Page) {
     });
   });
 
+  // Watcher CRUD mock — in-memory watch list
+  const mockWatches: Array<{
+    id: string;
+    path: string;
+    debounceMs: number;
+    createdAt: string;
+    lastEvent?: string;
+  }> = [
+    {
+      id: "watch-1",
+      path: "/home/user/projects/src",
+      debounceMs: 500,
+      createdAt: "2026-04-16T00:00:00Z",
+    },
+    {
+      id: "watch-2",
+      path: "/home/user/projects/config",
+      debounceMs: 1000,
+      createdAt: "2026-04-16T00:01:00Z",
+      lastEvent: "2026-04-16T01:00:00Z",
+    },
+  ];
+
+  await page.route("**/api/watch", async (route) => {
+    const method = route.request().method();
+
+    if (method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockWatches),
+      });
+      return;
+    }
+
+    if (method === "POST") {
+      const body = JSON.parse(route.request().postData() || "{}");
+      const path = body.path || "";
+      if (!path) {
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "path is required" }),
+        });
+        return;
+      }
+
+      const duplicate = mockWatches.find((watch) => watch.path === path);
+      if (duplicate) {
+        await route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: "Already watching this path",
+            id: duplicate.id,
+          }),
+        });
+        return;
+      }
+
+      const newEntry = {
+        id: `watch-${Date.now()}`,
+        path,
+        debounceMs: body.debounceMs || 500,
+        createdAt: new Date().toISOString(),
+      };
+      mockWatches.push(newEntry);
+
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify(newEntry),
+      });
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  await page.route("**/api/watch/*", async (route) => {
+    if (route.request().method() !== "DELETE") {
+      await route.fallback();
+      return;
+    }
+
+    const url = new URL(route.request().url());
+    const id = url.pathname.split("/").pop() || "";
+    const index = mockWatches.findIndex((watch) => watch.id === id);
+    if (index === -1) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Watch not found" }),
+      });
+      return;
+    }
+
+    mockWatches.splice(index, 1);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ deleted: true }),
+    });
+  });
+
+  await page.route("**/api/rebuild", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ buildId: "mock-build-1", status: "completed" }),
+    });
+  });
+
   // Static site pages for panel content — return template HTML for any entity
   await page.route("**/site/**", async (route) => {
     const url = new URL(route.request().url());

@@ -11,10 +11,14 @@ import {
 import { DetailPanel } from "./DetailPanel";
 import { PromptDock } from "./PromptDock";
 import { SearchOverlay } from "./SearchOverlay";
+import { WatcherPanel } from "./WatcherPanel";
 import { GraphSurface, type GraphSelectionApi } from "../graph/GraphSurface";
 import type { GraphDefinition } from "../graph/layout/types";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
-import { useWatchSubscription } from "../lib/live/useWatchSubscription";
+import {
+  useWatchSubscription,
+  type WatcherState,
+} from "../lib/live/useWatchSubscription";
 import { useDiagramData, WATCHER_URL } from "../lib/diagram-data";
 
 type DiagramShellData = {
@@ -57,7 +61,7 @@ function sanitizeSearchGraph(
 }
 
 export const AppShell: ParentComponent = (props) => {
-  useWatchSubscription();
+  const watcherState: WatcherState = useWatchSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const diagramQuery = useDiagramData();
@@ -69,6 +73,7 @@ export const AppShell: ParentComponent = (props) => {
   const [searchResultCount, setSearchResultCount] = createSignal(0);
   const [searchOpenRequest, setSearchOpenRequest] = createSignal(0);
   const [selectionApi, setSelectionApi] = createSignal<GraphSelectionApi | undefined>();
+  const [watcherPanelOpen, setWatcherPanelOpen] = createSignal(false);
   const [promptDockOpen, setPromptDockOpen] = createSignal(false);
   let searchRequestVersion = 0;
 
@@ -242,11 +247,36 @@ export const AppShell: ParentComponent = (props) => {
           resultCount={searchResultCount()}
           openRequest={searchOpenRequest()}
         />
+        <WatcherPanel
+          isOpen={watcherPanelOpen()}
+          status={watcherState.status}
+          refreshing={watcherState.refreshing}
+          lastInvalidation={watcherState.lastInvalidation}
+          onClose={() => setWatcherPanelOpen(false)}
+        />
         <header class="toolbar">
           <div class="toolbar-title">
             <h1>Artifact Lifecycle</h1>
           </div>
           <div class="toolbar-actions">
+            <button
+              type="button"
+              classList={{
+                button: true,
+                "toolbar-watcher-btn": true,
+                "is-connected": watcherState.status() === "connected",
+                "is-reconnecting": watcherState.status() === "reconnecting",
+                "is-disconnected": watcherState.status() === "disconnected",
+              }}
+              onClick={() => setWatcherPanelOpen((value) => !value)}
+              aria-label={`Watcher status: ${watcherState.status()}`}
+            >
+              <span class="watcher-status-dot" />
+              <span>Live</span>
+              <Show when={watcherState.refreshing()}>
+                <span class="watcher-refresh-badge">↻</span>
+              </Show>
+            </button>
             <button
               type="button"
               class="button toolbar-search-btn"
