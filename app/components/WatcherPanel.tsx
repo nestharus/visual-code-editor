@@ -23,6 +23,7 @@ export function WatcherPanel(props: WatcherPanelProps) {
   const [newPath, setNewPath] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
+  const pathInputId = "watcher-path-input";
 
   const fetchWatches = async () => {
     try {
@@ -93,11 +94,20 @@ export function WatcherPanel(props: WatcherPanelProps) {
 
   return (
     <Show when={props.isOpen}>
-      <div class="watcher-panel" aria-label="Watch manager">
+      <div
+        id="watcher-panel"
+        class="watcher-panel"
+        role="region"
+        aria-labelledby="watcher-panel-title"
+      >
         <div class="watcher-panel-header">
           <div>
-            <h3 class="watcher-panel-title">Live Watcher</h3>
-            <span class="watcher-panel-status" data-status={props.status()}>
+            <h3 id="watcher-panel-title" class="watcher-panel-title">Live Watcher</h3>
+            <span
+              class="watcher-panel-status"
+              data-status={props.status()}
+              aria-live="polite"
+            >
               {props.status()}
             </span>
           </div>
@@ -105,16 +115,17 @@ export function WatcherPanel(props: WatcherPanelProps) {
             type="button"
             class="button watcher-panel-close"
             onClick={props.onClose}
+            aria-label="Close watcher panel"
           >
             ✕
           </button>
         </div>
 
         <Show when={props.refreshing()}>
-          <div class="watcher-panel-refresh">Refreshing…</div>
+          <div class="watcher-panel-refresh" aria-live="polite">Refreshing…</div>
         </Show>
         <Show when={!props.refreshing() && props.lastInvalidation()}>
-          <div class="watcher-panel-last-update">
+          <div class="watcher-panel-last-update" aria-live="polite">
             Last update: {props.lastInvalidation()}
           </div>
         </Show>
@@ -131,7 +142,11 @@ export function WatcherPanel(props: WatcherPanelProps) {
         </div>
 
         <form class="watcher-add-form" onSubmit={handleAdd}>
+          <label class="visually-hidden" for={pathInputId}>
+            Watch path
+          </label>
           <input
+            id={pathInputId}
             type="text"
             class="watcher-add-input"
             placeholder="Watch path..."

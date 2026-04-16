@@ -62,6 +62,7 @@ export function PanelPrompt(props: PanelPromptProps) {
   const [error, setError] = createSignal("");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   let requestVersion = 0;
+  const inputId = () => `panel-prompt-input-${props.entityId}`;
 
   const focusedBlock = createMemo(
     () => props.codeBlocks.find((block) => block.id === props.focusedBlockId) ?? null,
@@ -241,7 +242,11 @@ export function PanelPrompt(props: PanelPromptProps) {
       </Show>
 
       <form onSubmit={handleSubmit}>
+        <label class="visually-hidden" for={inputId()}>
+          {mode() === "ask" ? "Ask about this entity or its code" : "Request a focused code edit suggestion"}
+        </label>
         <textarea
+          id={inputId()}
           class="detail-prompt-input"
           placeholder={
             mode() === "ask"
@@ -270,7 +275,7 @@ export function PanelPrompt(props: PanelPromptProps) {
 
       <Show when={answerResult()}>
         {(answer) => (
-          <div class="detail-prompt-result">
+          <div class="detail-prompt-result" aria-live="polite">
             <p class="detail-prompt-result-label">Response</p>
             <p class="detail-prompt-answer">{answer().response}</p>
           </div>
@@ -279,7 +284,7 @@ export function PanelPrompt(props: PanelPromptProps) {
 
       <Show when={editResult()}>
         {(editResponse) => (
-          <div class="detail-prompt-result">
+          <div class="detail-prompt-result" aria-live="polite">
             <p class="detail-prompt-result-label">Response</p>
             <p class="detail-prompt-answer">{editResponse().response}</p>
             <For each={editResponse().edits}>

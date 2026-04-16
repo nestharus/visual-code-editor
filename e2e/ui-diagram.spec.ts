@@ -48,8 +48,8 @@ test.describe("UI Exploration Diagram", () => {
 
   test("view toggle shows UI as active on /ui", async ({ page }) => {
     await gotoDiagram(page, "/ui");
-    await expect(page.locator("[data-view-toggle='ui']")).toHaveClass(/is-active/);
-    await expect(page.locator("[data-view-toggle='behavioral']")).not.toHaveClass(/is-active/);
+    await expect(page.locator("[data-view-toggle='ui']")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("[data-view-toggle='behavioral']")).toHaveAttribute("aria-selected", "false");
   });
 
   test("organizational tab still works from /ui", async ({ page }) => {

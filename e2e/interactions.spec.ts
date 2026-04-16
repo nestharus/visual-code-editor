@@ -179,7 +179,7 @@ test.describe("Card Selection + Prompting", () => {
     await gotoDiagram(page, "/organizational");
 
     await nodeByText(page, "cluster", "Alpha").click({ modifiers: ["Control"] });
-    await page.locator(".toolbar-prompt-btn").click();
+    await page.locator('[data-toolbar="prompt"]').click();
 
     await expect(page.locator(".prompt-dock")).toBeVisible();
   });
@@ -188,7 +188,7 @@ test.describe("Card Selection + Prompting", () => {
     await gotoDiagram(page, "/organizational");
 
     await nodeByText(page, "cluster", "Alpha").click({ modifiers: ["Control"] });
-    await page.locator(".toolbar-prompt-btn").click();
+    await page.locator('[data-toolbar="prompt"]').click();
     await page.locator(".prompt-dock-input").fill("Summarize this entity");
     await page.locator(".prompt-dock-submit").click();
     await page.waitForTimeout(1000);

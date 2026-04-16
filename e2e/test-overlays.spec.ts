@@ -8,12 +8,12 @@ function nodeByText(page: Page, kind: string, text: string): Locator {
 test.describe("Test Runner Overlays", () => {
   test("tests toolbar toggle is visible", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await expect(page.locator(".toolbar-tests-btn")).toBeVisible();
+    await expect(page.locator('[data-toolbar="tests"]')).toBeVisible();
   });
 
   test("tests toggle starts active", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await expect(page.locator(".toolbar-tests-btn")).toHaveClass(/is-active/);
+    await expect(page.locator('[data-toolbar="tests"]')).toHaveAttribute("aria-checked", "true");
   });
 
   test("failing file node shows X badge", async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe("Test Runner Overlays", () => {
     await gotoDiagram(page, "/organizational/clusters/cluster-alpha/systems/system-a3");
     await expect(page.locator(".graph-node-test-badge--failed").first()).toBeVisible();
 
-    await page.locator(".toolbar-tests-btn").click();
+    await page.locator('[data-toolbar="tests"]').click();
     await expect(page.locator(".graph-node-test-badge")).toHaveCount(0);
   });
 
@@ -53,7 +53,7 @@ test.describe("Test Runner Overlays", () => {
     const node = nodeByText(page, "file-node", "entry.ts");
     await expect(node).toHaveAttribute("data-test-coverage", "high");
 
-    await page.locator(".toolbar-tests-btn").click();
+    await page.locator('[data-toolbar="tests"]').click();
     await expect(node).not.toHaveAttribute("data-test-coverage", /.*/);
   });
 

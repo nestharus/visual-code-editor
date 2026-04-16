@@ -4,23 +4,23 @@ import { gotoDiagram } from "./helpers";
 test.describe("Live Watcher UI", () => {
   test("watcher status indicator is visible in toolbar", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await expect(page.locator(".toolbar-watcher-btn")).toBeVisible();
+    await expect(page.locator('[data-toolbar="watcher"]')).toBeVisible();
   });
 
   test("watcher shows disconnected when SSE is aborted", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await expect(page.locator(".toolbar-watcher-btn")).toHaveClass(/is-disconnected/);
+    await expect(page.locator('[data-toolbar="watcher"]')).toHaveClass(/is-disconnected/);
   });
 
   test("clicking watcher button opens panel", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await expect(page.locator(".watcher-panel")).toBeVisible();
   });
 
   test("watcher panel shows fixture watches", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await page.waitForTimeout(500);
 
     await expect(page.locator(".watcher-entry")).toHaveCount(2);
@@ -31,7 +31,7 @@ test.describe("Live Watcher UI", () => {
 
   test("adding a watch updates the list", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await page.waitForTimeout(500);
 
     await page.locator(".watcher-add-input").fill("/home/user/projects/tests");
@@ -43,7 +43,7 @@ test.describe("Live Watcher UI", () => {
 
   test("removing a watch updates the list", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await page.waitForTimeout(500);
 
     await page.locator(".watcher-entry-remove").first().click();
@@ -54,7 +54,7 @@ test.describe("Live Watcher UI", () => {
 
   test("close button closes watcher panel", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await expect(page.locator(".watcher-panel")).toBeVisible();
 
     await page.locator(".watcher-panel-close").click();
@@ -63,7 +63,7 @@ test.describe("Live Watcher UI", () => {
 
   test("regenerate button triggers rebuild", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
-    await page.locator(".toolbar-watcher-btn").click();
+    await page.locator('[data-toolbar="watcher"]').click();
     await page.waitForTimeout(500);
 
     const rebuildButton = page.locator(".watcher-rebuild-btn");

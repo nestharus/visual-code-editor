@@ -149,7 +149,6 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         top: `${relativeTop()}px`,
         width: `${width()}px`,
         height: `${height()}px`,
-        "z-index": isElevated() ? "40" : hasChildren() ? "1" : undefined,
         "--node-transition-delay": props.transition.getNodeDelay(props.node.id),
         "--float-seed": String(floatSeed(props.node.id)),
         "--test-coverage-alpha": String(coverageAlpha(cov())),

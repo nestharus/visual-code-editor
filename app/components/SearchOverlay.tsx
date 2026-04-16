@@ -20,6 +20,7 @@ export function SearchOverlay(props: SearchOverlayProps) {
   const [isOpen, setIsOpen] = createSignal(false);
   const [inputValue, setInputValue] = createSignal(props.searchQuery);
   let inputRef: HTMLInputElement | undefined;
+  const inputId = "diagram-search-input";
 
   const focusInput = () => {
     window.setTimeout(() => inputRef?.focus(), 0);
@@ -101,8 +102,12 @@ export function SearchOverlay(props: SearchOverlayProps) {
   return (
     <Show when={isOpen() || props.isSearchActive}>
       <div class="search-overlay">
-        <form class="search-overlay-form" onSubmit={handleSubmit}>
+        <form class="search-overlay-form" role="search" onSubmit={handleSubmit}>
+          <label class="visually-hidden" for={inputId}>
+            Search diagram elements
+          </label>
           <input
+            id={inputId}
             ref={inputRef}
             type="text"
             class="search-overlay-input"
@@ -111,11 +116,17 @@ export function SearchOverlay(props: SearchOverlayProps) {
             onInput={(e) => setInputValue(e.currentTarget.value)}
             autofocus
           />
-          <Show when={props.isLoading}>
-            <span class="search-overlay-spinner">Searching...</span>
-          </Show>
-          <Show when={props.isSearchActive && !props.isLoading}>
-            <span class="search-overlay-count">{props.resultCount} results</span>
+          <Show when={props.isLoading || props.isSearchActive}>
+            <span
+              classList={{
+                "search-overlay-status": true,
+                "search-overlay-spinner": props.isLoading,
+                "search-overlay-count": props.isSearchActive && !props.isLoading,
+              }}
+              aria-live="polite"
+            >
+              {props.isLoading ? "Searching..." : `${props.resultCount} results`}
+            </span>
           </Show>
           <button type="submit" class="search-overlay-btn">
             Search

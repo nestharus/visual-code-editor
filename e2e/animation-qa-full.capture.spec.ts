@@ -265,9 +265,7 @@ test.describe("QA Captures", () => {
     await page.waitForTimeout(LOAD_WAIT);
 
     // Toggle to behavioral
-    const behavioralBtn = page.locator(
-      '.view-toggle-btn:has-text("Behavioral")',
-    );
+    const behavioralBtn = page.locator('[data-view-toggle="behavioral"]');
     if ((await behavioralBtn.count()) > 0) {
       await behavioralBtn.click();
       await page.waitForTimeout(3000);
@@ -278,7 +276,7 @@ test.describe("QA Captures", () => {
       await page.waitForTimeout(1000);
 
       // Toggle back to organizational
-      const orgBtn = page.locator('.view-toggle-btn:has-text("Organizational")');
+      const orgBtn = page.locator('[data-view-toggle="organizational"]');
       if ((await orgBtn.count()) > 0) {
         await orgBtn.click();
         await page.waitForTimeout(3000);

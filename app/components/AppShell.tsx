@@ -312,16 +312,18 @@ export const AppShell: ParentComponent = (props) => {
             <button
               type="button"
               classList={{
-                button: true,
-                "toolbar-watcher-btn": true,
+                "toolbar-button": true,
                 "is-connected": watcherState.status() === "connected",
                 "is-reconnecting": watcherState.status() === "reconnecting",
                 "is-disconnected": watcherState.status() === "disconnected",
               }}
+              data-toolbar="watcher"
               onClick={() => setWatcherPanelOpen((value) => !value)}
               aria-label={`Watcher status: ${watcherState.status()}`}
+              aria-pressed={watcherPanelOpen()}
+              aria-controls="watcher-panel"
             >
-              <span class="watcher-status-dot" />
+              <span class="watcher-status-dot" aria-hidden="true" />
               <span>Live</span>
               <Show when={watcherState.refreshing()}>
                 <span class="watcher-refresh-badge">↻</span>
@@ -331,10 +333,9 @@ export const AppShell: ParentComponent = (props) => {
               <button
                 type="button"
                 classList={{
-                  button: true,
-                  "toolbar-tests-btn": true,
-                  "is-active": testsVisible(),
+                  "toolbar-button": true,
                 }}
+                data-toolbar="tests"
                 role="switch"
                 aria-checked={testsVisible()}
                 aria-label={`Test overlays ${testsVisible() ? "on" : "off"}`}
@@ -348,10 +349,9 @@ export const AppShell: ParentComponent = (props) => {
               <button
                 type="button"
                 classList={{
-                  button: true,
-                  "toolbar-diff-btn": true,
-                  "is-active": diffVisible(),
+                  "toolbar-button": true,
                 }}
+                data-toolbar="diff"
                 role="switch"
                 aria-checked={diffVisible()}
                 aria-label={`Diff overlay ${diffVisible() ? "on" : "off"}`}
@@ -364,7 +364,8 @@ export const AppShell: ParentComponent = (props) => {
             </Show>
             <button
               type="button"
-              class="button toolbar-search-btn"
+              class="toolbar-button"
+              data-toolbar="search"
               aria-label="Open search"
               onClick={() => setSearchOpenRequest((value) => value + 1)}
             >
@@ -384,10 +385,10 @@ export const AppShell: ParentComponent = (props) => {
               <button
                 type="button"
                 classList={{
-                  button: true,
-                  "toolbar-prompt-btn": true,
+                  "toolbar-button": true,
                   "is-open": promptDockOpen(),
                 }}
+                data-toolbar="prompt"
                 onClick={() => setPromptDockOpen(true)}
               >
                 {`Prompt (${selectedPromptNodes().length})`}
@@ -398,8 +399,8 @@ export const AppShell: ParentComponent = (props) => {
                 type="button"
                 role="tab"
                 classList={{
+                  "toolbar-button": true,
                   "view-toggle-btn": true,
-                  "is-active": activeView() === "behavioral",
                 }}
                 aria-selected={activeView() === "behavioral"}
                 onClick={() => navigate({ to: "/behavioral" })}
@@ -411,8 +412,8 @@ export const AppShell: ParentComponent = (props) => {
                 type="button"
                 role="tab"
                 classList={{
+                  "toolbar-button": true,
                   "view-toggle-btn": true,
-                  "is-active": activeView() === "organizational",
                 }}
                 aria-selected={activeView() === "organizational"}
                 onClick={() => navigate({ to: "/organizational" })}
@@ -424,8 +425,8 @@ export const AppShell: ParentComponent = (props) => {
                 type="button"
                 role="tab"
                 classList={{
+                  "toolbar-button": true,
                   "view-toggle-btn": true,
-                  "is-active": activeView() === "ui",
                 }}
                 aria-selected={activeView() === "ui"}
                 onClick={() => navigate({ to: "/ui" })}
