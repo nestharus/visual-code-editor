@@ -167,13 +167,14 @@ test.describe("Graph Surface Interactions", () => {
   });
 
   test("highlighted edges render in overlay (above nodes)", async ({ page }) => {
-    const nodes = page.locator(".graph-node:not(.is-compound)");
-    if (await nodes.count() < 2) {
+    // Hover a cluster node (always has edges in the fixture)
+    const clusterNode = page.locator(".graph-node[data-kind='cluster']").first();
+    if (await clusterNode.count() === 0) {
       test.skip();
       return;
     }
 
-    await nodes.first().hover();
+    await clusterNode.hover();
     await page.waitForTimeout(500);
 
     // Overlay layer should have highlighted edges

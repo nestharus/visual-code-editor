@@ -124,7 +124,6 @@ export function createBehaviorPlaybackController(
       enterSubScenario(firstBeat);
     } else {
       loadBeatIntoTransport(firstBeat);
-      transportForTarget().play();
     }
     return true;
   }

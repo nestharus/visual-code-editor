@@ -5,7 +5,10 @@
         { "data": { "id": "cluster-alpha", "label": "Alpha", "kind": "cluster", "color": "#4a9eff" }, "classes": "cluster" },
         { "data": { "id": "cluster-beta", "label": "Beta", "kind": "cluster", "color": "#ff6b4a" }, "classes": "cluster" },
         { "data": { "id": "store-config", "label": "Config Store", "kind": "store" }, "classes": "store" },
+        { "data": { "id": "agent-orchestrator", "label": "Orchestrator", "kind": "agent-node" }, "classes": "agent-node" },
+        { "data": { "id": "external-api", "label": "External API", "kind": "external" }, "classes": "external" },
         { "data": { "id": "e-ab", "source": "cluster-alpha", "target": "cluster-beta", "kind": "import", "label": "uses" }, "classes": "cluster-edge" },
+        { "data": { "id": "e-alpha-agent", "source": "cluster-alpha", "target": "agent-orchestrator", "kind": "agent-invoke", "label": "invokes" }, "classes": "agent-invoke" },
         { "data": { "id": "e-a-store", "source": "cluster-alpha", "target": "store-config", "kind": "store-write", "label": "write" }, "classes": "store-edge" },
         { "data": { "id": "e-store-b", "source": "store-config", "target": "cluster-beta", "kind": "store-read", "label": "read" }, "classes": "store-edge" }
       ],
@@ -205,6 +208,44 @@
       }
     }
   },
+  "combined": {
+    "scenarios": {
+      "scenario:alpha-flow": {
+        "id": "scenario:alpha-flow",
+        "behaviorId": "lifecycle-design",
+        "title": "Alpha Data Flow",
+        "caption": "Data flows from Alpha through Config Store to Beta",
+        "participants": ["cluster-alpha", "store-config", "cluster-beta"],
+        "beats": [
+          {
+            "id": "beat-alpha-1",
+            "kind": "path",
+            "caption": "Alpha → Config Store: Write — Alpha writes configuration data",
+            "fromNodeId": "cluster-alpha",
+            "toNodeId": "store-config",
+            "edgeIds": ["e-a-store"],
+            "participantNodeIds": ["cluster-alpha", "store-config"]
+          },
+          {
+            "id": "beat-alpha-2",
+            "kind": "path",
+            "caption": "Config Store → Beta: Read — Beta reads configuration data",
+            "fromNodeId": "store-config",
+            "toNodeId": "cluster-beta",
+            "edgeIds": ["e-store-b"],
+            "participantNodeIds": ["store-config", "cluster-beta"]
+          }
+        ]
+      }
+    },
+    "bindings": {
+      "cluster-alpha": ["scenario:alpha-flow"],
+      "cluster-beta": ["scenario:alpha-flow"],
+      "store-config": ["scenario:alpha-flow"],
+      "lifecycle-design": ["scenario:alpha-flow"],
+      "lifecycle-build": ["scenario:alpha-flow"]
+    }
+  },
   "details": {
     "cluster-alpha": { "kind": "cluster", "id": "cluster-alpha", "label": "Alpha", "href": "clusters/alpha.html", "color": "#4a9eff" },
     "cluster-beta": { "kind": "cluster", "id": "cluster-beta", "label": "Beta", "href": "clusters/beta.html", "color": "#ff6b4a" },
@@ -226,6 +267,9 @@
     "file-model.py": { "kind": "module", "id": "file-model.py", "label": "model.py", "href": "modules/model.html" },
     "file-runner.py": { "kind": "module", "id": "file-runner.py", "label": "runner.py", "href": "modules/runner.html" },
     "file-config.py": { "kind": "module", "id": "file-config.py", "label": "config.py", "href": "modules/config.html" },
+    "agent-orchestrator": { "kind": "agent", "id": "agent-orchestrator", "label": "Orchestrator", "description": "Coordinates cross-cluster operations." },
+    "external-api": { "kind": "external", "id": "external-api", "label": "External API", "description": "Third-party API integration point." },
+    "e-alpha-agent": { "kind": "edge", "id": "e-alpha-agent", "label": "invokes", "from": "cluster-alpha", "to": "agent-orchestrator" },
     "e-ab": { "kind": "edge", "id": "e-ab", "label": "uses", "href": "edges/e-ab.html", "from": "cluster-alpha", "to": "cluster-beta" },
     "e-a-store": { "kind": "edge", "id": "e-a-store", "label": "write", "href": "edges/e-a-store.html", "from": "cluster-alpha", "to": "store-config" },
     "e-store-b": { "kind": "edge", "id": "e-store-b", "label": "read", "href": "edges/e-store-b.html", "from": "store-config", "to": "cluster-beta" },

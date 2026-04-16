@@ -177,7 +177,7 @@ export function createTransportStore(graph: Accessor<GraphDefinition>, pathScope
 
         // traveling
         const metrics = lookupPathWithLength(token.edgeId, pathScope);
-        if (!metrics) {
+        if (!metrics || metrics.totalLength <= 0) {
           continue;
         }
 

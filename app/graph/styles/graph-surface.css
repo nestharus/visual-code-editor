@@ -188,8 +188,8 @@
 }
 
 .edge-label text {
-  fill: #6e7681;
-  font-size: 9px;
+  fill: #8b949e;
+  font-size: 10px;
   letter-spacing: 0.02em;
   pointer-events: all;
 }
@@ -217,6 +217,7 @@
 
 .graph-node {
   --node-accent: #58a6ff;
+  --node-accent-glow: 88, 166, 255;
   --node-border: rgba(88, 166, 255, 0.8);
   --node-bg: rgba(22, 27, 34, 0.92);
   position: absolute;
@@ -290,8 +291,8 @@
 .graph-node.is-hovered .graph-card,
 .graph-node.is-settling .graph-card {
   box-shadow:
-    0 0 20px rgba(88, 166, 255, 0.3),
-    0 0 40px rgba(88, 166, 255, 0.15),
+    0 0 20px rgba(var(--node-accent-glow, 88, 166, 255), 0.3),
+    0 0 40px rgba(var(--node-accent-glow, 88, 166, 255), 0.15),
     0 20px 40px rgba(1, 4, 9, 0.5),
     0 8px 16px rgba(1, 4, 9, 0.4),
     inset 0 1px 0 rgba(240, 246, 252, 0.08);
@@ -376,12 +377,14 @@
 
 .graph-node[data-kind="store"] {
   --node-accent: #d29922;
+  --node-accent-glow: 210, 153, 34;
   --node-border: rgba(210, 153, 34, 0.9);
   --node-bg: rgba(34, 28, 12, 0.92);
 }
 
 .graph-node[data-kind="external"] {
   --node-accent: #8b949e;
+  --node-accent-glow: 110, 118, 129;
   --node-border: rgba(110, 118, 129, 0.7);
   --node-bg: rgba(13, 17, 23, 0.88);
 }
@@ -394,29 +397,33 @@
 
 .graph-node[data-kind="behavioral-stage"] {
   --node-accent: #4fa9a0;
+  --node-accent-glow: 79, 169, 160;
   --node-border: rgba(79, 169, 160, 0.82);
   --node-bg: rgba(32, 39, 54, 0.94);
 }
 
 .graph-node[data-kind="behavioral-step"] {
   --node-accent: #d29922;
+  --node-accent-glow: 210, 153, 34;
   --node-border: rgba(210, 153, 34, 0.82);
   --node-bg: rgba(37, 31, 47, 0.94);
 }
 
 .graph-node[data-kind="file-node"] {
   --node-accent: #7ee787;
+  --node-accent-glow: 126, 231, 135;
   --node-border: rgba(88, 166, 255, 0.62);
   --node-bg: rgba(22, 27, 34, 0.94);
 }
 
 .graph-node[data-kind="agent-node"] {
   --node-accent: #c297ff;
+  --node-accent-glow: 194, 151, 255;
   --node-border: rgba(194, 151, 255, 0.84);
   --node-bg: rgba(26, 21, 37, 0.96);
 }
 
-.graph-node[data-kind="module-group"] .graph-card {
+.graph-node[data-kind="module-group"] > .graph-node-inner > .graph-node-float > .graph-card {
   border-style: dashed;
   background:
     linear-gradient(180deg, rgba(88, 166, 255, 0.05), transparent 55%),

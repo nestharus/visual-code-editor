@@ -4,7 +4,15 @@ import { getIconSvgByKind } from "../../lib/node-visuals";
 import { resolveNodeShape, shapeClassName } from "../layout/shapes";
 import type { GraphCardProps } from "./CardRegistry";
 
+// Kinds that have per-kind CSS accent colors — don't override with data.color
+const CSS_ACCENTED_KINDS = new Set([
+  "store", "external", "agent-node", "file-node",
+  "behavioral-lifecycle", "behavioral-stage", "behavioral-step",
+]);
+
 function resolveAccentColor(props: GraphCardProps) {
+  if (CSS_ACCENTED_KINDS.has(props.node.kind)) return undefined;
+
   const color = props.node.data.color;
   if (typeof color === "string" && color.length > 0) {
     return color;

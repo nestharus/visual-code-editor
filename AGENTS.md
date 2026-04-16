@@ -12,23 +12,27 @@ Interactive system visualization tool. Renders organizational (clusters → syst
 ### Technology Stack
 
 - **SolidJS** + **TanStack Solid Router** — reactive UI framework
-- **Cytoscape.js** — graph rendering (nodes are styled via `cytoscape-style.ts`)
-- **Mermaid** — layout engine (hidden render → SVG parsing → position extraction)
+- **ELK.js** — graph layout engine (layered algorithm with orthogonal edge routing)
+- **Custom SVG/HTML rendering** — nodes as HTML cards, edges as SVG paths in layered composition
 - **Vite** — build tool
-- **CSS custom properties** — dark theme (GitHub-dark inspired)
+- **CSS custom properties** — dark theme (GitHub-dark inspired), per-node-kind accent colors
 
-### Current Visual State
+### Current Visual State (as of 2026-04-15)
 
-Visually basic with significant bugs identified by animation QA (2026-04-10):
-- Node shapes not differentiating by type (all render as ellipses)
-- Hover lift works but edges disconnect from lifted nodes, z-order is wrong, spring settle on unhover snaps
-- Edge hover broken inside compound nodes (mouse events swallowed by compound node priority)
-- Edge colors/dash patterns missing (parsing bug + CSS override bug)
-- Drill-down/back navigation animations non-functional (flat crossfade instead of radiate/burst)
-- Entry/exit animations broken (nodes appear instantly, no stagger)
-- Detail panel has layout/styling issues (duplicate headers, missing padding)
-- Shadowbox token pulse animation missing, pause control broken
-- Float animation works but snaps on hover instead of pausing smoothly
+35 bugs from animation QA have been fixed. Current state:
+- Node shapes differentiate by type (rounded, circle, pill, hexagon, octagon)
+- Hover: spring-based lift (-12px) + scale (1.08x) with accent-colored glow, 3-state settling FSM
+- Edges: layered SVG composition (base/highlighted/hit/transport), innerScale compensation keeps edges connected
+- Edge hover works inside compound nodes (priority refactor: non-compound > edge > compound)
+- Edge colors/dash patterns working per kind (cluster, store, behavioral, back-edge, agent, file-import)
+- Entry/exit animations working with stagger delays on all navigation paths
+- Detail panel strips duplicate headers from fetched HTML content
+- Shadowbox: playback with token animation, step progress, scenario preamble, node visit states
+- Float animation pauses smoothly via animation-play-state
+
+### Known remaining items
+- Token pulse in shadowbox — needs video verification (Gemini quota)
+- Edge labels only visible at zoom >= 0.8 (base) or >= 0.5 (highlighted)
 
 ### Dual-View Problem
 

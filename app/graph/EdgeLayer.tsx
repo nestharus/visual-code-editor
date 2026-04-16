@@ -83,7 +83,7 @@ export function BaseEdgeLayer(props: BaseEdgeLayerProps) {
                 targetInnerScale={props.presentation.innerScale(edge.target)}
                 dimmed={props.interaction.dimmedEdges().has(edge.id)}
                 highlighted={false}
-                labelVisible={props.zoom >= 0.8}
+                labelVisible={props.zoom >= 0.8 && !props.interaction.dimmedEdges().has(edge.id)}
               />
             );
           }}

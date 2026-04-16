@@ -335,7 +335,7 @@ export function EdgePath(props: EdgePathProps) {
     ),
   );
   const markerId = () => getMarkerIdForKind(props.edge.kind);
-  const labelWidth = () => Math.max(24, (props.edge.label?.length ?? 0) * 5.4 + 12);
+  const labelWidth = () => Math.max(28, (props.edge.label?.length ?? 0) * 6 + 14);
 
   if (props.labelOnly) {
     if (!props.labelVisible || !props.edge.label) return null;
