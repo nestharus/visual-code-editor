@@ -24,12 +24,14 @@
           { "data": { "id": "system-a1", "label": "System A1", "kind": "system", "color": "#4a9eff" }, "classes": "system" },
           { "data": { "id": "system-a2", "label": "System A2", "kind": "system", "color": "#4a9eff" }, "classes": "system" },
           { "data": { "id": "system-ext", "label": "External Sys", "kind": "external" }, "classes": "external" },
+          { "data": { "id": "system-a3", "label": "Telemetry & Replay", "kind": "system", "borderColor": "#e5534b" }, "classes": "system" },
           { "data": { "id": "e-a1-a2", "source": "system-a1", "target": "system-a2", "kind": "import", "label": "imports" }, "classes": "system-edge" },
-          { "data": { "id": "e-a1-ext", "source": "system-a1", "target": "system-ext", "kind": "import", "label": "calls" }, "classes": "system-edge" }
+          { "data": { "id": "e-a1-ext", "source": "system-a1", "target": "system-ext", "kind": "import", "label": "calls" }, "classes": "system-edge" },
+          { "data": { "id": "e-a2-a3", "source": "system-a2", "target": "system-a3", "kind": "import", "label": "publishes" }, "classes": "system-edge" }
         ],
         "edgeClickMap": {},
         "nodeTargetMap": {},
-        "mermaid": "graph TD\n  system_a1[System A1]\n  system_a2[System A2]\n  system_ext[External Sys]\n  system_a1 --> system_a2\n  system_a1 --> system_ext"
+        "mermaid": "graph TD\n  system_a1[System A1]\n  system_a2[System A2]\n  system_ext[External Sys]\n  system_a3[Telemetry & Replay]\n  system_a1 --> system_a2\n  system_a1 --> system_ext\n  system_a2 --> system_a3"
       },
       "cluster-beta": {
         "id": "cluster-beta",
@@ -77,6 +79,36 @@
         "fileCount": 2,
         "agentCount": 0,
         "mermaid": "graph TD\n  file_main_py[main.py]\n  file_util_py[util.py]\n  file_main_py --> file_util_py"
+      },
+      "system-a3": {
+        "id": "system-a3",
+        "label": "Telemetry & Replay",
+        "clusterId": "cluster-alpha",
+        "clusterColor": "#4a9eff",
+        "elements": [
+          { "data": { "id": "mod-group-runtime", "label": "Runtime Core", "kind": "module-group" }, "classes": "module-group" },
+          { "data": { "id": "mod-group-connectors", "label": "Replay Connectors", "kind": "module-group" }, "classes": "module-group" },
+          { "data": { "id": "file-entry.ts", "label": "entry.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-runtime" }, "classes": "file-node" },
+          { "data": { "id": "file-router.ts", "label": "router.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-runtime" }, "classes": "file-node" },
+          { "data": { "id": "file-replay-normalizer.ts", "label": "event_reconciliation_and_replay_normalizer.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-runtime" }, "classes": "file-node" },
+          { "data": { "id": "file-replay-worker.ts", "label": "replay-worker.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-runtime" }, "classes": "file-node" },
+          { "data": { "id": "file-adapter-registry.ts", "label": "adapter-registry.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-connectors" }, "classes": "file-node" },
+          { "data": { "id": "file-slack-adapter.ts", "label": "slack-adapter.ts", "kind": "file", "color": "#4a9eff", "parent": "mod-group-connectors" }, "classes": "file-node" },
+          { "data": { "id": "agent-replay", "label": "replay-agent<br/>dispatcher", "kind": "agent", "color": "#9D7BEE", "parent": "mod-group-connectors" }, "classes": "agent-node" },
+          { "data": { "id": "file-dead-letter.ts", "label": "dead-letter.ts", "kind": "file", "color": "#4a9eff" }, "classes": "file-node" },
+          { "data": { "id": "e-a3-entry-router", "source": "file-entry.ts", "target": "file-router.ts", "kind": "file-import", "label": "imports" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-router-normalizer", "source": "file-router.ts", "target": "file-replay-normalizer.ts", "kind": "file-import", "label": "imports" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-normalizer-worker", "source": "file-replay-normalizer.ts", "target": "file-replay-worker.ts", "kind": "file-import", "label": "imports" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-worker-dead-letter", "source": "file-replay-worker.ts", "target": "file-dead-letter.ts", "kind": "file-import", "label": "routes" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-adapter-slack", "source": "file-adapter-registry.ts", "target": "file-slack-adapter.ts", "kind": "file-import", "label": "loads" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-slack-normalizer", "source": "file-slack-adapter.ts", "target": "file-replay-normalizer.ts", "kind": "file-import", "label": "forwards" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-registry-router", "source": "file-adapter-registry.ts", "target": "file-router.ts", "kind": "file-import", "label": "registers" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-dead-letter-registry", "source": "file-dead-letter.ts", "target": "file-adapter-registry.ts", "kind": "file-import", "label": "requeues" }, "classes": "file-import" },
+          { "data": { "id": "e-a3-agent-worker", "source": "agent-replay", "target": "file-replay-worker.ts", "kind": "agent-invoke", "label": "dispatches" }, "classes": "agent-invoke" }
+        ],
+        "fileCount": 7,
+        "agentCount": 1,
+        "mermaid": "graph TD\n  subgraph mod_group_runtime[Runtime Core]\n    file_entry_ts[entry.ts]\n    file_router_ts[router.ts]\n    file_replay_normalizer_ts[event_reconciliation_and_replay_normalizer.ts]\n    file_replay_worker_ts[replay-worker.ts]\n  end\n  subgraph mod_group_connectors[Replay Connectors]\n    file_adapter_registry_ts[adapter-registry.ts]\n    file_slack_adapter_ts[slack-adapter.ts]\n    agent_replay{{\"replay-agent<br/>dispatcher\"}}\n  end\n  file_dead_letter_ts[dead-letter.ts]\n  file_entry_ts --> file_router_ts\n  file_router_ts --> file_replay_normalizer_ts\n  file_replay_normalizer_ts --> file_replay_worker_ts\n  file_replay_worker_ts --> file_dead_letter_ts\n  file_adapter_registry_ts --> file_slack_adapter_ts\n  file_slack_adapter_ts --> file_replay_normalizer_ts\n  file_adapter_registry_ts --> file_router_ts\n  file_dead_letter_ts --> file_adapter_registry_ts\n  agent_replay --> file_replay_worker_ts"
       },
       "system-ext": {
         "id": "system-ext",
@@ -151,10 +183,13 @@
         "elements": [
           { "data": { "id": "stage-implement", "label": "Implement", "kind": "stage" }, "classes": "behavioral-stage" },
           { "data": { "id": "stage-verify", "label": "Verify", "kind": "stage" }, "classes": "behavioral-stage" },
-          { "data": { "id": "e-st-iv", "source": "stage-implement", "target": "stage-verify", "kind": "stage-flow", "label": "validates" }, "classes": "behavioral-edge" }
+          { "data": { "id": "stage-remediate", "label": "Remediate", "kind": "stage" }, "classes": "behavioral-stage" },
+          { "data": { "id": "e-st-iv", "source": "stage-implement", "target": "stage-verify", "kind": "stage-flow", "label": "validates" }, "classes": "behavioral-edge" },
+          { "data": { "id": "e-st-vr", "source": "stage-verify", "target": "stage-remediate", "kind": "stage-flow", "label": "fails into" }, "classes": "behavioral-edge" },
+          { "data": { "id": "e-st-ri", "source": "stage-remediate", "target": "stage-implement", "kind": "stage-flow", "label": "rework" }, "classes": "behavioral-back-edge" }
         ],
-        "stageIds": ["stage-implement", "stage-verify"],
-        "mermaid": "graph TD\n  stage_implement[Implement]\n  stage_verify[Verify]\n  stage_implement --> stage_verify"
+        "stageIds": ["stage-implement", "stage-verify", "stage-remediate"],
+        "mermaid": "graph TD\n  stage_implement[Implement]\n  stage_verify[Verify]\n  stage_remediate[Remediate]\n  stage_implement --> stage_verify\n  stage_verify --> stage_remediate\n  stage_remediate -. rework .-> stage_implement"
       }
     },
     "stages": {
@@ -189,10 +224,13 @@
         "elements": [
           { "data": { "id": "step-code", "label": "Code", "kind": "step" }, "classes": "behavioral-step" },
           { "data": { "id": "step-test", "label": "Test", "kind": "step" }, "classes": "behavioral-step" },
-          { "data": { "id": "e-step-ct", "source": "step-code", "target": "step-test", "kind": "step-flow", "label": "verifies" }, "classes": "behavioral-edge" }
+          { "data": { "id": "step-debug", "label": "Debug", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-ct", "source": "step-code", "target": "step-test", "kind": "step-flow", "label": "verifies" }, "classes": "behavioral-edge" },
+          { "data": { "id": "e-step-td", "source": "step-test", "target": "step-debug", "kind": "step-flow", "label": "captures" }, "classes": "behavioral-edge" },
+          { "data": { "id": "e-step-dc", "source": "step-debug", "target": "step-code", "kind": "step-flow" }, "classes": "behavioral-back-edge" }
         ],
-        "stepIds": ["step-code", "step-test"],
-        "mermaid": "graph TD\n  step_code[Code]\n  step_test[Test]\n  step_code --> step_test"
+        "stepIds": ["step-code", "step-test", "step-debug"],
+        "mermaid": "graph TD\n  step_code[Code]\n  step_test[Test]\n  step_debug[Debug]\n  step_code --> step_test\n  step_test --> step_debug\n  step_debug -.-> step_code"
       },
       "stage-verify": {
         "id": "stage-verify",
@@ -205,6 +243,18 @@
         ],
         "stepIds": ["step-qa", "step-release"],
         "mermaid": "graph TD\n  step_qa[QA]\n  step_release[Release]\n  step_qa --> step_release"
+      },
+      "stage-remediate": {
+        "id": "stage-remediate",
+        "label": "Remediate",
+        "lifecycleId": "lifecycle-build",
+        "elements": [
+          { "data": { "id": "step-patch", "label": "Patch", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "step-rerun", "label": "Re-run", "kind": "step" }, "classes": "behavioral-step" },
+          { "data": { "id": "e-step-pr", "source": "step-patch", "target": "step-rerun", "kind": "step-flow", "label": "rechecks" }, "classes": "behavioral-edge" }
+        ],
+        "stepIds": ["step-patch", "step-rerun"],
+        "mermaid": "graph TD\n  step_patch[Patch]\n  step_rerun[Re-run]\n  step_patch --> step_rerun"
       }
     }
   },
@@ -236,31 +286,209 @@
             "participantNodeIds": ["store-config", "cluster-beta"]
           }
         ]
+      },
+      "scenario:release-rework": {
+        "id": "scenario:release-rework",
+        "behaviorId": "lifecycle-build",
+        "title": "Release Rework Loop",
+        "caption": "Verification failures loop build work back through remediation before implementation resumes.",
+        "participants": ["stage-implement", "stage-verify", "stage-remediate"],
+        "beats": [
+          {
+            "id": "beat-release-1",
+            "kind": "path",
+            "caption": "Implement → Verify: Validates — implementation moves into verification.",
+            "fromNodeId": "stage-implement",
+            "toNodeId": "stage-verify",
+            "edgeIds": ["e-st-iv"],
+            "participantNodeIds": ["stage-implement", "stage-verify"]
+          },
+          {
+            "id": "beat-release-2",
+            "kind": "path",
+            "caption": "Verify → Remediate: Fails into — verification sends the work back for repair.",
+            "fromNodeId": "stage-verify",
+            "toNodeId": "stage-remediate",
+            "edgeIds": ["e-st-vr"],
+            "participantNodeIds": ["stage-verify", "stage-remediate"]
+          },
+          {
+            "id": "beat-release-3",
+            "kind": "path",
+            "caption": "Remediate → Implement: Rework — the patch returns the work to implementation.",
+            "fromNodeId": "stage-remediate",
+            "toNodeId": "stage-implement",
+            "edgeIds": ["e-st-ri"],
+            "participantNodeIds": ["stage-remediate", "stage-implement"]
+          }
+        ]
+      },
+      "scenario:replay-pipeline": {
+        "id": "scenario:replay-pipeline",
+        "behaviorId": "system-a3",
+        "title": "Replay Pipeline",
+        "caption": "Replay events enter through the runtime router, normalize, then run through the worker and dead-letter recovery chain.",
+        "participants": ["file-entry.ts", "file-router.ts", "file-replay-normalizer.ts", "file-replay-worker.ts", "file-dead-letter.ts"],
+        "beats": [
+          {
+            "id": "beat-replay-1",
+            "kind": "path",
+            "caption": "Entry → Router: entry hands the event to the runtime router.",
+            "fromNodeId": "file-entry.ts",
+            "toNodeId": "file-router.ts",
+            "edgeIds": ["e-a3-entry-router"],
+            "participantNodeIds": ["file-entry.ts", "file-router.ts"]
+          },
+          {
+            "id": "beat-replay-2",
+            "kind": "path",
+            "caption": "Router → Normalizer: router expands event payloads into replay-safe records.",
+            "fromNodeId": "file-router.ts",
+            "toNodeId": "file-replay-normalizer.ts",
+            "edgeIds": ["e-a3-router-normalizer"],
+            "participantNodeIds": ["file-router.ts", "file-replay-normalizer.ts"]
+          },
+          {
+            "id": "beat-replay-3",
+            "kind": "path",
+            "caption": "Normalizer → Worker: normalized records move into replay execution.",
+            "fromNodeId": "file-replay-normalizer.ts",
+            "toNodeId": "file-replay-worker.ts",
+            "edgeIds": ["e-a3-normalizer-worker"],
+            "participantNodeIds": ["file-replay-normalizer.ts", "file-replay-worker.ts"]
+          },
+          {
+            "id": "beat-replay-4",
+            "kind": "path",
+            "caption": "Worker → Dead-letter: failed deliveries route into dead-letter recovery.",
+            "fromNodeId": "file-replay-worker.ts",
+            "toNodeId": "file-dead-letter.ts",
+            "edgeIds": ["e-a3-worker-dead-letter"],
+            "participantNodeIds": ["file-replay-worker.ts", "file-dead-letter.ts"]
+          }
+        ]
       }
     },
     "bindings": {
-      "cluster-alpha": ["scenario:alpha-flow"],
+      "cluster-alpha": ["scenario:alpha-flow", "scenario:release-rework"],
       "cluster-beta": ["scenario:alpha-flow"],
       "store-config": ["scenario:alpha-flow"],
       "lifecycle-design": ["scenario:alpha-flow"],
-      "lifecycle-build": ["scenario:alpha-flow"]
+      "lifecycle-build": ["scenario:release-rework"],
+      "system-a3": ["scenario:replay-pipeline"]
     }
   },
   "details": {
-    "cluster-alpha": { "kind": "cluster", "id": "cluster-alpha", "label": "Alpha", "href": "clusters/alpha.html", "color": "#4a9eff" },
+    "cluster-alpha": {
+      "kind": "cluster",
+      "id": "cluster-alpha",
+      "label": "Alpha",
+      "href": "clusters/alpha.html",
+      "color": "#4a9eff",
+      "systemCount": 4,
+      "systems": ["system-a1", "system-a2", "system-a3", "system-ext"]
+    },
     "cluster-beta": { "kind": "cluster", "id": "cluster-beta", "label": "Beta", "href": "clusters/beta.html", "color": "#ff6b4a" },
     "store-config": { "kind": "store", "id": "store-config", "label": "Config Store", "href": "stores/config.html" },
     "system-a1": { "kind": "system", "id": "system-a1", "label": "System A1", "href": "systems/a1.html" },
     "system-a2": { "kind": "system", "id": "system-a2", "label": "System A2", "href": "systems/a2.html" },
+    "system-a3": {
+      "kind": "system",
+      "id": "system-a3",
+      "label": "Telemetry & Replay",
+      "href": "systems/a3.html",
+      "clusterColor": "#4a9eff",
+      "fileCount": 7,
+      "agentCount": 1,
+      "description": "Telemetry replay runtime with connector adapters, replay normalization, and dead-letter recovery."
+    },
     "system-ext": { "kind": "system", "id": "system-ext", "label": "External Sys", "href": "systems/ext.html" },
     "system-b1": { "kind": "system", "id": "system-b1", "label": "System B1", "href": "systems/b1.html" },
     "system-b2": { "kind": "system", "id": "system-b2", "label": "System B2", "href": "systems/b2.html" },
+    "mod-group-runtime": {
+      "kind": "module-group",
+      "id": "mod-group-runtime",
+      "label": "Runtime Core",
+      "description": "Core replay entry, routing, normalization, and worker execution files.",
+      "systemId": "system-a3"
+    },
+    "mod-group-connectors": {
+      "kind": "module-group",
+      "id": "mod-group-connectors",
+      "label": "Replay Connectors",
+      "description": "Connector adapters and dispatch surfaces for replay integrations.",
+      "systemId": "system-a3"
+    },
     "agent-a1": { "kind": "agent", "id": "agent-a1", "label": "agent-a1 coordinator", "description": "Coordinates module work when file-level behavior needs orchestration.", "path": "agents/agent-a1.md", "moduleId": "module-a1", "systemId": "system-a1" },
+    "agent-replay": {
+      "kind": "agent",
+      "id": "agent-replay",
+      "label": "replay-agent dispatcher",
+      "description": "Dispatches replay jobs into the worker chain for connector-specific execution.",
+      "path": "agents/replay-agent.md",
+      "moduleId": "mod-group-connectors",
+      "systemId": "system-a3"
+    },
     "file-1.py": { "kind": "module", "id": "file-1.py", "label": "file-1.py", "href": "modules/file-1.html" },
     "file-2.py": { "kind": "module", "id": "file-2.py", "label": "file-2.py", "href": "modules/file-2.html" },
     "file-3.py": { "kind": "module", "id": "file-3.py", "label": "file-3.py", "href": "modules/file-3.html" },
     "file-main.py": { "kind": "module", "id": "file-main.py", "label": "main.py", "href": "modules/main.html" },
     "file-util.py": { "kind": "module", "id": "file-util.py", "label": "util.py", "href": "modules/util.html" },
+    "file-entry.ts": {
+      "kind": "module",
+      "id": "file-entry.ts",
+      "label": "entry.ts",
+      "href": "modules/entry.html",
+      "moduleId": "mod-group-runtime",
+      "systemId": "system-a3"
+    },
+    "file-router.ts": {
+      "kind": "module",
+      "id": "file-router.ts",
+      "label": "router.ts",
+      "href": "modules/router.html",
+      "moduleId": "mod-group-runtime",
+      "systemId": "system-a3"
+    },
+    "file-replay-normalizer.ts": {
+      "kind": "module",
+      "id": "file-replay-normalizer.ts",
+      "label": "event_reconciliation_and_replay_normalizer.ts",
+      "href": "modules/replay-normalizer.html",
+      "moduleId": "mod-group-runtime",
+      "systemId": "system-a3"
+    },
+    "file-replay-worker.ts": {
+      "kind": "module",
+      "id": "file-replay-worker.ts",
+      "label": "replay-worker.ts",
+      "href": "modules/replay-worker.html",
+      "moduleId": "mod-group-runtime",
+      "systemId": "system-a3"
+    },
+    "file-adapter-registry.ts": {
+      "kind": "module",
+      "id": "file-adapter-registry.ts",
+      "label": "adapter-registry.ts",
+      "href": "modules/adapter-registry.html",
+      "moduleId": "mod-group-connectors",
+      "systemId": "system-a3"
+    },
+    "file-slack-adapter.ts": {
+      "kind": "module",
+      "id": "file-slack-adapter.ts",
+      "label": "slack-adapter.ts",
+      "href": "modules/slack-adapter.html",
+      "moduleId": "mod-group-connectors",
+      "systemId": "system-a3"
+    },
+    "file-dead-letter.ts": {
+      "kind": "module",
+      "id": "file-dead-letter.ts",
+      "label": "dead-letter.ts",
+      "href": "modules/dead-letter.html",
+      "systemId": "system-a3"
+    },
     "file-api.py": { "kind": "module", "id": "file-api.py", "label": "api.py", "href": "modules/api.html" },
     "file-client.py": { "kind": "module", "id": "file-client.py", "label": "client.py", "href": "modules/client.html" },
     "file-handler.py": { "kind": "module", "id": "file-handler.py", "label": "handler.py", "href": "modules/handler.html" },
@@ -274,19 +502,30 @@
     "e-a-store": { "kind": "edge", "id": "e-a-store", "label": "write", "href": "edges/e-a-store.html", "from": "cluster-alpha", "to": "store-config" },
     "e-store-b": { "kind": "edge", "id": "e-store-b", "label": "read", "href": "edges/e-store-b.html", "from": "store-config", "to": "cluster-beta" },
     "lifecycle-design": { "kind": "lifecycle", "id": "lifecycle-design", "label": "Design", "description": "Design lifecycle for product development.", "stageIds": ["stage-explore", "stage-propose"] },
-    "lifecycle-build": { "kind": "lifecycle", "id": "lifecycle-build", "label": "Build", "description": "Build lifecycle for implementation.", "stageIds": ["stage-implement", "stage-verify"] },
+    "lifecycle-build": { "kind": "lifecycle", "id": "lifecycle-build", "label": "Build", "description": "Build lifecycle for implementation.", "stageIds": ["stage-implement", "stage-verify", "stage-remediate"] },
     "stage-explore": { "kind": "stage", "id": "stage-explore", "label": "Explore", "description": "Explore the problem space.", "lifecycleId": "lifecycle-design", "stepIds": ["step-research", "step-analyze"] },
     "stage-propose": { "kind": "stage", "id": "stage-propose", "label": "Propose", "description": "Shape proposals from exploration findings.", "lifecycleId": "lifecycle-design", "stepIds": ["step-draft", "step-review"] },
-    "stage-implement": { "kind": "stage", "id": "stage-implement", "label": "Implement", "description": "Execute the implementation plan.", "lifecycleId": "lifecycle-build", "stepIds": ["step-code", "step-test"] },
+    "stage-implement": { "kind": "stage", "id": "stage-implement", "label": "Implement", "description": "Execute the implementation plan.", "lifecycleId": "lifecycle-build", "stepIds": ["step-code", "step-test", "step-debug"] },
     "stage-verify": { "kind": "stage", "id": "stage-verify", "label": "Verify", "description": "Verify implementation correctness.", "lifecycleId": "lifecycle-build", "stepIds": ["step-qa", "step-release"] },
+    "stage-remediate": {
+      "kind": "stage",
+      "id": "stage-remediate",
+      "label": "Remediate",
+      "description": "Patch failures and push the work back into implementation.",
+      "lifecycleId": "lifecycle-build",
+      "stepIds": ["step-patch", "step-rerun"]
+    },
     "step-research": { "kind": "step", "id": "step-research", "label": "Research", "description": "Investigate the problem space and gather relevant information." },
     "step-analyze": { "kind": "step", "id": "step-analyze", "label": "Analyze", "description": "Analyze findings and identify patterns." },
     "step-draft": { "kind": "step", "id": "step-draft", "label": "Draft", "href": "steps/draft.html" },
     "step-review": { "kind": "step", "id": "step-review", "label": "Review", "href": "steps/review.html" },
     "step-code": { "kind": "step", "id": "step-code", "label": "Code", "href": "steps/code.html" },
     "step-test": { "kind": "step", "id": "step-test", "label": "Test", "href": "steps/test.html" },
+    "step-debug": { "kind": "step", "id": "step-debug", "label": "Debug", "href": "steps/debug.html" },
     "step-qa": { "kind": "step", "id": "step-qa", "label": "QA", "href": "steps/qa.html" },
     "step-release": { "kind": "step", "id": "step-release", "label": "Release", "href": "steps/release.html" },
+    "step-patch": { "kind": "step", "id": "step-patch", "label": "Patch", "href": "steps/patch.html" },
+    "step-rerun": { "kind": "step", "id": "step-rerun", "label": "Re-run", "href": "steps/rerun.html" },
     "e-lc-db": { "kind": "edge", "id": "e-lc-db", "label": "feeds", "href": "edges/e-lc-db.html", "from": "lifecycle-design", "to": "lifecycle-build" }
   }
 }

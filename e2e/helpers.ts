@@ -44,3 +44,9 @@ export async function setupMockApi(page: Page) {
   });
 }
 
+export async function gotoDiagram(page: Page, path: string) {
+  await setupMockApi(page);
+  await page.goto(path);
+  await page.locator(".graph-node").first().waitFor({ state: "visible", timeout: 10000 });
+  await page.waitForTimeout(4000);
+}
