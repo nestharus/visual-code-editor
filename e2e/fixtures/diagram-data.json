@@ -433,6 +433,23 @@
       }
     }
   },
+  "diffs": {
+    "defaultDiffId": "pr-42",
+    "byId": {
+      "pr-42": {
+        "id": "pr-42",
+        "title": "PR #42: Add replay worker, remove dead-letter",
+        "source": "fixture",
+        "summary": { "addedNodes": 1, "removedNodes": 1 },
+        "addedNodes": [
+          { "id": "file-replay-worker.ts", "status": "added", "label": "replay-worker.ts", "reason": "new worker" }
+        ],
+        "removedNodes": [
+          { "id": "file-dead-letter.ts", "status": "removed", "label": "dead-letter.ts", "reason": "merged into worker" }
+        ]
+      }
+    }
+  },
   "code": {
     "byEntity": {
       "file-entry.ts": ["cb-entry-bootstrap"],

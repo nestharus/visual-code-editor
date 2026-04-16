@@ -1021,3 +1021,67 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
     var(--node-bg);
 }
+
+/* Diff overlays — added + removed on nodes */
+.graph-node[data-diff-status="added"]:not(.dimmed) > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow:
+    0 14px 32px rgba(1, 4, 9, 0.24),
+    inset 0 1px 0 rgba(240, 246, 252, 0.06),
+    inset 0 0 0 2px rgba(63, 185, 80, 0.7);
+  background:
+    linear-gradient(180deg, rgba(63, 185, 80, 0.18), rgba(63, 185, 80, 0.04) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+}
+
+.graph-node[data-diff-status="removed"] {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+}
+
+.graph-node[data-diff-status="removed"] > .graph-node-inner > .graph-node-float > .graph-card {
+  box-shadow:
+    0 14px 32px rgba(1, 4, 9, 0.24),
+    inset 0 1px 0 rgba(240, 246, 252, 0.06),
+    inset 0 0 0 2px rgba(248, 81, 73, 0.7);
+  background:
+    linear-gradient(180deg, rgba(248, 81, 73, 0.15), rgba(248, 81, 73, 0.04) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    var(--node-bg);
+  text-decoration: line-through;
+  text-decoration-color: rgba(248, 81, 73, 0.6);
+  text-decoration-thickness: 1px;
+}
+
+/* Diff + test status co-existence — diff status takes visual priority with a corner glyph */
+.graph-node[data-diff-status="added"] .graph-node-test-badge,
+.graph-node[data-diff-status="removed"] .graph-node-test-badge {
+  opacity: 0.5;
+}
+
+.graph-node[data-diff-status]::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 7;
+}
+
+.graph-node[data-diff-status="added"]::after {
+  background: #3fb950;
+  box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.8);
+}
+
+.graph-node[data-diff-status="removed"]::after {
+  background: #f85149;
+  box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.8);
+}
+
+/* Hover disabled on removed ghosts */
+.graph-node[data-diff-status="removed"]:hover {
+  opacity: 0.6;
+}

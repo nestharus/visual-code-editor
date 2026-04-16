@@ -852,6 +852,29 @@
 .toolbar-tests-dot[data-status="passed"] { background: #3fb950; }
 .toolbar-tests-dot[data-status="failed"] { background: #f85149; }
 
+.toolbar-diff-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  border-color: rgba(72, 79, 88, 0.5);
+}
+
+.toolbar-diff-btn.is-active {
+  border-color: rgba(63, 185, 80, 0.55);
+  background: linear-gradient(180deg, rgba(63, 185, 80, 0.16), rgba(63, 185, 80, 0.08));
+}
+
+.toolbar-diff-glyph {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent, #58a6ff);
+}
+
+.toolbar-diff-btn.is-active .toolbar-diff-glyph {
+  color: #3fb950;
+}
+
 .watcher-status-dot {
   display: inline-block;
   width: 8px;

@@ -1,8 +1,9 @@
 import { For, Show, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
-import type { DiagramEntityTestRecord } from "../lib/diagram-data";
+import type { DiagramDiffStatus, DiagramEntityTestRecord } from "../lib/diagram-data";
 import { captureClickRect } from "./DrillTransition";
+import type { DiffStatusMap } from "./diff-overlay";
 import { resolveNodeShape } from "./layout/shapes";
 import type { InteractionService } from "./InteractionService";
 import type { PresentationStateService } from "./PresentationStateService";
@@ -27,6 +28,8 @@ type NodeLayerProps = {
   playableNodeIds?: Set<string>;
   testByEntity?: Record<string, DiagramEntityTestRecord>;
   testsVisible?: boolean;
+  diffStatusMap?: DiffStatusMap;
+  diffVisible?: boolean;
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   onNodeInfo?: (nodeId: string, kind: string, label: string) => void;
 };
@@ -43,6 +46,8 @@ type GraphNodeItemProps = {
   onNodeTap?: (nodeId: string, kind: string, label: string) => void;
   testByEntity?: Record<string, DiagramEntityTestRecord>;
   testsVisible?: boolean;
+  diffStatusMap?: DiffStatusMap;
+  diffVisible?: boolean;
   parentLeft?: number;
   parentTop?: number;
 };
@@ -104,6 +109,11 @@ function GraphNodeItem(props: GraphNodeItemProps) {
   const testStatus = () => testRecord()?.status ?? null;
   const cov = () => safeCoverage(testRecord()?.coveragePct);
   const bucket = () => coverageBucket(cov());
+  const diffStatus = (): DiagramDiffStatus | undefined => {
+    if (!props.diffVisible) return undefined;
+    return props.diffStatusMap?.get(props.node.id);
+  };
+  const isDiffGhost = () => diffStatus() === "removed";
 
   const isFloating = () =>
     !hasChildren() &&
@@ -131,6 +141,7 @@ function GraphNodeItem(props: GraphNodeItemProps) {
       }}
       data-kind={props.node.kind}
       data-test-status={testStatus() ?? undefined}
+      data-diff-status={diffStatus()}
       data-test-coverage={bucket() === "none" ? undefined : bucket()}
       data-zoom-tier={zoomTier()}
       style={{
@@ -143,10 +154,11 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         "--float-seed": String(floatSeed(props.node.id)),
         "--test-coverage-alpha": String(coverageAlpha(cov())),
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => { if (!isDiffGhost()) setHovered(true); }}
+      onMouseLeave={() => { if (!isDiffGhost()) setHovered(false); }}
       onClick={(event) => {
         event.stopPropagation();
+        if (isDiffGhost()) return;
         if (event.ctrlKey || event.metaKey) {
           props.interaction.toggleSelection(props.node.id);
           return;
@@ -197,6 +209,8 @@ function GraphNodeItem(props: GraphNodeItemProps) {
                   playableNodeIds={props.playableNodeIds}
                   testByEntity={props.testByEntity}
                   testsVisible={props.testsVisible}
+                  diffStatusMap={props.diffStatusMap}
+                  diffVisible={props.diffVisible}
                   parentLeft={absoluteLeft()}
                   parentTop={absoluteTop()}
                 />
@@ -208,25 +222,26 @@ function GraphNodeItem(props: GraphNodeItemProps) {
           !hasChildren() &&
           (zoomTier() === "label" || zoomTier() === "full")
         }>
-          <Show when={NAVIGABLE_KINDS.has(props.node.kind)}>
+          <Show when={NAVIGABLE_KINDS.has(props.node.kind) && !isDiffGhost()}>
             <button
               type="button"
               class="graph-node-info-btn"
               title="View details"
               onClick={(event) => {
                 event.stopPropagation();
+                if (isDiffGhost()) return;
                 props.onNodeInfo?.(props.node.id, props.node.kind, props.node.label);
               }}
             >
               {"\u2139"}
             </button>
           </Show>
-          <Show when={isDrillable() && !hasChildren()}>
+          <Show when={isDrillable() && !hasChildren() && !isDiffGhost()}>
             <span class="graph-node-drill-indicator" title="Click to explore">
               {"\u276F"}
             </span>
           </Show>
-          <Show when={props.playableNodeIds?.has(props.node.id)}>
+          <Show when={props.playableNodeIds?.has(props.node.id) && !isDiffGhost()}>
             <span class="graph-node-behavior-indicator" title="Has behaviors">
               {"\uD83C\uDFAC"}
             </span>
@@ -279,6 +294,8 @@ export function NodeLayer(props: NodeLayerProps) {
             playableNodeIds={props.playableNodeIds}
             testByEntity={props.testByEntity}
             testsVisible={props.testsVisible}
+            diffStatusMap={props.diffStatusMap}
+            diffVisible={props.diffVisible}
           />
         )}
       </For>

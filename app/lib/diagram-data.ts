@@ -74,6 +74,34 @@ export type DiagramTests = {
   byEntity: Record<string, DiagramEntityTestRecord>;
 };
 
+export type DiagramDiffStatus = "added" | "removed";
+
+export type DiagramDiffNodeChange = {
+  id: string;
+  status: DiagramDiffStatus;
+  label?: string;
+  kind?: string;
+  reason?: string;
+};
+
+export type DiagramDiffRecord = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  source: "fixture";
+  summary: {
+    addedNodes: number;
+    removedNodes: number;
+  };
+  addedNodes: DiagramDiffNodeChange[];
+  removedNodes: DiagramDiffNodeChange[];
+};
+
+export type DiagramDiffs = {
+  defaultDiffId: string;
+  byId: Record<string, DiagramDiffRecord>;
+};
+
 export type DiagramData = {
   organizational: {
     root: DiagramSlice;
@@ -143,6 +171,7 @@ export type DiagramData = {
     bindings: Record<string, string[]>;
   };
   tests?: DiagramTests;
+  diffs?: DiagramDiffs;
   code?: DiagramCodeIndex;
   details: Record<string, DiagramDetailRecord>;
 };

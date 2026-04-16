@@ -25,6 +25,7 @@ import { NodeLayer } from "./NodeLayer";
 import { createPresentationStateService } from "./PresentationStateService";
 import { createTransportStore } from "./TransportStore";
 import { createTransitionService } from "./TransitionService";
+import type { DiffStatusMap } from "./diff-overlay";
 import { elementsToGraph, resolveGraphDirection } from "./layout/adapter";
 import { computeElkLayout } from "./layout/elk-layout";
 import type { GraphDefinition, GraphNode } from "./layout/types";
@@ -42,6 +43,8 @@ type GraphSurfaceProps = {
   onSelectionApi?: (api: GraphSelectionApi) => void;
   testByEntity?: Record<string, DiagramEntityTestRecord>;
   testsVisible?: boolean;
+  diffStatusMap?: DiffStatusMap;
+  diffVisible?: boolean;
 };
 
 export type PromptSelectionItem = {
@@ -552,6 +555,8 @@ export function GraphSurface(props: GraphSurfaceProps) {
           playableNodeIds={playableNodeIds()}
           testByEntity={props.testByEntity}
           testsVisible={props.testsVisible}
+          diffStatusMap={props.diffStatusMap}
+          diffVisible={props.diffVisible}
         />
         <EdgeHitLayer
           graph={activeGraph()}

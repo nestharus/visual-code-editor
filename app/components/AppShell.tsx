@@ -12,6 +12,7 @@ import { DetailPanel } from "./DetailPanel";
 import { PromptDock } from "./PromptDock";
 import { SearchOverlay } from "./SearchOverlay";
 import { WatcherPanel } from "./WatcherPanel";
+import { buildDiffStatusMap } from "../graph/diff-overlay";
 import { GraphSurface, type GraphSelectionApi } from "../graph/GraphSurface";
 import type { GraphDefinition } from "../graph/layout/types";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
@@ -76,6 +77,7 @@ export const AppShell: ParentComponent = (props) => {
   const [watcherPanelOpen, setWatcherPanelOpen] = createSignal(false);
   const [promptDockOpen, setPromptDockOpen] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
+  const [diffVisible, setDiffVisible] = createSignal(initialDiffVisible());
   let searchRequestVersion = 0;
 
   function initialTestsVisible(): boolean {
@@ -83,6 +85,11 @@ export const AppShell: ParentComponent = (props) => {
     const stored = window.sessionStorage?.getItem("testsVisible");
     if (stored === "false") return false;
     return true;
+  }
+
+  function initialDiffVisible(): boolean {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage?.getItem("diffVisible") === "true";
   }
 
   const publish = (data: DiagramShellData) => {
@@ -154,6 +161,14 @@ export const AppShell: ParentComponent = (props) => {
   const testsData = createMemo(() => diagramQuery.data?.tests ?? null);
   const testByEntity = createMemo(() => testsData()?.byEntity ?? {});
   const hasTests = createMemo(() => Object.keys(testByEntity()).length > 0);
+  const diffsData = createMemo(() => diagramQuery.data?.diffs ?? null);
+  const currentDiff = createMemo(() => {
+    const diffs = diffsData();
+    if (!diffs) return null;
+    return diffs.byId[diffs.defaultDiffId] ?? null;
+  });
+  const diffStatusMap = createMemo(() => buildDiffStatusMap(currentDiff()));
+  const hasDiff = createMemo(() => !!currentDiff());
 
   createEffect(() => {
     location().pathname;
@@ -170,6 +185,11 @@ export const AppShell: ParentComponent = (props) => {
   createEffect(() => {
     if (typeof window === "undefined") return;
     window.sessionStorage?.setItem("testsVisible", testsVisible() ? "true" : "false");
+  });
+
+  createEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage?.setItem("diffVisible", diffVisible() ? "true" : "false");
   });
 
   const handleSearch = async (query: string) => {
@@ -310,6 +330,24 @@ export const AppShell: ParentComponent = (props) => {
                 <span>Tests</span>
               </button>
             </Show>
+            <Show when={hasDiff()}>
+              <button
+                type="button"
+                classList={{
+                  button: true,
+                  "toolbar-diff-btn": true,
+                  "is-active": diffVisible(),
+                }}
+                role="switch"
+                aria-checked={diffVisible()}
+                aria-label={`Diff overlay ${diffVisible() ? "on" : "off"}`}
+                title={currentDiff()?.title || "Diff"}
+                onClick={() => setDiffVisible((value) => !value)}
+              >
+                <span class="toolbar-diff-glyph">{"\u00B1"}</span>
+                <span>Diff</span>
+              </button>
+            </Show>
             <button
               type="button"
               class="button toolbar-search-btn"
@@ -400,6 +438,8 @@ export const AppShell: ParentComponent = (props) => {
                 scenarioData={searchActive() ? undefined : diagramQuery.data?.combined}
                 testByEntity={testByEntity()}
                 testsVisible={testsVisible()}
+                diffStatusMap={diffStatusMap()}
+                diffVisible={diffVisible()}
                 onNodeTap={(nodeId, kind, label) => {
                   if (searchActive()) {
                     navigate({
