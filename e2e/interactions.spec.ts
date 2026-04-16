@@ -18,7 +18,12 @@ async function openDetailPanel(page: Page, kind: string, text: string) {
   await expect(node).toBeVisible();
   await node.hover();
   await page.waitForTimeout(300);
-  await node.locator(".graph-node-info-btn").click({ force: true });
+  const infoButton = node.locator(".graph-node-info-btn");
+  if (await infoButton.count()) {
+    await infoButton.click({ force: true });
+  } else {
+    await node.click({ force: true });
+  }
   await expect(page.locator(".detail-panel.is-open")).toBeVisible();
 }
 
@@ -156,6 +161,38 @@ test.describe("Behavioral View", () => {
 
     const indicators = page.locator(".graph-node-behavior-indicator");
     expect(await indicators.count()).toBeGreaterThan(0);
+  });
+});
+
+test.describe("Code Rendering in Panel", () => {
+  test("file node panel shows code block", async ({ page }) => {
+    await gotoDiagram(page, "/organizational/clusters/cluster-alpha/systems/system-a3");
+    await openDetailPanel(page, "file-node", "entry.ts");
+
+    const codeSection = page.locator(".detail-code");
+    await expect(codeSection).toBeVisible();
+
+    const codeBlock = codeSection.locator(".detail-code-block");
+    await expect(codeBlock).toHaveCount(1);
+
+    await expect(codeSection.locator(".detail-code-path")).toHaveText("src/runtime/entry.ts");
+    await expect(codeSection.locator(".detail-code-symbol")).toHaveText("bootstrapReplay");
+    await expect(codeSection.locator("pre code")).toContainText("bootstrapReplay");
+  });
+
+  test("agent node panel shows code block", async ({ page }) => {
+    await gotoDiagram(page, "/organizational/clusters/cluster-alpha/systems/system-a3");
+    await openDetailPanel(page, "agent-node", "replay-agent");
+
+    await expect(page.locator(".detail-code")).toBeVisible();
+    await expect(page.locator(".detail-code-path")).toHaveText("agents/replay-agent.md");
+  });
+
+  test("node without code shows no code section", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+    await openDetailPanel(page, "cluster", "Alpha");
+
+    await expect(page.locator(".detail-code")).not.toBeVisible();
   });
 });
 

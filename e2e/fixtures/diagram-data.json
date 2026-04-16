@@ -378,6 +378,42 @@
       "system-a3": ["scenario:replay-pipeline"]
     }
   },
+  "code": {
+    "byEntity": {
+      "file-entry.ts": ["cb-entry-bootstrap"],
+      "file-router.ts": ["cb-router-route"],
+      "agent-replay": ["cb-agent-dispatch"]
+    },
+    "blocks": {
+      "cb-entry-bootstrap": {
+        "id": "cb-entry-bootstrap",
+        "path": "src/runtime/entry.ts",
+        "language": "ts",
+        "symbol": "bootstrapReplay",
+        "lineStart": 1,
+        "lineEnd": 8,
+        "content": "import { createRouter } from './router';\nimport { startWatcher } from './watcher';\n\nexport function bootstrapReplay() {\n  startWatcher();\n  return createRouter();\n}"
+      },
+      "cb-router-route": {
+        "id": "cb-router-route",
+        "path": "src/runtime/router.ts",
+        "language": "ts",
+        "symbol": "routeReplay",
+        "lineStart": 12,
+        "lineEnd": 22,
+        "content": "import { normalizer } from './normalizer';\n\nexport async function routeReplay(event: ReplayEvent) {\n  const normalized = normalizer.normalize(event);\n  return normalized;\n}"
+      },
+      "cb-agent-dispatch": {
+        "id": "cb-agent-dispatch",
+        "path": "agents/replay-agent.md",
+        "language": "markdown",
+        "symbol": "replay-agent",
+        "lineStart": 1,
+        "lineEnd": 10,
+        "content": "# Replay Agent Dispatcher\n\nDispatches replay batches into the adapter registry.\n\n## Behavior\n\n- Receives batch from worker\n- Selects adapter by event type\n- Dispatches to adapter"
+      }
+    }
+  },
   "details": {
     "cluster-alpha": {
       "kind": "cluster",

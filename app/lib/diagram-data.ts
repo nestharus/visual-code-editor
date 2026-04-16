@@ -37,6 +37,21 @@ export type DiagramSlice = {
   [key: string]: unknown;
 };
 
+export type DiagramCodeBlock = {
+  id: string;
+  path: string;
+  lineStart: number;
+  lineEnd: number;
+  language?: string;
+  symbol?: string;
+  content?: string;
+};
+
+export type DiagramCodeIndex = {
+  byEntity: Record<string, string[]>;
+  blocks: Record<string, DiagramCodeBlock>;
+};
+
 export type DiagramData = {
   organizational: {
     root: DiagramSlice;
@@ -105,6 +120,7 @@ export type DiagramData = {
     }>;
     bindings: Record<string, string[]>;
   };
+  code?: DiagramCodeIndex;
   details: Record<string, DiagramDetailRecord>;
 };
 

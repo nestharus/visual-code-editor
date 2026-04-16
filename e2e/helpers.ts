@@ -31,6 +31,22 @@ export async function setupMockApi(page: Page) {
     await route.abort();
   });
 
+  // Code endpoint — return fixture code blocks for entity
+  await page.route("**/api/panel-code**", async (route) => {
+    const url = new URL(route.request().url());
+    const entityId = url.searchParams.get("entityId") || "";
+    const codeIndex = fixtureData.code || { byEntity: {}, blocks: {} };
+    const blockIds = codeIndex.byEntity[entityId] || [];
+    const blocks = blockIds
+      .map((id: string) => codeIndex.blocks[id])
+      .filter(Boolean);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ entityId, blocks }),
+    });
+  });
+
   // Static site pages for panel content — return template HTML for any entity
   await page.route("**/site/**", async (route) => {
     const url = new URL(route.request().url());

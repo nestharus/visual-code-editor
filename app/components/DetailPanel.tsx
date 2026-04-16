@@ -109,6 +109,16 @@ export function DetailPanel() {
     return typeof value === "string" ? value : "";
   });
 
+  const codeBlocks = createMemo(() => {
+    const d = diagramQuery.data;
+    const id = panelId();
+    if (!d?.code?.byEntity || !id) return [];
+    const blockIds = d.code.byEntity[id] ?? [];
+    return blockIds
+      .map((blockId) => d.code!.blocks[blockId])
+      .filter(Boolean);
+  });
+
   const panelScenarios = createMemo(() => {
     const d = diagramQuery.data;
     const id = panelId();
@@ -420,6 +430,27 @@ export function DetailPanel() {
                 <p>{description()}</p>
               </div>
             </Show>
+            <Show when={codeBlocks().length > 0}>
+              <div class="detail-module detail-code">
+                <h3 class="detail-code-title">Code</h3>
+                <For each={codeBlocks()}>
+                  {(block) => (
+                    <div class="detail-code-block">
+                      <div class="detail-code-header">
+                        <span class="detail-code-path">{block.path}</span>
+                        <Show when={block.symbol}>
+                          <span class="detail-code-symbol">{block.symbol}</span>
+                        </Show>
+                        <Show when={block.lineStart && block.lineEnd}>
+                          <span class="detail-code-lines">L{block.lineStart}–{block.lineEnd}</span>
+                        </Show>
+                      </div>
+                      <pre class="detail-code-pre"><code>{block.content || "(code not available)"}</code></pre>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
             <Show when={htmlContent()}>
               <div
                 class="detail-page"
@@ -456,7 +487,7 @@ export function DetailPanel() {
                 </table>
               </div>
             </Show>
-            <Show when={!htmlContent() && !fields().length && !description()}>
+            <Show when={!htmlContent() && !fields().length && !description() && !codeBlocks().length}>
               <div class="detail-module">
                 <p style={{ color: "var(--text-dim)" }}>No details available.</p>
               </div>
