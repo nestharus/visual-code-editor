@@ -78,6 +78,7 @@ export const AppShell: ParentComponent = (props) => {
   const [promptDockOpen, setPromptDockOpen] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
   const [diffVisible, setDiffVisible] = createSignal(initialDiffVisible());
+  let viewportRef: HTMLElement | undefined;
   let searchRequestVersion = 0;
 
   function initialTestsVisible(): boolean {
@@ -206,6 +207,12 @@ export const AppShell: ParentComponent = (props) => {
     window.sessionStorage?.setItem("diffVisible", diffVisible() ? "true" : "false");
   });
 
+  const handleSkipToDiagram = (event) => {
+    if (!viewportRef) return;
+    event.preventDefault();
+    viewportRef.focus();
+  };
+
   const handleSearch = async (query: string) => {
     const requestVersion = ++searchRequestVersion;
     setSearchQuery(query);
@@ -288,6 +295,13 @@ export const AppShell: ParentComponent = (props) => {
           "has-prompt-dock": promptDockOpen() && selectedPromptNodes().length > 0,
         }}
       >
+        <a
+          href="#diagram-viewport"
+          class="skip-link"
+          onClick={handleSkipToDiagram}
+        >
+          Skip to main content
+        </a>
         <SearchOverlay
           onSearch={handleSearch}
           onClear={handleClearSearch}
@@ -396,7 +410,7 @@ export const AppShell: ParentComponent = (props) => {
                 {`Prompt (${selectedPromptNodes().length})`}
               </button>
             </Show>
-            <div class="view-toggle" role="tablist">
+            <div class="view-toggle" role="tablist" aria-label="Diagram view">
               <button
                 type="button"
                 role="tab"
@@ -440,7 +454,7 @@ export const AppShell: ParentComponent = (props) => {
           </div>
         </header>
 
-        <nav id="breadcrumb" class="breadcrumb-bar">
+        <nav id="breadcrumb" class="breadcrumb-bar" aria-label="Breadcrumb">
           {breadcrumbs().map((crumb, i) => (
             <>
               {i > 0 && <span class="breadcrumb-sep">/</span>}
@@ -456,7 +470,13 @@ export const AppShell: ParentComponent = (props) => {
         </nav>
 
         <div class="diagram-and-panel">
-          <main id="diagram-viewport" tabIndex={-1} style={{ position: "relative" }}>
+          <main
+            id="diagram-viewport"
+            ref={viewportRef}
+            tabIndex={-1}
+            aria-label="Diagram"
+            style={{ position: "relative" }}
+          >
             <div style={{ position: "relative" }}>
               <GraphSurface
                 graphId={

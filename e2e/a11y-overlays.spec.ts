@@ -146,4 +146,26 @@ test.describe("Overlay Accessibility", () => {
     await page.keyboard.press("Escape");
     await expect(page.locator(".shadowbox-modal-shell")).not.toBeVisible();
   });
+
+  test("skip link becomes visible on first Tab and focuses main on activation", async ({ page }) => {
+    await page.goto("/behavioral");
+    await page.locator("#diagram-viewport").waitFor({ state: "visible" });
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press("Tab");
+    const skipLink = page.getByRole("link", { name: "Skip to main content" });
+    await expect(skipLink).toBeFocused();
+    await expect(skipLink).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#diagram-viewport")).toBeFocused();
+  });
+
+  test("shell landmarks and widgets have expected accessible names", async ({ page }) => {
+    await page.goto("/behavioral");
+    await expect(page.locator("nav#breadcrumb")).toHaveAttribute("aria-label", "Breadcrumb");
+    await expect(page.locator(".view-toggle[role='tablist']")).toHaveAttribute(
+      "aria-label",
+      "Diagram view",
+    );
+    await expect(page.locator("#diagram-viewport")).toHaveAttribute("aria-label", "Diagram");
+  });
 });

@@ -4,6 +4,7 @@
   /* Read-only anchors in src/visual_code_editor/assets/styles.css: detail scrim 190, detail panel 200. */
   --z-watcher-panel: 350;
   --z-prompt-dock: 950;
+  --z-skip-link: 960;
   --z-modal-backdrop: 1000;
   --z-search-overlay: 1000;
   --z-modal-shell: 1001;
@@ -22,6 +23,40 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link:focus-visible {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0.7rem 1rem;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  z-index: var(--z-skip-link);
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  text-decoration: none;
 }
 
 :where(
