@@ -296,3 +296,28 @@ All visual changes MUST be verified on port 8742 (vite preview build), not port 
 - **SVG-to-PNG conversion**: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/svg_to_png.py`
 - **Parent AGENTS.md** (visual creation workflows, model configs): `~/projects/agent-implementation-skill/execution-philosophy/AGENTS.md`
 - **Implementation workflow**: `~/work/AGENTS.md` (Implementation & Bug-Fix Workflow section)
+
+---
+
+## Visual Regression
+
+Local pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/`. They are **machine-local** because no web font is bundled (Chromium falls back to the host system monospace) and DPR/rasterization depend on the host compositor.
+
+Run the harness:
+```bash
+npm run serve &          # or keep a preview open on 8742
+npx playwright test e2e/visual-regression.spec.ts
+```
+
+Regenerate an approved baseline for a specific scene:
+```bash
+npx playwright test e2e/visual-regression.spec.ts \
+  -g 'behavioral overview' --update-snapshots
+```
+
+Avoid blanket `--update-snapshots` — it silently overwrites baselines for scenes you did not mean to change. On a diff, inspect `test-results/*.png` first.
+
+Known phase-2 costs (do not solve now):
+- CI adoption will require re-baselining on the CI runner.
+- Bundling JetBrains Mono (via `@font-face` in `theme.css`) will flip every baseline.
+- Drill-down and sub-diagram views are not yet covered.

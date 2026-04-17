@@ -1,0 +1,159 @@
+import { expect, test } from "@playwright/test";
+
+import { setupMockApi } from "./helpers";
+
+const LOAD_WAIT = 4000;
+const MOUSE_PARK_X = 1910;
+const MOUSE_PARK_Y = 10;
+const POST_MOVE_SETTLE = 500;
+
+const SCREENSHOT_OPTIONS = {
+  maxDiffPixelRatio: 0.001,
+  // pixelmatch YIQ sensitivity. 0.2 (Playwright default) lets hue-flips
+  // pass when luminance is similar (e.g. dark-blue <-> dark-red body
+  // background), which defeats the harness. 0.05 catches accent-color
+  // drift while tolerating subpixel anti-alias noise.
+  threshold: 0.05,
+} as const;
+
+/**
+ * Visual regression harness (phase 1, local-only).
+ *
+ * Why this exists:
+ *   Video QA and DOM assertions miss pixel drift such as shifted shadows,
+ *   accent-color regressions, and broken border treatments. This spec
+ *   takes full-frame PNG baselines for three high-signal UI states and
+ *   fails on any per-pixel diff beyond the configured threshold.
+ *
+ * Pre-conditions (you must set these up before running):
+ *   1. `npm run serve` must be running on port 8742 (baseURL from
+ *      `playwright.config.ts`).
+ *   2. The fixture at `e2e/fixtures/diagram-data.json` is the committed
+ *      baseline for this harness. Any edit there will legitimately
+ *      invalidate these snapshots.
+ *
+ * Baselines are machine-local:
+ *   - No web font is bundled (index.html has no <link> tag; theme.css
+ *     references JetBrains Mono with monospace fallback). Pixel rendering
+ *     therefore depends on the host OS's system monospace and on the
+ *     headless Chromium rasterizer for that OS.
+ *   - deviceScaleFactor is Playwright's default (1). Host compositor /
+ *     GPU driver changes can shift a few subpixels.
+ *   - This is acceptable for phase 1 because there is no CI. Phase 2 CI
+ *     adoption will require re-baselining on the CI runner.
+ *
+ * First-run behavior:
+ *   Playwright 1.59 writes a missing snapshot on first run AND fails the
+ *   test. The spec is expected RED on the very first invocation on a
+ *   machine; rerun immediately after baseline files appear and the suite
+ *   goes GREEN. To explicitly create baselines without a red run, use:
+ *     npx playwright test e2e/visual-regression.spec.ts --update-snapshots
+ *
+ * Targeted baseline regeneration (when an intentional visual change
+ * affects only one scene):
+ *   npx playwright test e2e/visual-regression.spec.ts \
+ *     -g 'behavioral overview' --update-snapshots
+ *   Avoid blanket `--update-snapshots` without `-g` — it will silently
+ *   overwrite baselines for scenes you did not mean to change.
+ *
+ * On failure:
+ *   Inspect `test-results/<test>/**.png` (actual, expected, diff). If the
+ *   change is intentional, regenerate the specific scene with `-g`. If
+ *   unintentional, fix the underlying bug before re-running.
+ *
+ * Fixture-ordering coupling:
+ *   Selectors below key off the fixture label text (`Design`, `Alpha`).
+ *   `.graph-node` elements expose only `data-kind` (see NodeLayer.tsx:142),
+ *   so text-filter is the only stable DOM-level pick from this spec with
+ *   no `app/**` change. If you reorder or rename entities in
+ *   `e2e/fixtures/diagram-data.json`, update these selectors AND
+ *   regenerate the affected baselines.
+ */
+
+test.use({ viewport: { width: 1920, height: 1080 } });
+
+test.beforeEach(async ({ page }) => {
+  await setupMockApi(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+});
+
+async function killAnimations(page: import("@playwright/test").Page) {
+  // Unconditional kill-switch. Reduced-motion emulation handles most of
+  // the app's motion (PresentationStateService, DrillTransition,
+  // TransitionService, TransportStore, diagramStore, and CSS blocks),
+  // but .graph-node-float has its own infinite translateY keyframe
+  // without a reduced-motion gate (graph-surface.css:235). Killing all
+  // animations/transitions here is cheap defense-in-depth for that plus
+  // any future unguarded motion.
+  await page.addStyleTag({
+    content:
+      "*,*::before,*::after{animation:none!important;transition:none!important;}",
+  });
+}
+
+async function parkMouseAndSettle(page: import("@playwright/test").Page) {
+  await page.mouse.move(MOUSE_PARK_X, MOUSE_PARK_Y, { steps: 10 });
+  await page.waitForTimeout(POST_MOVE_SETTLE);
+}
+
+// Scene A — behavioral overview.
+// Selector keyed to lifecycle-design, the first behavioral-lifecycle in
+// the fixture (diagram-data.json:161).
+test("behavioral overview", async ({ page }) => {
+  await page.goto("/behavioral");
+  await page
+    .locator(".graph-node[data-kind='behavioral-lifecycle']")
+    .filter({ hasText: "Design" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "behavioral-overview.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
+
+// Scene B — organizational overview.
+// Selector keyed to cluster-alpha, the first cluster in the fixture
+// (diagram-data.json:5).
+test("organizational overview", async ({ page }) => {
+  await page.goto("/organizational");
+  await page
+    .locator(".graph-node[data-kind='cluster']")
+    .filter({ hasText: "Alpha" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "organizational-overview.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
+
+// Scene C — cluster detail panel.
+// Direct URL-param open (DetailPanel.tsx:77-90 uses useSearch({strict:false})).
+// Selector keyed to cluster-alpha (the first cluster) for the readiness
+// wait; the panel itself is addressed via `.detail-panel.is-open`.
+test("cluster detail panel", async ({ page }) => {
+  await page.goto("/organizational?panelKind=cluster&panelId=cluster-alpha");
+  await page
+    .locator(".graph-node[data-kind='cluster']")
+    .filter({ hasText: "Alpha" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "organizational-cluster-alpha-panel.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
