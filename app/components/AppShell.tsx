@@ -320,7 +320,7 @@ export const AppShell: ParentComponent = (props) => {
               data-toolbar="watcher"
               onClick={() => setWatcherPanelOpen((value) => !value)}
               aria-label={`Watcher status: ${watcherState.status()}`}
-              aria-pressed={watcherPanelOpen()}
+              aria-expanded={watcherPanelOpen()}
               aria-controls="watcher-panel"
             >
               <span class="watcher-status-dot" aria-hidden="true" />
@@ -390,6 +390,8 @@ export const AppShell: ParentComponent = (props) => {
                 }}
                 data-toolbar="prompt"
                 onClick={() => setPromptDockOpen(true)}
+                aria-expanded={promptDockOpen()}
+                aria-controls="prompt-dock"
               >
                 {`Prompt (${selectedPromptNodes().length})`}
               </button>
@@ -454,7 +456,7 @@ export const AppShell: ParentComponent = (props) => {
         </nav>
 
         <div class="diagram-and-panel">
-          <main id="diagram-viewport" style={{ position: "relative" }}>
+          <main id="diagram-viewport" tabIndex={-1} style={{ position: "relative" }}>
             <div style={{ position: "relative" }}>
               <GraphSurface
                 graphId={

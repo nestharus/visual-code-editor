@@ -1,4 +1,6 @@
 import { Show, Portal } from "solid-js/web";
+
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import type { BehaviorPlaybackControllerType } from "./BehaviorPlayback";
 import { ScenarioBox } from "./ScenarioBox";
 import type { TransportStoreType } from "./TransportStore";
@@ -11,12 +13,34 @@ type ShadowboxModalProps = {
 
 export function ShadowboxModal(props: ShadowboxModalProps) {
   const isActive = () => props.playback.playbackTarget() === "modal";
+  let shellRef: HTMLDivElement | undefined;
+
+  createOverlayFocus({
+    isOpen: isActive,
+    getRoot: () => shellRef,
+    getFocusTarget: () => shellRef ?? null,
+    trapFocus: true,
+    usePortalTiming: true,
+    onEscape: props.onClose,
+  });
 
   return (
     <Show when={isActive()}>
       <Portal>
-        <div class="shadowbox-modal-backdrop" onClick={props.onClose} />
-        <div class="shadowbox-modal-shell" onClick={(e) => e.stopPropagation()}>
+        <div
+          class="shadowbox-modal-backdrop"
+          aria-hidden="true"
+          onClick={props.onClose}
+        />
+        <div
+          ref={shellRef}
+          class="shadowbox-modal-shell"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shadowbox-modal-caption-title"
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Show when={props.playback.scenario()}>
             {(scenario) => (
               <ScenarioBox
@@ -32,7 +56,10 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
           <div class="shadowbox-modal-caption">
             <Show when={props.playback.scenario()}>
               {(scenario) => (
-                <div class="shadowbox-modal-caption-title">
+                <div
+                  id="shadowbox-modal-caption-title"
+                  class="shadowbox-modal-caption-title"
+                >
                   {scenario().title}
                   <Show when={scenario().beats.length > 0}>
                     <span class="shadowbox-modal-step-count">

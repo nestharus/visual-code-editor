@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import type { PromptSelectionItem } from "../graph/GraphSurface";
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 
 type PromptDockProps = {
   isOpen: boolean;
@@ -18,6 +19,16 @@ export function PromptDock(props: PromptDockProps) {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const titleId = "prompt-dock-title";
   const inputId = "prompt-dock-input";
+  let dockRef: HTMLElement | undefined;
+  let inputRef: HTMLTextAreaElement | undefined;
+
+  createOverlayFocus({
+    isOpen: () => props.isOpen && props.selection.length > 0,
+    getRoot: () => dockRef,
+    getFocusTarget: () => inputRef ?? null,
+    trapFocus: true,
+    onEscape: () => props.onClose?.(),
+  });
 
   createEffect(() => {
     if (!props.isOpen) {
@@ -53,10 +64,14 @@ export function PromptDock(props: PromptDockProps) {
 
   return (
     <Show when={props.isOpen && props.selection.length > 0}>
+      {/* Non-modal dialog per WAI-ARIA APG: traps focus while open, but background remains visible and uninert to preserve graph context. */}
       <section
+        id="prompt-dock"
+        ref={dockRef}
         class="prompt-dock"
-        role="complementary"
+        role="dialog"
         aria-labelledby={titleId}
+        tabIndex={-1}
       >
         <div class="prompt-dock-header">
           <div class="prompt-dock-title">
@@ -109,6 +124,7 @@ export function PromptDock(props: PromptDockProps) {
           </label>
           <textarea
             id={inputId}
+            ref={inputRef}
             class="prompt-dock-input"
             rows={4}
             placeholder="Ask about the selected entities..."

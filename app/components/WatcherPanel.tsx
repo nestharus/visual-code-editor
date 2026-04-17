@@ -1,6 +1,7 @@
 import { createEffect, createSignal, For, Show, type Accessor } from "solid-js";
 import { WATCHER_URL } from "../lib/diagram-data";
 import type { WatcherStatus } from "../lib/live/useWatchSubscription";
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 
 type WatchEntry = {
   id: string;
@@ -24,6 +25,16 @@ export function WatcherPanel(props: WatcherPanelProps) {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
   const pathInputId = "watcher-path-input";
+  let panelRef: HTMLDivElement | undefined;
+  let pathInputRef: HTMLInputElement | undefined;
+
+  // Toolbar flyout: kept as region, no trap, Escape closes, focus returns to the Live button.
+  createOverlayFocus({
+    isOpen: () => props.isOpen,
+    getRoot: () => panelRef,
+    getFocusTarget: () => pathInputRef ?? null,
+    onEscape: props.onClose,
+  });
 
   const fetchWatches = async () => {
     try {
@@ -96,6 +107,7 @@ export function WatcherPanel(props: WatcherPanelProps) {
     <Show when={props.isOpen}>
       <div
         id="watcher-panel"
+        ref={panelRef}
         class="watcher-panel"
         role="region"
         aria-labelledby="watcher-panel-title"
@@ -147,6 +159,7 @@ export function WatcherPanel(props: WatcherPanelProps) {
           </label>
           <input
             id={pathInputId}
+            ref={pathInputRef}
             type="text"
             class="watcher-add-input"
             placeholder="Watch path..."

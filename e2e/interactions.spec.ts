@@ -234,6 +234,7 @@ test.describe("CTRL+F Search", () => {
     await expect(page.locator(".search-overlay")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator(".search-overlay")).not.toBeVisible();
+    await expect(page.locator('[data-toolbar="search"]')).toBeFocused();
   });
 });
 

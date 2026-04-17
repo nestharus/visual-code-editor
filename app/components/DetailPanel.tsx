@@ -3,6 +3,7 @@ import { Show, For, createEffect, createMemo, createSignal, onCleanup } from "so
 import { useSearch, useNavigate, useParams } from "@tanstack/solid-router";
 import { WATCHER_URL } from "../lib/diagram-data";
 import { useDiagramData } from "../lib/diagram-data";
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
 import { IconSvg } from "./IconSvg";
@@ -79,7 +80,9 @@ export function DetailPanel() {
   const diagramQuery = useDiagramData();
   const [htmlContent, setHtmlContent] = createSignal("");
   const [focusedBlockId, setFocusedBlockId] = createSignal<string | null>(null);
+  let panelRef: HTMLElement | undefined;
   let panelBodyRef: HTMLDivElement | undefined;
+  let panelTitleRef: HTMLHeadingElement | undefined;
 
   const s = () => (search as any)() as Record<string, string | undefined>;
   const isOpen = () => !!s().panelKind && !!s().panelId;
@@ -359,14 +362,24 @@ export function DetailPanel() {
     });
   };
 
+  // URL-persistent inspector: kept as <aside> landmark rather than dialog; no focus trap so users can return to the graph.
+  createOverlayFocus({
+    isOpen,
+    getRoot: () => panelRef,
+    getFocusTarget: () => panelTitleRef ?? null,
+    onEscape: close,
+  });
+
   return (
     <>
       <div
         classList={{ "detail-scrim": true, "is-visible": isOpen() }}
+        aria-hidden="true"
         onClick={close}
       />
       <aside
         id="detail-panel"
+        ref={panelRef}
         classList={{ "detail-panel": true, "is-open": isOpen() }}
       >
         <Show when={isOpen()}>
@@ -379,7 +392,7 @@ export function DetailPanel() {
                 <span id="detail-panel-kind" class="eyebrow">
                   {panelKind()}
                 </span>
-                <h2 id="detail-panel-title">
+                <h2 id="detail-panel-title" ref={panelTitleRef} tabIndex={-1}>
                   {panelLabel() || detail()?.label || panelId()}
                 </h2>
               </div>

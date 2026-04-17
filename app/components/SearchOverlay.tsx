@@ -3,8 +3,10 @@ import {
   createEffect,
   createSignal,
   onCleanup,
-  onMount,
 } from "solid-js";
+
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
+import * as overlayStack from "../lib/a11y/overlayStack";
 
 type SearchOverlayProps = {
   onSearch: (query: string) => void;
@@ -19,50 +21,69 @@ type SearchOverlayProps = {
 export function SearchOverlay(props: SearchOverlayProps) {
   const [isOpen, setIsOpen] = createSignal(false);
   const [inputValue, setInputValue] = createSignal(props.searchQuery);
+  let formRef: HTMLFormElement | undefined;
   let inputRef: HTMLInputElement | undefined;
   const inputId = "diagram-search-input";
+  const shortcutId = Symbol("search-shortcut");
+  const isVisible = () => isOpen() || props.isSearchActive;
 
-  const focusInput = () => {
-    window.setTimeout(() => inputRef?.focus(), 0);
-  };
-
-  const openOverlay = (value = props.searchQuery || inputValue()) => {
-    setInputValue(value);
-    setIsOpen(true);
-    focusInput();
-  };
-
-  const handleKeydown = (e: KeyboardEvent) => {
-    const target = e.target;
-    const isEditableTarget =
+  const isEditableElement = (target: Element | null) => {
+    return (
       target instanceof HTMLElement &&
       (target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable);
+        target.isContentEditable)
+    );
+  };
 
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-      if (isEditableTarget) return;
-      e.preventDefault();
-      openOverlay();
-      return;
-    }
-
-    if (e.key === "Escape" && (isOpen() || props.isSearchActive)) {
-      e.preventDefault();
-      if (props.isSearchActive) {
-        props.onClear();
+  const openOverlay = (value = props.searchQuery || inputValue()) => {
+    const wasVisible = isVisible();
+    const activeElement =
+      document.activeElement instanceof Element ? document.activeElement : null;
+    if (!wasVisible && !isEditableElement(activeElement)) {
+      const trigger = document.querySelector('[data-toolbar="search"]');
+      if (trigger instanceof HTMLElement) {
+        trigger.focus();
       }
-      setInputValue("");
-      setIsOpen(false);
+    }
+    setInputValue(value);
+    setIsOpen(true);
+    if (wasVisible) {
+      queueMicrotask(() => inputRef?.focus());
     }
   };
 
-  onMount(() => {
-    document.addEventListener("keydown", handleKeydown);
+  const closeOverlay = () => {
+    const wasSearchActive = props.isSearchActive;
+    setInputValue("");
+    setIsOpen(false);
+    if (wasSearchActive) {
+      props.onClear();
+    }
+  };
+
+  const unregisterShortcut = overlayStack.registerShortcut({
+    id: shortcutId,
+    keyMatcher: (e) => (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f",
+    guard: () => !overlayStack.hasModalOpen(),
+    handler: (e) => {
+      const activeElement =
+        document.activeElement instanceof Element ? document.activeElement : null;
+      if (isEditableElement(activeElement)) return;
+      e.preventDefault();
+      openOverlay();
+    },
   });
 
   onCleanup(() => {
-    document.removeEventListener("keydown", handleKeydown);
+    unregisterShortcut();
+  });
+
+  createOverlayFocus({
+    isOpen: isVisible,
+    getRoot: () => formRef,
+    getFocusTarget: () => inputRef ?? null,
+    onEscape: closeOverlay,
   });
 
   createEffect((previousOpenRequest?: number) => {
@@ -94,15 +115,18 @@ export function SearchOverlay(props: SearchOverlayProps) {
   };
 
   const handleClear = () => {
-    setInputValue("");
-    props.onClear();
-    setIsOpen(false);
+    closeOverlay();
   };
 
   return (
-    <Show when={isOpen() || props.isSearchActive}>
+    <Show when={isVisible()}>
       <div class="search-overlay">
-        <form class="search-overlay-form" role="search" onSubmit={handleSubmit}>
+        <form
+          ref={formRef}
+          class="search-overlay-form"
+          role="search"
+          onSubmit={handleSubmit}
+        >
           <label class="visually-hidden" for={inputId}>
             Search diagram elements
           </label>
