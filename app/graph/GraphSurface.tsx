@@ -384,20 +384,24 @@ export function GraphSurface(props: GraphSurfaceProps) {
     const sequence = ++loadSequence;
 
     void (async () => {
-      const nextGraph = await buildGraphDefinition({
-        graphId,
-        graph,
-        elements,
-        mermaidText,
-      });
+      try {
+        const nextGraph = await buildGraphDefinition({
+          graphId,
+          graph,
+          elements,
+          mermaidText,
+        });
 
-      if (sequence !== loadSequence) return;
+        if (sequence !== loadSequence) return;
 
-      const previousGraph = activeGraph();
-      const shouldAnimate =
-        previousGraph.nodes.length > 0 && previousGraph.id !== nextGraph.id;
+        const previousGraph = activeGraph();
+        const shouldAnimate =
+          previousGraph.nodes.length > 0 && previousGraph.id !== nextGraph.id;
 
-      commitGraph(nextGraph, shouldAnimate);
+        commitGraph(nextGraph, shouldAnimate);
+      } catch (error) {
+        console.error("Failed to build graph definition", error);
+      }
     })();
   });
 

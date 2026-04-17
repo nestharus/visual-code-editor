@@ -1,13 +1,28 @@
-import ELK, {
-  type ElkEdgeSection,
-  type ElkExtendedEdge,
-  type ElkNode,
-  type ElkPoint,
+import type {
+  ElkEdgeSection,
+  ElkExtendedEdge,
+  ElkNode,
+  ElkPoint,
 } from "elkjs/lib/elk.bundled";
 
 import type { GraphDefinition, GraphEdge, GraphNode } from "./types";
 
-const elk = new ELK();
+type ElkInstance = InstanceType<typeof import("elkjs/lib/elk.bundled").default>;
+
+let elkPromise: Promise<ElkInstance> | undefined;
+
+function getElk(): Promise<ElkInstance> {
+  if (!elkPromise) {
+    const pending = import("elkjs/lib/elk.bundled").then(
+      ({ default: ELK }) => new ELK(),
+    );
+    pending.catch(() => {
+      if (elkPromise === pending) elkPromise = undefined;
+    });
+    elkPromise = pending;
+  }
+  return elkPromise;
+}
 
 type Point = { x: number; y: number };
 type Frame = { left: number; top: number; width: number; height: number };
@@ -201,6 +216,7 @@ export async function computeElkLayout(
     return { nodes: graph.nodes, edges: graph.edges };
   }
 
+  const elk = await getElk();
   const nodeIds = new Set(graph.nodes.map((node) => node.id));
   const elkGraph: ElkNode = {
     id: graph.id,
