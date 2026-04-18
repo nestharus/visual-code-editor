@@ -157,3 +157,46 @@ test("cluster detail panel", async ({ page }) => {
     SCREENSHOT_OPTIONS,
   );
 });
+
+// Scene D — cluster drill-down sub-diagram.
+// Selector keyed to system-a1 ("System A1" label, the first system under
+// cluster-alpha in the fixture). Drill-down surfaces system-level nodes,
+// system-edges, and the compound-node chrome that the root organizational
+// view does not exercise.
+test("organizational cluster drill-down", async ({ page }) => {
+  await page.goto("/organizational/clusters/cluster-alpha");
+  await page
+    .locator(".graph-node[data-kind='system']")
+    .filter({ hasText: "System A1" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "organizational-cluster-alpha-drill.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
+
+// Scene E — lifecycle drill-down sub-diagram.
+// Selector keyed to stage-explore ("Explore" label, the first stage under
+// lifecycle-design in the fixture). Exercises behavioral-stage chrome and
+// behavioral edges at sub-lifecycle level.
+test("behavioral lifecycle drill-down", async ({ page }) => {
+  await page.goto("/behavioral/lifecycles/lifecycle-design");
+  await page
+    .locator(".graph-node[data-kind='behavioral-stage']")
+    .filter({ hasText: "Explore" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "behavioral-lifecycle-design-drill.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
