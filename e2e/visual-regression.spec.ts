@@ -223,3 +223,46 @@ test("organizational system drill-down", async ({ page }) => {
     SCREENSHOT_OPTIONS,
   );
 });
+
+// Scene G — UI-exploration root.
+// Selector keyed to ui-screen-org ("Organizational Overview" label, the
+// first ui-screen in the fixture). /ui is the third top-level view
+// alongside /organizational and /behavioral (commit 06f44ec). Exercises
+// ui-screen chrome distinct from cluster/lifecycle cards.
+test("ui exploration overview", async ({ page }) => {
+  await page.goto("/ui");
+  await page
+    .locator(".graph-node[data-kind='ui-screen']")
+    .filter({ hasText: "Organizational Overview" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "ui-exploration-overview.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
+
+// Scene H — UI screen drill-down.
+// Selector keyed to ui-component-view-toggle ("View Toggle" label under
+// ui-screen-org). Only scene that renders ui-component chrome and
+// ui-implements edge kind — unique to the UI-exploration view.
+test("ui exploration screen drill-down", async ({ page }) => {
+  await page.goto("/ui/screens/ui-screen-org");
+  await page
+    .locator(".graph-node[data-kind='ui-component']")
+    .filter({ hasText: "View Toggle" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "ui-exploration-screen-org-drill.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
