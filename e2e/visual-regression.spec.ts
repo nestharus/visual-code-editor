@@ -200,3 +200,26 @@ test("behavioral lifecycle drill-down", async ({ page }) => {
     SCREENSHOT_OPTIONS,
   );
 });
+
+// Scene F — system drill-down sub-diagram.
+// Selector keyed to mod-group-runtime ("Runtime Core" label, a
+// module-group compound under system-a3). system-a3 is the richest
+// fixture subset and the only one to exercise module-group compound
+// chrome, agent-node, file-import edges, and agent-invoke edges — none
+// of which appear in scenes A-E.
+test("organizational system drill-down", async ({ page }) => {
+  await page.goto("/organizational/clusters/cluster-alpha/systems/system-a3");
+  await page
+    .locator(".graph-node[data-kind='module-group']")
+    .filter({ hasText: "Runtime Core" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "organizational-system-a3-drill.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
