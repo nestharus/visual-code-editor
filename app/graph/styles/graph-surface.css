@@ -467,6 +467,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .graph-node,
+  .graph-node-float,
   .graph-card,
   .edge-layer,
   .edge-path {
