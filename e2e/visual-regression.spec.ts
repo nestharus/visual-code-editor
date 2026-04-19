@@ -266,3 +266,25 @@ test("ui exploration screen drill-down", async ({ page }) => {
     SCREENSHOT_OPTIONS,
   );
 });
+
+// Scene I — stage drill-down sub-diagram.
+// Selector keyed to step-code ("Code" label under stage-implement). Only
+// scene that renders behavioral-step chrome and the behavioral-back-edge
+// kind (Debug -> Code in the fixture) — a dashed style distinct from the
+// forward behavioral-edge rendered in scene E.
+test("behavioral stage drill-down", async ({ page }) => {
+  await page.goto("/behavioral/lifecycles/lifecycle-build/stages/stage-implement");
+  await page
+    .locator(".graph-node[data-kind='behavioral-step']")
+    .filter({ hasText: "Code" })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await killAnimations(page);
+  await page.waitForTimeout(LOAD_WAIT);
+  await parkMouseAndSettle(page);
+
+  await expect(page).toHaveScreenshot(
+    "behavioral-stage-implement-drill.png",
+    SCREENSHOT_OPTIONS,
+  );
+});
