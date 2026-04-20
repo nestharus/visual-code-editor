@@ -301,7 +301,7 @@ All visual changes MUST be verified on port 8742 (vite preview build), not port 
 
 ## Visual Regression
 
-Pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/` (11 scenes A–K). JetBrains Mono is bundled (`app/assets/fonts/`, wired through `@font-face` in `app/styles/theme.css`), so monospace rendering is no longer OS-dependent. DPR/rasterization still depend on the host compositor, but in practice WSL and the GitHub Actions `ubuntu-24.04` runner produce identical bytes for all 11 scenes as of commit `951a589`.
+Pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/` (11 scenes A–K). Both JetBrains Mono (monospace) and Inter (sans-serif, weights 400/500/600/700) are bundled under `app/assets/fonts/` and wired through `@font-face` in `app/styles/theme.css`, so the dominant text surfaces no longer depend on the host OS font stack. DPR/rasterization still depend on the host compositor, but in practice WSL and the GitHub Actions `ubuntu-24.04` runner produced identical bytes for all 11 scenes with the mono-only bundle.
 
 Run the harness locally:
 ```bash
@@ -332,4 +332,4 @@ Do not cherry-pick a subset — if the Ubuntu runtime drifted, rebaseline all 11
 ### Known limits
 
 - `--bg: #400000` perturbation ritual produces 10/11 RED, not 11/11 — scene K's shadowbox modal backdrop covers the body `--bg` layer. Regressions inside the modal are still caught via accent colors, text, and progress-bar treatments.
-- Sans-serif (Inter) is NOT bundled; body text still falls back to the host UI font. Most VR scenes are graph-surface text that happens to render identically on WSL and Azure, but a Linux distro with a substantially different default sans would flip baselines. Bundle Inter if CI starts failing on scenes without obvious structural changes.
+- Inter does not cover 7 UI icon glyphs (`ℹ ✕ ❯ ⏸ ⏭ ⏹ 🎬`). They fall through to fontconfig on the runner (typically Noto Sans Symbols 2 on `ubuntu-24.04`). If a future CI failure is isolated to a scene whose only change is one of these glyphs, it's fontconfig substitution drift — not an Inter-load failure. Icon normalization (SVG icons or a supplemental symbol font) is a separate follow-up.

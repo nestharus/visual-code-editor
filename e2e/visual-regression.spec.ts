@@ -113,11 +113,15 @@ test.describe("visual-regression baselines", () => {
       const fontState = await page.evaluate(async () => {
         // Chromium lazy-loads @font-face fonts when used. The overview route
         // renders no monospace text, so the bundled faces never download
-        // on their own. Force-load both weights before checking so the
+        // on their own. Force-load all bundled weights before checking so the
         // preflight fails on 404 rather than passes on "not yet needed".
         await Promise.all([
           document.fonts.load('400 1em "JetBrains Mono"'),
           document.fonts.load('500 1em "JetBrains Mono"'),
+          document.fonts.load('400 1em "Inter"'),
+          document.fonts.load('500 1em "Inter"'),
+          document.fonts.load('600 1em "Inter"'),
+          document.fonts.load('700 1em "Inter"'),
         ]);
         await document.fonts.ready;
 
@@ -130,17 +134,36 @@ test.describe("visual-regression baselines", () => {
             weight: face.weight,
           }));
 
+        const interFaces = Array.from(document.fonts)
+          .filter((face) => face.family.includes("Inter"))
+          .map((face) => ({
+            family: face.family,
+            status: face.status,
+            style: face.style,
+            weight: face.weight,
+          }));
+
         return {
-          checkPassed:
-            document.fonts.check('400 1em "JetBrains Mono"') &&
-            document.fonts.check('500 1em "JetBrains Mono"'),
+          checks: {
+            jetBrains400: document.fonts.check('400 1em "JetBrains Mono"'),
+            jetBrains500: document.fonts.check('500 1em "JetBrains Mono"'),
+            inter400: document.fonts.check('400 1em "Inter"'),
+            inter500: document.fonts.check('500 1em "Inter"'),
+            inter600: document.fonts.check('600 1em "Inter"'),
+            inter700: document.fonts.check('700 1em "Inter"'),
+          },
           jetBrainsFaces,
+          interFaces,
         };
       });
 
-      if (!fontState.checkPassed) {
+      const failedChecks = Object.entries(fontState.checks).filter(
+        ([, passed]) => !passed,
+      );
+
+      if (failedChecks.length > 0) {
         throw new Error(
-          `Font preflight failed: document.fonts.check for "JetBrains Mono" 400 or 500 returned false after explicit load. Faces: ${JSON.stringify(fontState.jetBrainsFaces)}.`,
+          `Font preflight failed: document.fonts.check returned false for ${failedChecks.map(([name]) => name).join(", ")} after explicit load. JetBrains faces: ${JSON.stringify(fontState.jetBrainsFaces)}. Inter faces: ${JSON.stringify(fontState.interFaces)}.`,
         );
       }
 
@@ -150,13 +173,22 @@ test.describe("visual-regression baselines", () => {
         );
       }
 
-      const nonLoadedFaces = fontState.jetBrainsFaces.filter(
+      if (fontState.interFaces.length === 0) {
+        throw new Error(
+          `Font preflight failed: document.fonts contained no faces whose family includes "Inter". Faces: ${JSON.stringify(fontState.interFaces)}.`,
+        );
+      }
+
+      const nonLoadedFaces = [
+        ...fontState.jetBrainsFaces,
+        ...fontState.interFaces,
+      ].filter(
         (face) => face.status !== "loaded",
       );
 
       if (nonLoadedFaces.length > 0) {
         throw new Error(
-          `Font preflight failed: JetBrains Mono faces not fully loaded: ${JSON.stringify(nonLoadedFaces)}. Faces: ${JSON.stringify(fontState.jetBrainsFaces)}.`,
+          `Font preflight failed: bundled faces not fully loaded: ${JSON.stringify(nonLoadedFaces)}. JetBrains faces: ${JSON.stringify(fontState.jetBrainsFaces)}. Inter faces: ${JSON.stringify(fontState.interFaces)}.`,
         );
       }
     } finally {
