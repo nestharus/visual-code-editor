@@ -455,6 +455,7 @@ export function DetailPanel() {
                       <button
                         type="button"
                         class="detail-behavior-play"
+                        data-scenario-id={scenario.behaviorId}
                         title={`Play: ${scenario.title}`}
                         onClick={() => {
                           // Close panel first, then start playback

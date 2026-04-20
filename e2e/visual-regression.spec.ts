@@ -395,4 +395,47 @@ test.describe("visual-regression baselines", () => {
       SCREENSHOT_OPTIONS,
     );
   });
+
+  // Scene K — shadowbox modal in paused state at beat 1.
+  // Only scene that exercises ShadowboxModal chrome: backdrop, shell,
+  // caption title, step-count subtitle, progress bar, beat caption text,
+  // and playback controls (play/pause toggle, step button, speed select).
+  // BehaviorPlayback.start() synchronously sets status to "playing" before
+  // the modal mounts (BehaviorPlayback.ts:148-149), so the preamble state
+  // (idle|loading at ShadowboxModal.tsx:73) is unreachable via the normal
+  // Play button flow. We pause immediately after starting so the progress
+  // bar and ScenarioBox are frozen on the first beat — the only stable
+  // in-modal state that also renders the full progress row.
+  // Entry point: the Play button for the "Alpha Data Flow" scenario
+  // (behaviorId: lifecycle-design), selected via the data-scenario-id
+  // attribute added to DetailPanel.tsx so the button is reachable without
+  // relying on the hasText filter.
+  test("shadowbox modal paused at beat 1", async ({ page }) => {
+    await page.goto("/organizational?panelKind=cluster&panelId=cluster-alpha");
+    await page
+      .locator(".graph-node[data-kind='cluster']")
+      .filter({ hasText: "Alpha" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    await page
+      .locator(".detail-behavior-play[data-scenario-id='lifecycle-design']")
+      .click();
+    await expect(page.locator(".shadowbox-modal-shell")).toBeVisible();
+    // Pause so the progress bar / caption text / beat index are stable.
+    // The first .playback-btn is the play/pause toggle (title="Pause"
+    // when status is "playing"); clicking it calls playback.pause().
+    await page.locator(".playback-btn[title='Pause']").click();
+    await expect(page.locator(".shadowbox-modal-progress")).toBeVisible();
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "shadowbox-modal-paused.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
 });
