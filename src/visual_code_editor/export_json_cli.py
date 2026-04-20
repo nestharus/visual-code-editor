@@ -80,7 +80,7 @@ def main() -> None:
         "steps": {k: _ws_to_dict(v) for k, v in ws.steps.items()},
     }
     data = export_diagram_json(site)
-    json.dump(data, sys.stdout, separators=(",", ":"))
+    json.dump(data, sys.stdout, separators=(",", ":"), sort_keys=True)
 
 
 if __name__ == "__main__":
