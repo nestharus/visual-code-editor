@@ -1,5 +1,21 @@
 @import "../../src/visual_code_editor/assets/styles.css";
 
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("../assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: block;
+  font-weight: 500;
+  src: url("../assets/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+}
+
 :root {
   /* Read-only anchors in src/visual_code_editor/assets/styles.css: detail scrim 190, detail panel 200. */
   --z-watcher-panel: 350;

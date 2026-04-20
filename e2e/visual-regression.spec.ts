@@ -32,15 +32,13 @@ const SCREENSHOT_OPTIONS = {
  *      baseline for this harness. Any edit there will legitimately
  *      invalidate these snapshots.
  *
- * Baselines are machine-local:
- *   - No web font is bundled (index.html has no <link> tag; theme.css
- *     references JetBrains Mono with monospace fallback). Pixel rendering
- *     therefore depends on the host OS's system monospace and on the
- *     headless Chromium rasterizer for that OS.
+ * Baselines are more portable than phase 1:
+ *   - JetBrains Mono is bundled, so monospace rendering no longer depends
+ *     on the host OS font fallback stack.
  *   - deviceScaleFactor is Playwright's default (1). Host compositor /
- *     GPU driver changes can shift a few subpixels.
- *   - This is acceptable for phase 1 because there is no CI. Phase 2 CI
- *     adoption will require re-baselining on the CI runner.
+ *     GPU driver changes can still shift a few subpixels.
+ *   - CI adoption still requires baselining on the CI runner because
+ *     rasterization remains machine-dependent even with the bundled font.
  *
  * First-run behavior:
  *   Playwright 1.59 writes a missing snapshot on first run AND fails the
@@ -72,11 +70,6 @@ const SCREENSHOT_OPTIONS = {
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
-test.beforeEach(async ({ page }) => {
-  await setupMockApi(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
-});
-
 async function killAnimations(page: import("@playwright/test").Page) {
   // Unconditional kill-switch. Reduced-motion emulation handles most of
   // the app's motion (PresentationStateService, DrillTransition,
@@ -96,195 +89,310 @@ async function parkMouseAndSettle(page: import("@playwright/test").Page) {
   await page.waitForTimeout(POST_MOVE_SETTLE);
 }
 
-// Scene A — behavioral overview.
-// Selector keyed to lifecycle-design, the first behavioral-lifecycle in
-// the fixture (diagram-data.json:161).
-test("behavioral overview", async ({ page }) => {
-  await page.goto("/behavioral");
-  await page
-    .locator(".graph-node[data-kind='behavioral-lifecycle']")
-    .filter({ hasText: "Design" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+test.describe("visual-regression baselines", () => {
+  test.beforeAll(async ({ browser, baseURL }) => {
+    if (!baseURL) {
+      throw new Error(
+        "Font preflight failed: Playwright baseURL is undefined.",
+      );
+    }
 
-  await expect(page).toHaveScreenshot(
-    "behavioral-overview.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+    const page = await browser.newPage({
+      viewport: { width: 1920, height: 1080 },
+    });
 
-// Scene B — organizational overview.
-// Selector keyed to cluster-alpha, the first cluster in the fixture
-// (diagram-data.json:5).
-test("organizational overview", async ({ page }) => {
-  await page.goto("/organizational");
-  await page
-    .locator(".graph-node[data-kind='cluster']")
-    .filter({ hasText: "Alpha" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+    try {
+      await setupMockApi(page);
+      await page.goto(`${baseURL}/organizational`);
+      await page
+        .locator(".graph-node[data-kind='cluster']")
+        .filter({ hasText: "Alpha" })
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 });
 
-  await expect(page).toHaveScreenshot(
-    "organizational-overview.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+      const fontState = await page.evaluate(async () => {
+        // Chromium lazy-loads @font-face fonts when used. The overview route
+        // renders no monospace text, so the bundled faces never download
+        // on their own. Force-load both weights before checking so the
+        // preflight fails on 404 rather than passes on "not yet needed".
+        await Promise.all([
+          document.fonts.load('400 1em "JetBrains Mono"'),
+          document.fonts.load('500 1em "JetBrains Mono"'),
+        ]);
+        await document.fonts.ready;
 
-// Scene C — cluster detail panel.
-// Direct URL-param open (DetailPanel.tsx:77-90 uses useSearch({strict:false})).
-// Selector keyed to cluster-alpha (the first cluster) for the readiness
-// wait; the panel itself is addressed via `.detail-panel.is-open`.
-test("cluster detail panel", async ({ page }) => {
-  await page.goto("/organizational?panelKind=cluster&panelId=cluster-alpha");
-  await page
-    .locator(".graph-node[data-kind='cluster']")
-    .filter({ hasText: "Alpha" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await expect(page.locator(".detail-panel.is-open")).toBeVisible();
-  await parkMouseAndSettle(page);
+        const jetBrainsFaces = Array.from(document.fonts)
+          .filter((face) => face.family.includes("JetBrains Mono"))
+          .map((face) => ({
+            family: face.family,
+            status: face.status,
+            style: face.style,
+            weight: face.weight,
+          }));
 
-  await expect(page).toHaveScreenshot(
-    "organizational-cluster-alpha-panel.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+        return {
+          checkPassed:
+            document.fonts.check('400 1em "JetBrains Mono"') &&
+            document.fonts.check('500 1em "JetBrains Mono"'),
+          jetBrainsFaces,
+        };
+      });
 
-// Scene D — cluster drill-down sub-diagram.
-// Selector keyed to system-a1 ("System A1" label, the first system under
-// cluster-alpha in the fixture). Drill-down surfaces system-level nodes,
-// system-edges, and the compound-node chrome that the root organizational
-// view does not exercise.
-test("organizational cluster drill-down", async ({ page }) => {
-  await page.goto("/organizational/clusters/cluster-alpha");
-  await page
-    .locator(".graph-node[data-kind='system']")
-    .filter({ hasText: "System A1" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+      if (!fontState.checkPassed) {
+        throw new Error(
+          'Font preflight failed: document.fonts.check for "JetBrains Mono" 400 or 500 returned false after explicit load.',
+        );
+      }
 
-  await expect(page).toHaveScreenshot(
-    "organizational-cluster-alpha-drill.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+      if (fontState.jetBrainsFaces.length === 0) {
+        throw new Error(
+          'Font preflight failed: document.fonts contained no faces whose family includes "JetBrains Mono".',
+        );
+      }
 
-// Scene E — lifecycle drill-down sub-diagram.
-// Selector keyed to stage-explore ("Explore" label, the first stage under
-// lifecycle-design in the fixture). Exercises behavioral-stage chrome and
-// behavioral edges at sub-lifecycle level.
-test("behavioral lifecycle drill-down", async ({ page }) => {
-  await page.goto("/behavioral/lifecycles/lifecycle-design");
-  await page
-    .locator(".graph-node[data-kind='behavioral-stage']")
-    .filter({ hasText: "Explore" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+      const nonLoadedFaces = fontState.jetBrainsFaces.filter(
+        (face) => face.status !== "loaded",
+      );
 
-  await expect(page).toHaveScreenshot(
-    "behavioral-lifecycle-design-drill.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+      if (nonLoadedFaces.length > 0) {
+        throw new Error(
+          `Font preflight failed: JetBrains Mono faces not fully loaded: ${JSON.stringify(nonLoadedFaces)}.`,
+        );
+      }
+    } finally {
+      await page.close();
+    }
+  });
 
-// Scene F — system drill-down sub-diagram.
-// Selector keyed to mod-group-runtime ("Runtime Core" label, a
-// module-group compound under system-a3). system-a3 is the richest
-// fixture subset and the only one to exercise module-group compound
-// chrome, agent-node, file-import edges, and agent-invoke edges — none
-// of which appear in scenes A-E.
-test("organizational system drill-down", async ({ page }) => {
-  await page.goto("/organizational/clusters/cluster-alpha/systems/system-a3");
-  await page
-    .locator(".graph-node[data-kind='module-group']")
-    .filter({ hasText: "Runtime Core" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+  test.beforeEach(async ({ page }) => {
+    await setupMockApi(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  });
 
-  await expect(page).toHaveScreenshot(
-    "organizational-system-a3-drill.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+  // Scene A — behavioral overview.
+  // Selector keyed to lifecycle-design, the first behavioral-lifecycle in
+  // the fixture (diagram-data.json:161).
+  test("behavioral overview", async ({ page }) => {
+    await page.goto("/behavioral");
+    await page
+      .locator(".graph-node[data-kind='behavioral-lifecycle']")
+      .filter({ hasText: "Design" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
 
-// Scene G — UI-exploration root.
-// Selector keyed to ui-screen-org ("Organizational Overview" label, the
-// first ui-screen in the fixture). /ui is the third top-level view
-// alongside /organizational and /behavioral (commit 06f44ec). Exercises
-// ui-screen chrome distinct from cluster/lifecycle cards.
-test("ui exploration overview", async ({ page }) => {
-  await page.goto("/ui");
-  await page
-    .locator(".graph-node[data-kind='ui-screen']")
-    .filter({ hasText: "Organizational Overview" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+    await expect(page).toHaveScreenshot(
+      "behavioral-overview.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
 
-  await expect(page).toHaveScreenshot(
-    "ui-exploration-overview.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+  // Scene B — organizational overview.
+  // Selector keyed to cluster-alpha, the first cluster in the fixture
+  // (diagram-data.json:5).
+  test("organizational overview", async ({ page }) => {
+    await page.goto("/organizational");
+    await page
+      .locator(".graph-node[data-kind='cluster']")
+      .filter({ hasText: "Alpha" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
 
-// Scene H — UI screen drill-down.
-// Selector keyed to ui-component-view-toggle ("View Toggle" label under
-// ui-screen-org). Only scene that renders ui-component chrome and
-// ui-implements edge kind — unique to the UI-exploration view.
-test("ui exploration screen drill-down", async ({ page }) => {
-  await page.goto("/ui/screens/ui-screen-org");
-  await page
-    .locator(".graph-node[data-kind='ui-component']")
-    .filter({ hasText: "View Toggle" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+    await expect(page).toHaveScreenshot(
+      "organizational-overview.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
 
-  await expect(page).toHaveScreenshot(
-    "ui-exploration-screen-org-drill.png",
-    SCREENSHOT_OPTIONS,
-  );
-});
+  // Scene C — cluster detail panel.
+  // Direct URL-param open (DetailPanel.tsx:77-90 uses useSearch({strict:false})).
+  // Selector keyed to cluster-alpha (the first cluster) for the readiness
+  // wait; the panel itself is addressed via `.detail-panel.is-open`.
+  test("cluster detail panel", async ({ page }) => {
+    await page.goto("/organizational?panelKind=cluster&panelId=cluster-alpha");
+    await page
+      .locator(".graph-node[data-kind='cluster']")
+      .filter({ hasText: "Alpha" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    await parkMouseAndSettle(page);
 
-// Scene I — stage drill-down sub-diagram.
-// Selector keyed to step-code ("Code" label under stage-implement). Only
-// scene that renders behavioral-step chrome and the behavioral-back-edge
-// kind (Debug -> Code in the fixture) — a dashed style distinct from the
-// forward behavioral-edge rendered in scene E.
-test("behavioral stage drill-down", async ({ page }) => {
-  await page.goto("/behavioral/lifecycles/lifecycle-build/stages/stage-implement");
-  await page
-    .locator(".graph-node[data-kind='behavioral-step']")
-    .filter({ hasText: "Code" })
-    .first()
-    .waitFor({ state: "visible", timeout: 10000 });
-  await killAnimations(page);
-  await page.waitForTimeout(LOAD_WAIT);
-  await parkMouseAndSettle(page);
+    await expect(page).toHaveScreenshot(
+      "organizational-cluster-alpha-panel.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
 
-  await expect(page).toHaveScreenshot(
-    "behavioral-stage-implement-drill.png",
-    SCREENSHOT_OPTIONS,
-  );
+  // Scene D — cluster drill-down sub-diagram.
+  // Selector keyed to system-a1 ("System A1" label, the first system under
+  // cluster-alpha in the fixture). Drill-down surfaces system-level nodes,
+  // system-edges, and the compound-node chrome that the root organizational
+  // view does not exercise.
+  test("organizational cluster drill-down", async ({ page }) => {
+    await page.goto("/organizational/clusters/cluster-alpha");
+    await page
+      .locator(".graph-node[data-kind='system']")
+      .filter({ hasText: "System A1" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "organizational-cluster-alpha-drill.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene E — lifecycle drill-down sub-diagram.
+  // Selector keyed to stage-explore ("Explore" label, the first stage under
+  // lifecycle-design in the fixture). Exercises behavioral-stage chrome and
+  // behavioral edges at sub-lifecycle level.
+  test("behavioral lifecycle drill-down", async ({ page }) => {
+    await page.goto("/behavioral/lifecycles/lifecycle-design");
+    await page
+      .locator(".graph-node[data-kind='behavioral-stage']")
+      .filter({ hasText: "Explore" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "behavioral-lifecycle-design-drill.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene F — system drill-down sub-diagram.
+  // Selector keyed to mod-group-runtime ("Runtime Core" label, a
+  // module-group compound under system-a3). system-a3 is the richest
+  // fixture subset and the only one to exercise module-group compound
+  // chrome, agent-node, file-import edges, and agent-invoke edges — none
+  // of which appear in scenes A-E.
+  test("organizational system drill-down", async ({ page }) => {
+    await page.goto("/organizational/clusters/cluster-alpha/systems/system-a3");
+    await page
+      .locator(".graph-node[data-kind='module-group']")
+      .filter({ hasText: "Runtime Core" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "organizational-system-a3-drill.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene G — UI-exploration root.
+  // Selector keyed to ui-screen-org ("Organizational Overview" label, the
+  // first ui-screen in the fixture). /ui is the third top-level view
+  // alongside /organizational and /behavioral (commit 06f44ec). Exercises
+  // ui-screen chrome distinct from cluster/lifecycle cards.
+  test("ui exploration overview", async ({ page }) => {
+    await page.goto("/ui");
+    await page
+      .locator(".graph-node[data-kind='ui-screen']")
+      .filter({ hasText: "Organizational Overview" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "ui-exploration-overview.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene H — UI screen drill-down.
+  // Selector keyed to ui-component-view-toggle ("View Toggle" label under
+  // ui-screen-org). Only scene that renders ui-component chrome and
+  // ui-implements edge kind — unique to the UI-exploration view.
+  test("ui exploration screen drill-down", async ({ page }) => {
+    await page.goto("/ui/screens/ui-screen-org");
+    await page
+      .locator(".graph-node[data-kind='ui-component']")
+      .filter({ hasText: "View Toggle" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "ui-exploration-screen-org-drill.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene I — stage drill-down sub-diagram.
+  // Selector keyed to step-code ("Code" label under stage-implement). Only
+  // scene that renders behavioral-step chrome and the behavioral-back-edge
+  // kind (Debug -> Code in the fixture) — a dashed style distinct from the
+  // forward behavioral-edge rendered in scene E.
+  test("behavioral stage drill-down", async ({ page }) => {
+    await page.goto("/behavioral/lifecycles/lifecycle-build/stages/stage-implement");
+    await page
+      .locator(".graph-node[data-kind='behavioral-step']")
+      .filter({ hasText: "Code" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "behavioral-stage-implement-drill.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
+
+  // Scene J — file detail panel with code block.
+  // Only scene that renders .detail-code-header + .detail-code-pre, which
+  // exercise font-weight 400 (code body) and font-weight 500 (.detail-code-path)
+  // in "JetBrains Mono". Other panel scenes (C) open entities that have no
+  // code blocks, so the bundled monospace face is never hit there. This scene
+  // is what actually verifies that the vendored .woff2 reaches pixels.
+  // URL opens file-entry.ts from inside the system-a3 drill-down — see
+  // fixtures/diagram-data.json:517-532 (code.byEntity["file-entry.ts"] ->
+  // cb-entry-bootstrap).
+  test("file panel with code block", async ({ page }) => {
+    await page.goto(
+      "/organizational/clusters/cluster-alpha/systems/system-a3?panelKind=file&panelId=file-entry.ts",
+    );
+    // Wait for the enclosing module-group compound (same pattern as scene F)
+    // rather than the inner file node, because the file nodes render as
+    // descendants of the module-group and are not reliably resolved as
+    // top-level .graph-node locators during the initial drill-down layout.
+    await page
+      .locator(".graph-node[data-kind='module-group']")
+      .filter({ hasText: "Runtime Core" })
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    await killAnimations(page);
+    await page.waitForTimeout(LOAD_WAIT);
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    await expect(page.locator(".detail-code-pre").first()).toBeVisible();
+    await parkMouseAndSettle(page);
+
+    await expect(page).toHaveScreenshot(
+      "file-entry-panel-code-block.png",
+      SCREENSHOT_OPTIONS,
+    );
+  });
 });
