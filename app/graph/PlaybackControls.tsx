@@ -1,3 +1,4 @@
+import { ControlIcon } from "../components/ControlIcon";
 import type { TransportStoreType } from "./TransportStore";
 
 type PlaybackControlsProps = {
@@ -15,8 +16,9 @@ export function PlaybackControls(props: PlaybackControlsProps) {
         onClick={() => props.transport.playing() ? props.transport.pause() : props.transport.play()}
         disabled={!hasTokens()}
         title={props.transport.playing() ? "Pause" : "Play"}
+        aria-label={props.transport.playing() ? "Pause" : "Play"}
       >
-        {props.transport.playing() ? "\u23F8" : "\u25B6"}
+        <ControlIcon kind={props.transport.playing() ? "pause" : "play"} />
       </button>
       <button
         type="button"
@@ -24,8 +26,9 @@ export function PlaybackControls(props: PlaybackControlsProps) {
         onClick={() => props.transport.step()}
         disabled={!hasTokens() || props.transport.playing()}
         title="Step"
+        aria-label="Step"
       >
-        {"\u23ED"}
+        <ControlIcon kind="step-forward" />
       </button>
       <button
         type="button"
@@ -33,8 +36,9 @@ export function PlaybackControls(props: PlaybackControlsProps) {
         onClick={() => props.transport.reset()}
         disabled={!hasTokens()}
         title="Reset"
+        aria-label="Reset"
       >
-        {"\u23F9"}
+        <ControlIcon kind="stop" />
       </button>
       <select
         class="playback-speed"

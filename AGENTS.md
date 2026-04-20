@@ -332,4 +332,4 @@ Do not cherry-pick a subset — if the Ubuntu runtime drifted, rebaseline all 11
 ### Known limits
 
 - `--bg: #400000` perturbation ritual produces 10/11 RED, not 11/11 — scene K's shadowbox modal backdrop covers the body `--bg` layer. Regressions inside the modal are still caught via accent colors, text, and progress-bar treatments.
-- Inter does not cover 7 UI icon glyphs (`ℹ ✕ ❯ ⏸ ⏭ ⏹ 🎬`). They fall through to fontconfig on the runner (typically Noto Sans Symbols 2 on `ubuntu-24.04`). If a future CI failure is isolated to a scene whose only change is one of these glyphs, it's fontconfig substitution drift — not an Inter-load failure. Icon normalization (SVG icons or a supplemental symbol font) is a separate follow-up.
+- UI icons that fall outside Inter's coverage (`✕ ℹ ❯ ⏸ ⏭ ⏹ 🎬` and the in-coverage `▶` kept for visual consistency) render via `app/components/ControlIcon.tsx` and inline `<svg>` paths rather than font glyphs. This decouples icon rendering from fontconfig substitution on the runner, so monthly `ubuntu-24.04` image rebuilds no longer threaten VR pixel stability for these controls.

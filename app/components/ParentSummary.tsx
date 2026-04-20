@@ -1,4 +1,5 @@
 import { Show, createMemo, createSignal } from "solid-js";
+import { ControlIcon } from "./ControlIcon";
 import { IconSvg } from "./IconSvg";
 
 const childLabelByKind: Record<string, string> = {
@@ -48,7 +49,7 @@ export function ParentSummary(props: {
           title={`View ${props.parentKind} details`}
           aria-label={`View ${props.parentKind} details`}
         >
-          ℹ
+          <ControlIcon kind="info" />
         </button>
         <button
           type="button"

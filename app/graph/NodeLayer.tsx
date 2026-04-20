@@ -1,6 +1,7 @@
 import { For, Show, createMemo } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
+import { ControlIcon } from "../components/ControlIcon";
 import type { DiagramDiffStatus, DiagramEntityTestRecord } from "../lib/diagram-data";
 import { captureClickRect } from "./DrillTransition";
 import type { DiffStatusMap } from "./diff-overlay";
@@ -251,17 +252,17 @@ function GraphNodeItem(props: GraphNodeItemProps) {
                 props.onNodeInfo?.(props.node.id, props.node.kind, props.node.label);
               }}
             >
-              {"\u2139"}
+              <ControlIcon kind="info" />
             </button>
           </Show>
           <Show when={isDrillable() && !hasChildren() && !isDiffGhost()}>
             <span class="graph-node-drill-indicator" title="Click to explore">
-              {"\u276F"}
+              <ControlIcon kind="chevron-right" />
             </span>
           </Show>
           <Show when={props.playableNodeIds?.has(props.node.id) && !isDiffGhost()}>
             <span class="graph-node-behavior-indicator" title="Has behaviors">
-              {"\uD83C\uDFAC"}
+              <ControlIcon kind="play" />
             </span>
           </Show>
         </Show>

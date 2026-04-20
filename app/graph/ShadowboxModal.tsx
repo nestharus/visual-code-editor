@@ -1,5 +1,6 @@
 import { Show, Portal } from "solid-js/web";
 
+import { ControlIcon } from "../components/ControlIcon";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import type { BehaviorPlaybackControllerType } from "./BehaviorPlayback";
 import { ScenarioBox } from "./ScenarioBox";
@@ -135,8 +136,9 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
                   }
                 }}
                 title={props.playback.status() === "playing" ? "Pause" : props.playback.status() === "complete" ? "Replay" : "Play"}
+                aria-label={props.playback.status() === "playing" ? "Pause" : props.playback.status() === "complete" ? "Replay" : "Play"}
               >
-                {props.playback.status() === "playing" ? "\u23F8" : "\u25B6"}
+                <ControlIcon kind={props.playback.status() === "playing" ? "pause" : "play"} />
               </button>
               <button
                 type="button"
@@ -144,8 +146,9 @@ export function ShadowboxModal(props: ShadowboxModalProps) {
                 onClick={() => props.transport.step()}
                 disabled={props.playback.status() === "playing"}
                 title="Step"
+                aria-label="Step"
               >
-                {"\u23ED"}
+                <ControlIcon kind="step-forward" />
               </button>
               <select
                 class="playback-speed"
