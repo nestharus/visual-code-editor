@@ -57,7 +57,21 @@ export function ParentSummary(props: {
           title="Dismiss summary"
           aria-label="Dismiss summary"
         >
-          ✕
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            aria-hidden="true"
+            style={{ "flex-shrink": 0 }}
+          >
+            <path
+              d="M1 1 L9 9 M9 1 L1 9"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              fill="none"
+            />
+          </svg>
         </button>
       </div>
     </Show>

@@ -129,7 +129,21 @@ export function WatcherPanel(props: WatcherPanelProps) {
             onClick={props.onClose}
             aria-label="Close watcher panel"
           >
-            ✕
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              aria-hidden="true"
+              style={{ "flex-shrink": 0 }}
+            >
+              <path
+                d="M1 1 L9 9 M9 1 L1 9"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                fill="none"
+              />
+            </svg>
           </button>
         </div>
 
@@ -199,7 +213,21 @@ export function WatcherPanel(props: WatcherPanelProps) {
                   onClick={() => handleRemove(entry.id)}
                   aria-label={`Remove watch on ${entry.path}`}
                 >
-                  ✕
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    aria-hidden="true"
+                    style={{ "flex-shrink": 0 }}
+                  >
+                    <path
+                      d="M1 1 L9 9 M9 1 L1 9"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      fill="none"
+                    />
+                  </svg>
                 </button>
               </div>
             )}

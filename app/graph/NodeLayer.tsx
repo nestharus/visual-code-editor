@@ -189,7 +189,26 @@ function GraphNodeItem(props: GraphNodeItemProps) {
             }}
             aria-hidden="true"
           >
-            {testStatus() === "failed" ? "\u2715" : "\u2713"}
+            <Show
+              when={testStatus() === "failed"}
+              fallback={"\u2713"}
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                aria-hidden="true"
+                style={{ "flex-shrink": 0 }}
+              >
+                <path
+                  d="M1 1 L9 9 M9 1 L1 9"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  fill="none"
+                />
+              </svg>
+            </Show>
           </span>
         </Show>
         <div classList={{ "graph-node-float": true, "is-floating": isFloating() }}>
