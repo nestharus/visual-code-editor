@@ -1,0 +1,74 @@
+name: Visual Regression
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: Refresh CI-authoritative visual regression baselines
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Build preview bundle
+        run: npm run build
+
+      - name: Start preview server
+        run: npm run serve &
+
+      - name: Wait for preview
+        run: curl --retry 20 --retry-delay 1 --retry-connrefused --silent --show-error --fail http://localhost:8742/ >/dev/null
+
+      - name: Run visual regression spec
+        if: ${{ !inputs.update_snapshots }}
+        run: npx playwright test e2e/visual-regression.spec.ts
+
+      - name: Refresh visual regression baselines
+        if: ${{ inputs.update_snapshots }}
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots
+
+      - name: Upload Playwright diffs
+        if: ${{ failure() && hashFiles('test-results/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-test-results
+          path: test-results/
+          retention-days: 7
+
+      - name: Upload CI Linux baselines
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vr-baselines-ci-linux
+          path: e2e/visual-regression.spec.ts-snapshots/
+          retention-days: 7

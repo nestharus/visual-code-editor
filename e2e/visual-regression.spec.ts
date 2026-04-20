@@ -140,13 +140,13 @@ test.describe("visual-regression baselines", () => {
 
       if (!fontState.checkPassed) {
         throw new Error(
-          'Font preflight failed: document.fonts.check for "JetBrains Mono" 400 or 500 returned false after explicit load.',
+          `Font preflight failed: document.fonts.check for "JetBrains Mono" 400 or 500 returned false after explicit load. Faces: ${JSON.stringify(fontState.jetBrainsFaces)}.`,
         );
       }
 
       if (fontState.jetBrainsFaces.length === 0) {
         throw new Error(
-          'Font preflight failed: document.fonts contained no faces whose family includes "JetBrains Mono".',
+          `Font preflight failed: document.fonts contained no faces whose family includes "JetBrains Mono". Faces: ${JSON.stringify(fontState.jetBrainsFaces)}.`,
         );
       }
 
@@ -156,7 +156,7 @@ test.describe("visual-regression baselines", () => {
 
       if (nonLoadedFaces.length > 0) {
         throw new Error(
-          `Font preflight failed: JetBrains Mono faces not fully loaded: ${JSON.stringify(nonLoadedFaces)}.`,
+          `Font preflight failed: JetBrains Mono faces not fully loaded: ${JSON.stringify(nonLoadedFaces)}. Faces: ${JSON.stringify(fontState.jetBrainsFaces)}.`,
         );
       }
     } finally {
