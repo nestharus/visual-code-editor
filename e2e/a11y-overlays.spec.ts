@@ -88,6 +88,26 @@ test.describe("Overlay Accessibility", () => {
     await expect(page.locator("#diagram-viewport")).toBeFocused();
   });
 
+  test("Detail panel hides from a11y tree when closed", async ({ page }) => {
+    await gotoDiagram(page, "/organizational");
+
+    // Closed state: the <aside> is always mounted (so the slide-in
+    // transform can animate), so it must be inert + aria-hidden to
+    // avoid screen readers announcing an empty complementary region.
+    const panel = page.locator("#detail-panel");
+    await expect(panel).toHaveAttribute("aria-hidden", "true");
+    await expect(panel).toHaveAttribute("inert", "");
+
+    await openDetailPanel(page, "cluster", "Alpha");
+    await expect(panel).toHaveAttribute("aria-hidden", "false");
+    await expect(panel).not.toHaveAttribute("inert", /.*/);
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".detail-panel.is-open")).not.toBeVisible();
+    await expect(panel).toHaveAttribute("aria-hidden", "true");
+    await expect(panel).toHaveAttribute("inert", "");
+  });
+
   test("Shadowbox modal traps focus, closes on Escape, and returns focus to the viewport", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
 

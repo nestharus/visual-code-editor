@@ -381,6 +381,8 @@ export function DetailPanel() {
         id="detail-panel"
         ref={panelRef}
         classList={{ "detail-panel": true, "is-open": isOpen() }}
+        aria-hidden={!isOpen()}
+        inert={!isOpen()}
       >
         <Show when={isOpen()}>
           <div class="detail-panel-header">
