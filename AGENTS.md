@@ -301,9 +301,9 @@ All visual changes MUST be verified on port 8742 (vite preview build), not port 
 
 ## Visual Regression
 
-Local pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/`. They are **machine-local** because no web font is bundled (Chromium falls back to the host system monospace) and DPR/rasterization depend on the host compositor.
+Pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/` (11 scenes A–K). JetBrains Mono is bundled (`app/assets/fonts/`, wired through `@font-face` in `app/styles/theme.css`), so monospace rendering is no longer OS-dependent. DPR/rasterization still depend on the host compositor, but in practice WSL and the GitHub Actions `ubuntu-24.04` runner produce identical bytes for all 11 scenes as of commit `951a589`.
 
-Run the harness:
+Run the harness locally:
 ```bash
 npm run serve &          # or keep a preview open on 8742
 npx playwright test e2e/visual-regression.spec.ts
@@ -317,7 +317,19 @@ npx playwright test e2e/visual-regression.spec.ts \
 
 Avoid blanket `--update-snapshots` — it silently overwrites baselines for scenes you did not mean to change. On a diff, inspect `test-results/*.png` first.
 
-Known phase-2 costs (do not solve now):
-- CI adoption will require re-baselining on the CI runner.
-- Bundling JetBrains Mono (via `@font-face` in `theme.css`) will flip every baseline.
-- Drill-down and sub-diagram views are not yet covered.
+### CI (GitHub Actions)
+
+`.github/workflows/visual-regression.yml` runs only this spec on every `pull_request`, `push` to `main`, and on-demand via `workflow_dispatch`. The workflow pins `ubuntu-24.04`, Node 20, `timeout-minutes: 20`, and uploads `test-results/` as a 7-day artifact on failure.
+
+**If CI ever fails from rasterization drift** (e.g. after monthly Ubuntu library updates to cairo/pango/skia/freetype): refresh baselines from the runner.
+
+1. On the Actions tab, trigger `Visual Regression` via `Run workflow` on `main` with `update_snapshots: true`.
+2. When it finishes, download the `vr-baselines-ci-linux` artifact.
+3. Replace the PNGs under `e2e/visual-regression.spec.ts-snapshots/` with the artifact contents, open a PR, and let the normal `pull_request` run verify green.
+
+Do not cherry-pick a subset — if the Ubuntu runtime drifted, rebaseline all 11 scenes in one commit and visually inspect the diff for anything beyond anti-alias noise before landing.
+
+### Known limits
+
+- `--bg: #400000` perturbation ritual produces 10/11 RED, not 11/11 — scene K's shadowbox modal backdrop covers the body `--bg` layer. Regressions inside the modal are still caught via accent colors, text, and progress-bar treatments.
+- Sans-serif (Inter) is NOT bundled; body text still falls back to the host UI font. Most VR scenes are graph-surface text that happens to render identically on WSL and Azure, but a Linux distro with a substantially different default sans would flip baselines. Bundle Inter if CI starts failing on scenes without obvious structural changes.
