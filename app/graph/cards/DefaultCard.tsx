@@ -1,8 +1,9 @@
-import { Show } from "solid-js";
+import { Show, createMemo } from "solid-js";
 
 import { getIconSvgByKind } from "../../lib/node-visuals";
 import { resolveNodeShape, shapeClassName } from "../layout/shapes";
 import type { GraphCardProps } from "./CardRegistry";
+import { hexToRgbTuple } from "./color";
 
 // Kinds that have per-kind CSS accent colors — don't override with data.color
 const CSS_ACCENTED_KINDS = new Set([
@@ -28,20 +29,33 @@ function resolveAccentColor(props: GraphCardProps) {
 
 export function DefaultCard(props: GraphCardProps) {
   const iconSvg = () => getIconSvgByKind(props.node.kind);
-  const accentColor = () => resolveAccentColor(props);
+  const accentColor = createMemo(() => resolveAccentColor(props));
+  const accentGlow = createMemo(() => {
+    const color = accentColor();
+    return color ? hexToRgbTuple(color) : null;
+  });
+  const cardStyle = createMemo(() => {
+    const color = accentColor();
+    if (!color) return undefined;
+
+    const glow = accentGlow();
+    return glow
+      ? {
+          "--node-accent": color,
+          "--node-border": color,
+          "--node-accent-glow": glow,
+        }
+      : {
+          "--node-accent": color,
+          "--node-border": color,
+        };
+  });
   const shape = () => resolveNodeShape(props.node.kind, false);
 
   return (
     <div
       class={`graph-card graph-card--default ${shapeClassName(shape())}`}
-      style={
-        accentColor()
-          ? {
-              "--node-accent": accentColor(),
-              "--node-border": accentColor(),
-            }
-          : undefined
-      }
+      style={cardStyle()}
       title={props.node.label}
     >
       <Show when={props.zoomTier !== "dot" && iconSvg()}>

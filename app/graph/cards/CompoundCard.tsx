@@ -1,25 +1,39 @@
-import { Show } from "solid-js";
+import { Show, createMemo } from "solid-js";
 
 import { getIconSvgByKind } from "../../lib/node-visuals";
 import type { GraphCardProps } from "./CardRegistry";
+import { hexToRgbTuple } from "./color";
 
 export function CompoundCard(props: GraphCardProps) {
-  const accentColor = () => {
+  const accentColor = createMemo(() => {
     const color = props.node.data.color;
     return typeof color === "string" && color.length > 0 ? color : undefined;
-  };
+  });
+  const accentGlow = createMemo(() => {
+    const color = accentColor();
+    return color ? hexToRgbTuple(color) : null;
+  });
+  const cardStyle = createMemo(() => {
+    const color = accentColor();
+    if (!color) return undefined;
+
+    const glow = accentGlow();
+    return glow
+      ? {
+          "--node-accent": color,
+          "--node-border": color,
+          "--node-accent-glow": glow,
+        }
+      : {
+          "--node-accent": color,
+          "--node-border": color,
+        };
+  });
 
   return (
     <div
       class="graph-card graph-card--compound"
-      style={
-        accentColor()
-          ? {
-              "--node-accent": accentColor(),
-              "--node-border": accentColor(),
-            }
-          : undefined
-      }
+      style={cardStyle()}
       title={props.node.label}
     >
       <div class="compound-card-header">
