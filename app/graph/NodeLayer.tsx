@@ -70,6 +70,10 @@ function computeZoomTier(node: GraphNode, zoom: number): GraphZoomTier {
   return "full";
 }
 
+function clampGlowOpacity(glow: number): number {
+  return Math.max(0, Math.min(1, glow));
+}
+
 function sortNodes(nodes: GraphNode[]) {
   return [...nodes].sort((a, b) => {
     const ay = a.position?.y ?? 0;
@@ -176,6 +180,7 @@ function GraphNodeItem(props: GraphNodeItemProps) {
         style={{
           transform: `scale(${visual().innerScale})`,
           opacity: visual().opacity,
+          "--node-glow-opacity": String(clampGlowOpacity(visual().glow)),
         }}
       >
         <span class="graph-node-select-check" aria-hidden="true">

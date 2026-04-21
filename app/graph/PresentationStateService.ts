@@ -56,6 +56,7 @@ const FALLBACK_LAYOUT: BaseLayout = { x: 0, y: 0, width: 150, height: 60 };
 const SPRING_CONFIG = { stiffness: 0.15, damping: 0.7 };
 const SETTLE_REST_TY_EPSILON = 0.25;
 const SETTLE_REST_SCALE_EPSILON = 0.005;
+const GLOW_WRITE_EPSILON = 0.01;
 const MAX_SETTLE_DURATION_MS = 800;
 
 function prefersReducedMotion() {
@@ -68,7 +69,7 @@ function prefersReducedMotion() {
 
 type HoverSpring = {
   dispose: () => void;
-  setTarget: (ty: number, scale: number) => void;
+  setTarget: (ty: number, scale: number, glow: number) => void;
 };
 
 function isAtRest(ty: number, innerScale: number) {
@@ -100,6 +101,7 @@ export function createPresentationStateService(_graph: Accessor<GraphDefinition>
     setHoverPhaseById(nodeId, "idle");
     setStateById(nodeId, "ty", 0);
     setStateById(nodeId, "innerScale", 1);
+    setStateById(nodeId, "glow", 0);
   }
 
   function scheduleSettleTimeout(nodeId: string) {
@@ -114,16 +116,38 @@ export function createPresentationStateService(_graph: Accessor<GraphDefinition>
     return createRoot((dispose) => {
       const [targetTy, setTargetTy] = createSignal(0);
       const [targetScale, setTargetScale] = createSignal(1);
+      const [targetGlow, setTargetGlow] = createSignal(0);
 
       const springTy = createDerivedSpring(targetTy, SPRING_CONFIG);
       const springScale = createDerivedSpring(targetScale, SPRING_CONFIG);
+      const springGlow = createDerivedSpring(targetGlow, SPRING_CONFIG);
+      let lastRenderedGlow = 0;
+      let lastWrittenGlow = 0;
 
       createEffect(() => {
         const currentTy = springTy();
         const currentScale = springScale();
+        const currentGlow = springGlow();
         if (!layoutById.has(nodeId)) return;
+        const clampedGlow = Math.max(0, Math.min(1, currentGlow));
+        const flooredGlow = clampedGlow < 0.005 ? 0 : clampedGlow;
+        const nextGlow =
+          targetGlow() === 0
+            ? hoverPhaseById[nodeId] === "idle"
+              ? 0
+              : Math.min(flooredGlow, lastRenderedGlow)
+            : flooredGlow;
+        lastRenderedGlow = nextGlow;
         setStateById(nodeId, "ty", currentTy);
         setStateById(nodeId, "innerScale", currentScale);
+        if (
+          nextGlow === 0 ||
+          nextGlow === 1 ||
+          Math.abs(nextGlow - lastWrittenGlow) >= GLOW_WRITE_EPSILON
+        ) {
+          lastWrittenGlow = nextGlow;
+          setStateById(nodeId, "glow", nextGlow);
+        }
         if (hoverPhaseById[nodeId] === "settling" && isAtRest(currentTy, currentScale)) {
           finishSettling(nodeId);
         }
@@ -131,9 +155,10 @@ export function createPresentationStateService(_graph: Accessor<GraphDefinition>
 
       return {
         dispose,
-        setTarget(ty: number, scale: number) {
+        setTarget(ty: number, scale: number, glow: number) {
           setTargetTy(ty);
           setTargetScale(scale);
+          setTargetGlow(glow);
         },
       };
     });
@@ -155,38 +180,38 @@ export function createPresentationStateService(_graph: Accessor<GraphDefinition>
 
     if (hovered) {
       setHoverPhaseById(nodeId, "hovered");
-      setStateById(nodeId, "glow", 1);
 
       if (isCompound) {
         // Compounds: no lift, no scale.
         setStateById(nodeId, "ty", 0);
         setStateById(nodeId, "innerScale", 1);
+        setStateById(nodeId, "glow", 1);
         return;
       }
 
       if (reducedMotion) {
         setStateById(nodeId, "ty", -12);
         setStateById(nodeId, "innerScale", 1.08);
+        setStateById(nodeId, "glow", 1);
         return;
       }
 
       const spring = ensureHoverSpring(nodeId);
-      spring.setTarget(-12, 1.08);
+      spring.setTarget(-12, 1.08, 1);
       return;
     }
-
-    setStateById(nodeId, "glow", 0);
 
     if (isCompound || reducedMotion) {
       setHoverPhaseById(nodeId, "idle");
       setStateById(nodeId, "ty", 0);
       setStateById(nodeId, "innerScale", 1);
+      setStateById(nodeId, "glow", 0);
       return;
     }
 
     setHoverPhaseById(nodeId, "settling");
     const spring = ensureHoverSpring(nodeId);
-    spring.setTarget(0, 1);
+    spring.setTarget(0, 1, 0);
     if (isAtRest(stateById[nodeId]?.ty ?? 0, stateById[nodeId]?.innerScale ?? 1)) {
       finishSettling(nodeId);
       return;
