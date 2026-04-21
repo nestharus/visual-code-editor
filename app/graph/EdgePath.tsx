@@ -33,6 +33,14 @@ type EdgeGeometry = {
   labelPoint: Point;
 };
 
+const EDGE_HIT_TARGET_TRIM_PX = 24;
+const EDGE_HIT_TARGET_MIN_LENGTH_PX = 12;
+
+type PathCommand =
+  | { type: "M" | "L"; values: [number, number] }
+  | { type: "Q"; values: [number, number, number, number] }
+  | { type: "C"; values: [number, number, number, number, number, number] };
+
 export const EDGE_COLORS: Record<string, string> = {
   edge: "#8b949e",
   "cluster-edge": "#30363d",
@@ -73,6 +81,175 @@ export function getEdgeColor(kind: string) {
   return EDGE_COLORS[kind] ?? EDGE_COLORS.edge;
 }
 
+function pathCommandValueCount(type: PathCommand["type"]): number {
+  switch (type) {
+    case "M":
+    case "L":
+      return 2;
+    case "Q":
+      return 4;
+    case "C":
+      return 6;
+  }
+}
+
+function isPathCommandToken(token: string): token is PathCommand["type"] {
+  return token === "M" || token === "L" || token === "Q" || token === "C";
+}
+
+function parsePathCommands(d: string): PathCommand[] | null {
+  const tokens = d.match(/[MLQC]|[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi);
+  if (!tokens) return null;
+
+  const commands: PathCommand[] = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const type = tokens[index]?.toUpperCase();
+    index += 1;
+
+    if (!type || !isPathCommandToken(type)) return null;
+
+    const valueCount = pathCommandValueCount(type);
+    const values: number[] = [];
+
+    for (let valueIndex = 0; valueIndex < valueCount; valueIndex += 1) {
+      const token = tokens[index];
+      if (!token || isPathCommandToken(token.toUpperCase())) return null;
+
+      const value = Number(token);
+      if (!Number.isFinite(value)) return null;
+
+      values.push(value);
+      index += 1;
+    }
+
+    if (type === "M" || type === "L") {
+      commands.push({ type, values: [values[0], values[1]] });
+    } else if (type === "Q") {
+      commands.push({ type, values: [values[0], values[1], values[2], values[3]] });
+    } else {
+      commands.push({ type, values: [values[0], values[1], values[2], values[3], values[4], values[5]] });
+    }
+  }
+
+  return commands;
+}
+
+function commandEndpoint(command: PathCommand): Point {
+  return {
+    x: command.values[command.values.length - 2],
+    y: command.values[command.values.length - 1],
+  };
+}
+
+function setCommandEndpoint(command: PathCommand, point: Point): void {
+  command.values[command.values.length - 2] = point.x;
+  command.values[command.values.length - 1] = point.y;
+}
+
+function startAdjacentPoint(command: PathCommand): Point {
+  return { x: command.values[0], y: command.values[1] };
+}
+
+function endAdjacentPoint(commands: PathCommand[], lastIndex: number): Point | null {
+  const last = commands[lastIndex];
+
+  if (last.type === "C") {
+    return { x: last.values[2], y: last.values[3] };
+  }
+  if (last.type === "Q") {
+    return { x: last.values[0], y: last.values[1] };
+  }
+
+  const previous = commands[lastIndex - 1];
+  return previous ? commandEndpoint(previous) : null;
+}
+
+function movePointToward(
+  point: Point,
+  adjacent: Point | null,
+  amount: number,
+  minRemainingLength = 0,
+): Point {
+  if (!adjacent || amount <= 0) return point;
+
+  const dx = adjacent.x - point.x;
+  const dy = adjacent.y - point.y;
+  const length = Math.hypot(dx, dy);
+
+  if (length < 0.001) return point;
+
+  const distance = Math.min(amount, Math.max(0, length - minRemainingLength));
+  return {
+    x: point.x + (dx / length) * distance,
+    y: point.y + (dy / length) * distance,
+  };
+}
+
+function formatPathNumber(value: number): string {
+  return String(Number(value.toFixed(3)));
+}
+
+function serializePathCommands(commands: PathCommand[]): string {
+  return commands.map((command) => {
+    const values = command.values.map(formatPathNumber);
+
+    if (command.type === "Q") {
+      return `Q ${values[0]} ${values[1]}, ${values[2]} ${values[3]}`;
+    }
+    if (command.type === "C") {
+      return `C ${values[0]} ${values[1]}, ${values[2]} ${values[3]}, ${values[4]} ${values[5]}`;
+    }
+
+    return `${command.type} ${values[0]} ${values[1]}`;
+  }).join(" ");
+}
+
+function shortenPathEnds(d: string, amount: number): string {
+  const commands = parsePathCommands(d);
+
+  if (!commands || commands.length < 2 || commands[0].type !== "M") {
+    return d;
+  }
+
+  const first = commands[0];
+  const lastIndex = commands.length - 1;
+  const last = commands[lastIndex];
+
+  if (commands.length === 2 && last.type === "L") {
+    const start = commandEndpoint(first);
+    const end = commandEndpoint(last);
+    const length = Math.hypot(end.x - start.x, end.y - start.y);
+    const trimAmount = Math.min(
+      amount,
+      Math.max(0, (length - EDGE_HIT_TARGET_MIN_LENGTH_PX) / 2),
+    );
+
+    setCommandEndpoint(first, movePointToward(start, end, trimAmount));
+    setCommandEndpoint(last, movePointToward(end, start, trimAmount));
+
+    return serializePathCommands(commands);
+  }
+
+  const trimmedStart = movePointToward(
+    commandEndpoint(first),
+    startAdjacentPoint(commands[1]),
+    amount,
+    EDGE_HIT_TARGET_MIN_LENGTH_PX,
+  );
+  const trimmedEnd = movePointToward(
+    commandEndpoint(last),
+    endAdjacentPoint(commands, lastIndex),
+    amount,
+    EDGE_HIT_TARGET_MIN_LENGTH_PX,
+  );
+
+  setCommandEndpoint(first, trimmedStart);
+  setCommandEndpoint(last, trimmedEnd);
+
+  return serializePathCommands(commands);
+}
 
 function pointAtPolylineMidpoint(points: Point[]): Point {
   if (points.length === 0) return { x: 0, y: 0 };
@@ -363,7 +540,7 @@ export function EdgePath(props: EdgePathProps) {
     return (
       <path
         class="edge-hit-target"
-        d={geometry().pathData}
+        d={shortenPathEnds(geometry().pathData, EDGE_HIT_TARGET_TRIM_PX)}
         onMouseEnter={() => props.onEdgeHover?.(props.edge.id)}
         onMouseLeave={() => props.onEdgeHover?.(null)}
         onClick={(event) => {

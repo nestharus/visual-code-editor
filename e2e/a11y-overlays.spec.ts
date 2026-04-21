@@ -9,7 +9,7 @@ function nodeByText(page: Page, kind: string, text: string): Locator {
   return page.locator(`.graph-node[data-kind='${kind}']`).filter({ hasText: text }).first();
 }
 
-async function openDetailPanel(page: Page, kind: string, text: string) {
+async function openDetailPanel(page: Page, kind: string, text: string): Promise<Locator> {
   const node = nodeByText(page, kind, text);
   await expect(node).toBeVisible();
   await node.hover();
@@ -17,10 +17,13 @@ async function openDetailPanel(page: Page, kind: string, text: string) {
   const infoButton = node.locator(".graph-node-info-btn");
   if (await infoButton.count()) {
     await infoButton.click({ force: true });
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    return infoButton;
   } else {
     await node.click({ force: true });
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    return node;
   }
-  await expect(page.locator(".detail-panel.is-open")).toBeVisible();
 }
 
 async function openShadowbox(page: Page) {
@@ -77,15 +80,15 @@ test.describe("Overlay Accessibility", () => {
     await expect(promptButton).toBeFocused();
   });
 
-  test("Detail panel focuses its title and returns focus to the viewport", async ({ page }) => {
+  test("Detail panel focuses its title and returns focus to its opener", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
 
-    await openDetailPanel(page, "cluster", "Alpha");
+    const opener = await openDetailPanel(page, "cluster", "Alpha");
     await expect(page.locator("#detail-panel-title")).toBeFocused();
 
     await page.keyboard.press("Escape");
     await expect(page.locator(".detail-panel.is-open")).not.toBeVisible();
-    await expect(page.locator("#diagram-viewport")).toBeFocused();
+    await expect(opener).toBeFocused();
   });
 
   test("Detail panel hides from a11y tree when closed", async ({ page }) => {
