@@ -2,7 +2,6 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Acce
 
 import type { DiagramEntityTestRecord } from "../lib/diagram-data";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
-import { DeepCardOverlay } from "./DeepCardOverlay";
 import {
   BaseEdgeLayer,
   EdgeHitLayer,
@@ -189,11 +188,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
 
   let viewportHandle: ViewportHandle | undefined;
   let savedCameraState: import("d3-zoom").ZoomTransform | undefined;
-
-  const [deepCardActive, setDeepCardActive] = createSignal(false);
-  const [deepCardRect, setDeepCardRect] = createSignal<DOMRect | null>(null);
-  const [deepCardDestRect, setDeepCardDestRect] = createSignal<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [deepCardDirection, setDeepCardDirection] = createSignal<"forward" | "reverse">("forward");
 
   const playback = createBehaviorPlaybackController(
     () => props.scenarioData,
@@ -408,11 +402,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
     playback.stop();
   };
 
-  const onDeepCardComplete = () => {
-    setDeepCardActive(false);
-    setDeepCardRect(null);
-  };
-
   // Listen for play-scenario events from DetailPanel
   const handlePlayScenario = (e: Event) => {
     const behaviorId = (e as CustomEvent).detail?.behaviorId;
@@ -481,15 +470,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
         />
       </GraphViewport>
       {/* These render OUTSIDE the zoom-transformed scene, in viewport space */}
-      <DeepCardOverlay
-        active={deepCardActive()}
-        direction={deepCardDirection()}
-        sourceRect={deepCardRect()}
-        destinationRect={deepCardDestRect()}
-        viewportWidth={viewportHandle?.viewportSize().width ?? 800}
-        viewportHeight={viewportHandle?.viewportSize().height ?? 600}
-        onComplete={onDeepCardComplete}
-      />
       <ShadowboxModal
         playback={playback}
         transport={modalTransport}
