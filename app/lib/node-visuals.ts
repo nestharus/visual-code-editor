@@ -7,6 +7,7 @@ import agentNodeIcon from "../assets/icons/agent-node.svg?raw";
 import behavioralLifecycleIcon from "../assets/icons/behavioral-lifecycle.svg?raw";
 import behavioralStageIcon from "../assets/icons/behavioral-stage.svg?raw";
 import behavioralStepIcon from "../assets/icons/behavioral-step.svg?raw";
+import edgeIcon from "../assets/icons/edge.svg?raw";
 
 export type NodeVisual = {
   iconDataUri: string;
@@ -42,6 +43,7 @@ export const nodeIconSvgs: Record<string, string> = {
   "behavioral-lifecycle": behavioralLifecycleIcon,
   "behavioral-stage": behavioralStageIcon,
   "behavioral-step": behavioralStepIcon,
+  edge: edgeIcon,
 };
 
 export const nodeVisuals: Record<string, NodeVisual> = {
@@ -122,6 +124,13 @@ export const nodeVisuals: Record<string, NodeVisual> = {
     frameStyle: { borderWidth: 1.5 },
     zoomTiers: defaultZoomTiers,
   },
+  edge: {
+    iconDataUri: toDataUri(edgeIcon),
+    isContainer: false,
+    hasDetail: true,
+    frameStyle: { borderWidth: 1.5 },
+    zoomTiers: defaultZoomTiers,
+  },
 };
 
 const kindToKey: Record<string, string | undefined> = {
@@ -136,7 +145,20 @@ const kindToKey: Record<string, string | undefined> = {
   external: "external",
   "ui-screen": "ui-screen",
   "ui-component": "ui-component",
-  edge: undefined,
+  edge: "edge",
+  "cluster-edge": "edge",
+  "system-edge": "edge",
+  "store-edge": "edge",
+  "store-read": "edge",
+  "store-write": "edge",
+  import: "edge",
+  "file-import": "edge",
+  "agent-invoke": "edge",
+  "ui-implements": "edge",
+  "behavioral-edge": "edge",
+  "behavioral-back-edge": "edge",
+  "stage-flow": "edge",
+  "step-flow": "edge",
 };
 
 function resolveNodeVisualKey(kind: string): string | undefined {

@@ -63,6 +63,7 @@ export function PanelPrompt(props: PanelPromptProps) {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   let requestVersion = 0;
   const inputId = () => `panel-prompt-input-${props.entityId}`;
+  const hasCodeBlocks = createMemo(() => props.codeBlocks.length > 0);
 
   const focusedBlock = createMemo(
     () => props.codeBlocks.find((block) => block.id === props.focusedBlockId) ?? null,
@@ -86,6 +87,14 @@ export function PanelPrompt(props: PanelPromptProps) {
     setResult(null);
     setError("");
     setIsSubmitting(false);
+  });
+
+  createEffect(() => {
+    if (!hasCodeBlocks() && mode() === "edit") {
+      setMode("ask");
+      setResult(null);
+      setError("");
+    }
   });
 
   const handleSubmit = async (event: SubmitEvent) => {
@@ -211,20 +220,22 @@ export function PanelPrompt(props: PanelPromptProps) {
         >
           Ask
         </button>
-        <button
-          type="button"
-          classList={{
-            "detail-prompt-mode-btn": true,
-            "is-active": mode() === "edit",
-          }}
-          onClick={() => {
-            setMode("edit");
-            setResult(null);
-            setError("");
-          }}
-        >
-          Edit
-        </button>
+        <Show when={hasCodeBlocks()}>
+          <button
+            type="button"
+            classList={{
+              "detail-prompt-mode-btn": true,
+              "is-active": mode() === "edit",
+            }}
+            onClick={() => {
+              setMode("edit");
+              setResult(null);
+              setError("");
+            }}
+          >
+            Edit
+          </button>
+        </Show>
       </div>
 
       <Show when={focusedBlock()}>

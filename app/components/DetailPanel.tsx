@@ -3,6 +3,7 @@ import { Show, For, createEffect, createMemo, createSignal, onCleanup } from "so
 import { useSearch, useNavigate, useParams } from "@tanstack/solid-router";
 import { WATCHER_URL } from "../lib/diagram-data";
 import { useDiagramData } from "../lib/diagram-data";
+import type { DiagramData, DiagramDetailRecord } from "../lib/diagram-data";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
@@ -16,6 +17,39 @@ const SUMMARY_ONLY_FIELDS = new Set([
   "fileCount",
   "agentCount",
 ]);
+const EDGE_METADATA_FIELDS = new Set(["from", "to", "fromLabel", "toLabel"]);
+const EDGE_PANEL_KINDS = new Set([
+  "store-edge",
+  "cluster-edge",
+  "system-edge",
+  "store-read",
+  "store-write",
+  "import",
+  "file-import",
+  "agent-invoke",
+  "ui-implements",
+  "behavioral-edge",
+  "behavioral-back-edge",
+  "stage-flow",
+  "step-flow",
+  "edge",
+]);
+
+type CombinedScenario = NonNullable<DiagramData["combined"]>["scenarios"][string];
+type ScenarioBeat = CombinedScenario["beats"][number];
+type EdgeScenarioRef = {
+  scenario: CombinedScenario;
+  beats: ScenarioBeat[];
+};
+
+type EdgeEndpoint = {
+  role: "source" | "target";
+  id: string;
+  label: string;
+  kind?: string;
+  iconKind?: string;
+  available: boolean;
+};
 
 function metadataFieldLabel(key: string): string {
   const labels: Record<string, string> = {
@@ -71,6 +105,25 @@ function clearPanelSearch(prev: Record<string, unknown>) {
   delete next.panelId;
   delete next.panelLabel;
   return next;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function humanizeMechanism(value: string): string {
+  if (!value) return "";
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function resolveEndpointKind(rawKind: string | undefined): string | undefined {
+  if (!rawKind) return undefined;
+  if (rawKind === "module") return "file";
+  return rawKind;
 }
 
 export function DetailPanel() {
@@ -138,6 +191,109 @@ export function DetailPanel() {
       .filter(Boolean);
   });
 
+  const isEdgePanel = createMemo(() => {
+    const d = detail();
+    if (d) return d.kind === "edge";
+    return EDGE_PANEL_KINDS.has(panelKind() || "");
+  });
+
+  const edgeIconKind = createMemo(() => {
+    if (!isEdgePanel()) return panelKind() || "";
+    return panelKind() || "edge";
+  });
+
+  const edgeMechanismLabel = createMemo(() => {
+    if (!isEdgePanel()) return "";
+    const d = detail();
+    const mechanism = stringValue(d?.mechanism);
+    if (mechanism) return humanizeMechanism(mechanism);
+
+    const label = panelLabel() || stringValue(d?.label);
+    const kind = panelKind() || "";
+    if (kind === "store-edge" && /^(read|write)$/i.test(label)) {
+      return humanizeMechanism(`store-${label}`);
+    }
+    if (EDGE_PANEL_KINDS.has(kind) && kind !== "edge") {
+      return humanizeMechanism(kind);
+    }
+    return humanizeMechanism(label);
+  });
+
+  const edgeEndpoints = createMemo(() => {
+    if (!isEdgePanel()) return null;
+    const d = detail();
+    const details = diagramQuery.data?.details;
+    if (!d || !details) return null;
+
+    const fromId = stringValue(d.from);
+    const toId = stringValue(d.to);
+    if (!fromId || !toId) return null;
+
+    const buildEndpoint = (
+      role: EdgeEndpoint["role"],
+      id: string,
+      labelField: "fromLabel" | "toLabel",
+    ): EdgeEndpoint => {
+      const endpointDetail = details[id] as DiagramDetailRecord | undefined;
+      const rawKind = stringValue(endpointDetail?.kind);
+      const label =
+        stringValue(d[labelField]) ||
+        stringValue(endpointDetail?.label) ||
+        id;
+      return {
+        role,
+        id,
+        label,
+        kind: rawKind || undefined,
+        iconKind: resolveEndpointKind(rawKind),
+        available: !!endpointDetail,
+      };
+    };
+
+    return {
+      from: buildEndpoint("source", fromId, "fromLabel"),
+      to: buildEndpoint("target", toId, "toLabel"),
+    };
+  });
+
+  const edgeScenarioCitationIndex = createMemo(() => {
+    const byEdge = new Map<string, Map<string, EdgeScenarioRef>>();
+    const scenarios = diagramQuery.data?.combined?.scenarios;
+    if (!scenarios) return byEdge;
+
+    for (const scenario of Object.values(scenarios)) {
+      for (const beat of scenario.beats ?? []) {
+        for (const edgeId of beat.edgeIds ?? []) {
+          let scenarioMap = byEdge.get(edgeId);
+          if (!scenarioMap) {
+            scenarioMap = new Map<string, EdgeScenarioRef>();
+            byEdge.set(edgeId, scenarioMap);
+          }
+
+          const existing = scenarioMap.get(scenario.id);
+          if (existing) {
+            if (!existing.beats.includes(beat)) existing.beats.push(beat);
+          } else {
+            scenarioMap.set(scenario.id, { scenario, beats: [beat] });
+          }
+        }
+      }
+    }
+
+    return byEdge;
+  });
+
+  const edgeScenarioRefs = createMemo(() => {
+    const id = panelId();
+    if (!id) return [] as EdgeScenarioRef[];
+    return Array.from(edgeScenarioCitationIndex().get(id)?.values() ?? []);
+  });
+
+  const behaviorScenarioRefs = createMemo(() => {
+    if (isEdgePanel()) return edgeScenarioRefs();
+    return panelScenarios().map((scenario) => ({ scenario, beats: [] }));
+  });
+
   const summaryFields = createMemo(() => {
     const d = detail();
     if (!d) return [] as Array<{ label: string; value: string }>;
@@ -188,7 +344,10 @@ export function DetailPanel() {
     const d = detail();
     if (!d) return [] as Array<[string, unknown]>;
     return Object.entries(d).filter(
-      ([key]) => !SKIP_FIELDS.has(key) && !SUMMARY_ONLY_FIELDS.has(key),
+      ([key]) =>
+        !SKIP_FIELDS.has(key) &&
+        !SUMMARY_ONLY_FIELDS.has(key) &&
+        !(isEdgePanel() && EDGE_METADATA_FIELDS.has(key)),
     );
   });
 
@@ -285,6 +444,22 @@ export function DetailPanel() {
         }),
       });
     }
+  };
+
+  const openEndpointPanel = (endpoint: EdgeEndpoint) => {
+    if (!endpoint.available || !endpoint.kind) return;
+    navigate({
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        panelKind: endpoint.kind,
+        panelId: endpoint.id,
+        panelLabel: endpoint.label,
+      }),
+      replace: true,
+    });
+    queueMicrotask(() => {
+      panelTitleRef?.focus();
+    });
   };
 
   createEffect(() => {
@@ -387,8 +562,14 @@ export function DetailPanel() {
         <Show when={isOpen()}>
           <div class="detail-panel-header">
             <div class="detail-panel-header-main">
-              <div class="detail-panel-icon" style={{ color: panelAccent() }}>
-                <IconSvg kind={panelKind() || ""} size={28} />
+              <div
+                classList={{
+                  "detail-panel-icon": true,
+                  "detail-panel-icon--edge": isEdgePanel(),
+                }}
+                style={{ color: panelAccent() }}
+              >
+                <IconSvg kind={edgeIconKind()} size={28} />
               </div>
               <div class="detail-panel-titleblock">
                 <span id="detail-panel-kind" class="eyebrow">
@@ -397,6 +578,23 @@ export function DetailPanel() {
                 <h2 id="detail-panel-title" ref={panelTitleRef} tabIndex={-1}>
                   {panelLabel() || detail()?.label || panelId()}
                 </h2>
+                <Show when={isEdgePanel() && edgeEndpoints()}>
+                  {(endpoints) => (
+                    <p class="detail-panel-subtitle detail-edge-titlepath">
+                      <span>{endpoints().from.label}</span>
+                      <span aria-hidden="true"> → </span>
+                      <Show when={edgeMechanismLabel()}>
+                        {(mechanism) => (
+                          <>
+                            <span>{mechanism()}</span>
+                            <span aria-hidden="true"> → </span>
+                          </>
+                        )}
+                      </Show>
+                      <span>{endpoints().to.label}</span>
+                    </p>
+                  )}
+                </Show>
               </div>
             </div>
             <div class="detail-panel-actions">
@@ -447,6 +645,86 @@ export function DetailPanel() {
                 </For>
               </div>
             </Show>
+            <Show when={edgeEndpoints()}>
+              {(endpoints) => (
+                <div class="detail-module detail-edge-endpoints" aria-label="Relationship endpoints">
+                  <h3 class="detail-edge-endpoints-title">Endpoints</h3>
+                  <div class="detail-edge-endpoints-flow">
+                    <Show
+                      when={endpoints().from.available}
+                      fallback={
+                        <span
+                          class="detail-edge-endpoint detail-edge-endpoint--source is-unavailable"
+                          aria-label="Source node details unavailable"
+                        >
+                          <span class="detail-edge-endpoint-icon" aria-hidden="true" />
+                          <span class="detail-edge-endpoint-copy">
+                            <span class="detail-edge-endpoint-role">Source</span>
+                            <span class="detail-edge-endpoint-label">{endpoints().from.label}</span>
+                          </span>
+                        </span>
+                      }
+                    >
+                      <button
+                        type="button"
+                        class="detail-edge-endpoint detail-edge-endpoint--source"
+                        aria-label={`Open source node ${endpoints().from.label}`}
+                        onClick={() => openEndpointPanel(endpoints().from)}
+                      >
+                        <span class="detail-edge-endpoint-icon">
+                          <Show when={endpoints().from.iconKind}>
+                            {(iconKind) => <IconSvg kind={iconKind()} size={18} />}
+                          </Show>
+                        </span>
+                        <span class="detail-edge-endpoint-copy">
+                          <span class="detail-edge-endpoint-role">Source</span>
+                          <span class="detail-edge-endpoint-label">{endpoints().from.label}</span>
+                        </span>
+                      </button>
+                    </Show>
+
+                    <div class="detail-edge-connector" aria-label={`Relationship: ${edgeMechanismLabel()}`}>
+                      <span class="detail-edge-connector-line" aria-hidden="true" />
+                      <span class="detail-edge-connector-label">{edgeMechanismLabel()}</span>
+                      <span class="detail-edge-connector-arrow" aria-hidden="true">→</span>
+                    </div>
+
+                    <Show
+                      when={endpoints().to.available}
+                      fallback={
+                        <span
+                          class="detail-edge-endpoint detail-edge-endpoint--target is-unavailable"
+                          aria-label="Target node details unavailable"
+                        >
+                          <span class="detail-edge-endpoint-icon" aria-hidden="true" />
+                          <span class="detail-edge-endpoint-copy">
+                            <span class="detail-edge-endpoint-role">Target</span>
+                            <span class="detail-edge-endpoint-label">{endpoints().to.label}</span>
+                          </span>
+                        </span>
+                      }
+                    >
+                      <button
+                        type="button"
+                        class="detail-edge-endpoint detail-edge-endpoint--target"
+                        aria-label={`Open target node ${endpoints().to.label}`}
+                        onClick={() => openEndpointPanel(endpoints().to)}
+                      >
+                        <span class="detail-edge-endpoint-icon">
+                          <Show when={endpoints().to.iconKind}>
+                            {(iconKind) => <IconSvg kind={iconKind()} size={18} />}
+                          </Show>
+                        </span>
+                        <span class="detail-edge-endpoint-copy">
+                          <span class="detail-edge-endpoint-role">Target</span>
+                          <span class="detail-edge-endpoint-label">{endpoints().to.label}</span>
+                        </span>
+                      </button>
+                    </Show>
+                  </div>
+                </div>
+              )}
+            </Show>
             <PanelPrompt
               entityId={panelId() || ""}
               entityKind={panelKind() || ""}
@@ -461,23 +739,25 @@ export function DetailPanel() {
               onClearFocus={() => setFocusedBlockId(null)}
               accent={panelAccent()}
             />
-            <Show when={panelScenarios().length > 0}>
+            <Show when={behaviorScenarioRefs().length > 0}>
               <div class="detail-module detail-behaviors">
-                <h3 class="detail-behaviors-title">Behaviors</h3>
-                <For each={panelScenarios()}>
-                  {(scenario) => (
+                <h3 class="detail-behaviors-title">
+                  {isEdgePanel() ? "Referenced by" : "Behaviors"}
+                </h3>
+                <For each={behaviorScenarioRefs()}>
+                  {(scenarioRef) => (
                     <div class="detail-behavior-item">
-                      <span class="detail-behavior-label">{scenario.title}</span>
+                      <span class="detail-behavior-label">{scenarioRef.scenario.title}</span>
                       <button
                         type="button"
                         class="detail-behavior-play"
-                        data-scenario-id={scenario.behaviorId}
-                        title={`Play: ${scenario.title}`}
+                        data-scenario-id={scenarioRef.scenario.behaviorId}
+                        title={`Play: ${scenarioRef.scenario.title}`}
                         onClick={() => {
                           // Close panel first, then start playback
                           navigate({ search: clearPanelSearch });
                           window.dispatchEvent(new CustomEvent("play-scenario", {
-                            detail: { behaviorId: scenario.behaviorId },
+                            detail: { behaviorId: scenarioRef.scenario.behaviorId },
                           }));
                         }}
                       >

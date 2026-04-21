@@ -94,8 +94,8 @@ test.describe("Panel Prompt", () => {
   });
 
   test("mode toggle switches between ask and edit", async ({ page }) => {
-    await gotoDiagram(page, "/organizational");
-    await openDetailPanel(page, "cluster", "Alpha");
+    await gotoDiagram(page, "/organizational/clusters/cluster-alpha/systems/system-a3");
+    await openDetailPanel(page, "file-node", "entry.ts");
 
     const askBtn = page.locator(".detail-prompt-mode-btn").first();
     const editBtn = page.locator(".detail-prompt-mode-btn").last();

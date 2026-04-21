@@ -72,6 +72,32 @@ test.describe("Graph Surface Interactions", () => {
     expect(await page.locator(".detail-behavior-play").count()).toBeGreaterThan(0);
   });
 
+  test("edge detail panel renders endpoints and referenced scenarios", async ({ page }) => {
+    await gotoDiagram(page, "/organizational?panelKind=store-edge&panelId=e-a-store&panelLabel=write");
+
+    await expect(page.locator(".detail-panel.is-open")).toBeVisible();
+    const endpoints = page.locator(".detail-edge-endpoints");
+    await expect(endpoints).toBeVisible();
+    await expect(endpoints.getByRole("button", { name: /open source node alpha/i })).toContainText("Alpha");
+    await expect(endpoints.getByRole("button", { name: /open target node config store/i })).toContainText("Config Store");
+    await expect(page.locator(".detail-edge-connector-label")).toContainText("Store Write");
+    await expect(page.locator(".detail-behaviors-title")).toHaveText("Referenced by");
+    await expect(page.locator(".detail-behavior-label")).toContainText("Alpha Data Flow");
+    await expect(page.locator(".detail-prompt-mode-btn")).toHaveCount(1);
+    await expect(page.locator(".detail-prompt-mode-btn")).toHaveText("Ask");
+
+    await expect(page.locator(".detail-module table td").filter({ hasText: /^From$/ })).toHaveCount(0);
+    await expect(page.locator(".detail-module table td").filter({ hasText: /^To$/ })).toHaveCount(0);
+    await expect(page.locator(".detail-module table td").filter({ hasText: /^From Label$/ })).toHaveCount(0);
+    await expect(page.locator(".detail-module table td").filter({ hasText: /^To Label$/ })).toHaveCount(0);
+
+    await endpoints.getByRole("button", { name: /open source node alpha/i }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("panelKind")).toBe("cluster");
+    await expect.poll(() => new URL(page.url()).searchParams.get("panelId")).toBe("cluster-alpha");
+    await expect.poll(() => new URL(page.url()).searchParams.get("panelLabel")).toBe("Alpha");
+    await expect(page.locator("#detail-panel-title")).toBeFocused();
+  });
+
   test("clicking play button in panel activates shadowbox", async ({ page }) => {
     await gotoDiagram(page, "/organizational");
     await openDetailPanel(page, "cluster", "Alpha");
