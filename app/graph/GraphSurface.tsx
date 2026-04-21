@@ -251,6 +251,9 @@ export function GraphSurface(props: GraphSurfaceProps) {
     }
 
     const ctx = consumeTransitionContext();
+    const exitAnchor = ctx?.anchorRect
+      ? { x: ctx.anchorRect.centerX, y: ctx.anchorRect.centerY }
+      : undefined;
 
     // CSS fallback
     const currentNodeIds = currentGraph.nodes.map((node) => node.id);
@@ -258,7 +261,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
       for (const nodeId of currentNodeIds) {
         presentation.patch(nodeId, { opacity: 0, innerScale: 0.82, ty: 16 });
       }
-      transition.startExit(currentGraph.nodes);
+      transition.startExit(currentGraph.nodes, exitAnchor);
     } else {
       transition.clear();
     }

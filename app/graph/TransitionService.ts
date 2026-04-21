@@ -6,6 +6,8 @@ const EXIT_DURATION_MS = 220;
 const ENTER_DURATION_MS = 320;
 const MAX_STAGGER_MS = 180;
 
+type TransitionAnchor = { x: number; y: number };
+
 function prefersReducedMotion() {
   return !!(
     typeof window !== "undefined" &&
@@ -30,11 +32,11 @@ function getGraphCenter(nodes: GraphNode[]) {
   return { x: sumX / nodes.length, y: sumY / nodes.length };
 }
 
-function buildDelayMap(nodes: GraphNode[]) {
-  const center = getGraphCenter(nodes);
+function buildDelayMap(nodes: GraphNode[], anchor?: TransitionAnchor) {
+  const origin = anchor ?? getGraphCenter(nodes);
   const distances = nodes.map((node) => {
-    const dx = (node.position?.x ?? 0) - center.x;
-    const dy = (node.position?.y ?? 0) - center.y;
+    const dx = (node.position?.x ?? 0) - origin.x;
+    const dy = (node.position?.y ?? 0) - origin.y;
     return Math.sqrt(dx * dx + dy * dy);
   });
 
@@ -72,7 +74,7 @@ export function createTransitionService() {
     setNodeDelayMap(new Map());
   };
 
-  const startExit = (nodes: GraphNode[]) => {
+  const startExit = (nodes: GraphNode[], anchor?: TransitionAnchor) => {
     if (prefersReducedMotion() || nodes.length === 0) {
       clear();
       return;
@@ -86,7 +88,7 @@ export function createTransitionService() {
     setPhase("exiting");
     setEnteringNodeIds(new Set());
     setExitingNodeIds(new Set(nodes.map((node) => node.id)));
-    setNodeDelayMap(buildDelayMap(nodes));
+    setNodeDelayMap(buildDelayMap(nodes, anchor));
   };
 
   const startEnter = (nodes: GraphNode[]) => {
