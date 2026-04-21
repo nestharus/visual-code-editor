@@ -528,31 +528,35 @@ def export_diagram_json(site: dict) -> dict:
                 "description": step_data.get("description", ""),
             }
 
-        # Behavioral edge details (lifecycle→stage and stage→step edges)
-        # Use the already-parsed lifecycle/stage elements dicts
-        for collection in [lifecycles, stages]:
-            for _parent_id, parent_data in collection.items():
-                for element in parent_data.get("elements", []):
-                    if not isinstance(element, dict):
-                        continue
-                    edge_data = element.get("data", {})
-                    if not edge_data.get("source"):
-                        continue
-                    edge_id = edge_data.get("id", "")
-                    if not edge_id or edge_id in details:
-                        continue
-                    source_label = details.get(edge_data["source"], {}).get("label", edge_data["source"])
-                    target_label = details.get(edge_data["target"], {}).get("label", edge_data["target"])
-                    details[edge_id] = {
-                        "kind": "edge",
-                        "id": edge_id,
-                        "label": edge_data.get("label", ""),
-                        "from": edge_data["source"],
-                        "to": edge_data["target"],
-                        "fromLabel": source_label,
-                        "toLabel": target_label,
-                        "mechanism": "artifact flow" if not edge_data.get("loop") else "feedback loop",
-                    }
+        # Behavioral edge details for root, lifecycle, and stage slices.
+        # Use the already-parsed behavioral element collections.
+        behavioral_edge_sources = [
+            {"elements": behavioral_root_elements},
+            *lifecycles.values(),
+            *stages.values(),
+        ]
+        for parent_data in behavioral_edge_sources:
+            for element in parent_data.get("elements", []):
+                if not isinstance(element, dict):
+                    continue
+                edge_data = element.get("data", {})
+                if not edge_data.get("source"):
+                    continue
+                edge_id = edge_data.get("id", "")
+                if not edge_id or edge_id in details:
+                    continue
+                source_label = details.get(edge_data["source"], {}).get("label", edge_data["source"])
+                target_label = details.get(edge_data["target"], {}).get("label", edge_data["target"])
+                details[edge_id] = {
+                    "kind": "edge",
+                    "id": edge_id,
+                    "label": edge_data.get("label", ""),
+                    "from": edge_data["source"],
+                    "to": edge_data["target"],
+                    "fromLabel": source_label,
+                    "toLabel": target_label,
+                    "mechanism": "artifact flow" if not edge_data.get("loop") else "feedback loop",
+                }
 
     for edge in site.get("edges", []):
         edge_id = f'e_{edge["from"]}_{edge["to"]}'
