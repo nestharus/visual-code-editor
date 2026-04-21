@@ -235,8 +235,11 @@
 .graph-node-float {
   width: 100%;
   height: 100%;
-  animation: card-float 5s ease-in-out infinite;
-  animation-delay: calc(var(--float-seed, 0) * -5s);
+  /* Per-node animation-duration variation (6-9s) plus delay offset keep
+     cards out of phase over time — pure delay staggering still drifts
+     into sync because every card shares one duration. */
+  animation: card-float calc(6s + var(--float-seed, 0) * 3s) cubic-bezier(0.33, 0, 0.67, 1) infinite;
+  animation-delay: calc(var(--float-seed, 0) * -9s);
   animation-play-state: paused;
 }
 
@@ -505,8 +508,11 @@
 }
 
 @keyframes card-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2.5px); }
+  /* ±4px Y + 0.5deg rotation at peak reads as "hovering in water"
+     instead of the former pure ±2.5px bob. Rotation breaks the
+     mechanical elevator feel without a secondary wrapper. */
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(0.5deg); }
 }
 
 @keyframes edge-flow {
