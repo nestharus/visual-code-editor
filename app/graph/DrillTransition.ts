@@ -1,3 +1,9 @@
+// UNWIRED as of 2026-04-21: card drill-downs now use the CSS route
+// transition path in GraphSurface.tsx. See governance/design/
+// graph-surface-rfc-v2.md:111-126. Do NOT re-import without first
+// addressing the non-reactive `checkActive()` / the self-target exit
+// tween bugs documented in .tmp/rca/diagram-transitions-missing-
+// response.md.
 import { createSignal } from "solid-js";
 import { produce } from "solid-js/store";
 

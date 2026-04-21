@@ -194,7 +194,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
   const [deepCardRect, setDeepCardRect] = createSignal<DOMRect | null>(null);
   const [deepCardDestRect, setDeepCardDestRect] = createSignal<{ left: number; top: number; width: number; height: number } | null>(null);
   const [deepCardDirection, setDeepCardDirection] = createSignal<"forward" | "reverse">("forward");
-  const [edgesHidden, setEdgesHidden] = createSignal(false);
 
   const playback = createBehaviorPlaybackController(
     () => props.scenarioData,
@@ -251,107 +250,7 @@ export function GraphSurface(props: GraphSurfaceProps) {
       return;
     }
 
-    // Try deep card 3D tunnel for eligible drill-down
     const ctx = consumeTransitionContext();
-    if (ctx) {
-      const useDeepCard =
-        ctx.direction === "drill" &&
-        ctx.anchorViewportRect &&
-        ctx.nodeShape !== "hexagon" &&
-        ctx.nodeShape !== "octagon" &&
-        typeof CSS !== "undefined" &&
-        CSS.supports?.("transform-style", "preserve-3d");
-
-      if (useDeepCard && ctx.anchorViewportRect) {
-        const sequence = loadSequence;
-        setDeepCardRect(ctx.anchorViewportRect);
-        setDeepCardDirection("forward");
-        setEdgesHidden(true);
-        setDeepCardActive(true);
-
-        // Graph swap happens mid-tunnel, with entry animation for new nodes
-        setTimeout(() => {
-          if (sequence !== loadSequence) return;
-          const nextNodeIds = nextGraph.nodes.map((n) => n.id);
-          replaceDisplayedGraph(nextGraph);
-          presentation.seedEnteringNodes(nextNodeIds);
-          transition.startEnter(nextGraph.nodes);
-          requestAnimationFrame(() => {
-            presentation.animateToDefault(nextNodeIds);
-          });
-        }, 500);
-
-        return;
-      }
-
-      // Try reverse deep card for eligible back navigation
-      const useReverseDeepCard =
-        ctx.direction === "back" &&
-        ctx.nodeShape !== "hexagon" &&
-        ctx.nodeShape !== "octagon" &&
-        typeof CSS !== "undefined" &&
-        CSS.supports?.("transform-style", "preserve-3d") &&
-        viewportHandle;
-
-      if (useReverseDeepCard) {
-        // Swap graph first with entry animation, then compute destination rect
-        const nextNodeIds = nextGraph.nodes.map((n) => n.id);
-        replaceDisplayedGraph(nextGraph);
-        presentation.seedEnteringNodes(nextNodeIds);
-        transition.startEnter(nextGraph.nodes);
-        requestAnimationFrame(() => {
-          presentation.animateToDefault(nextNodeIds);
-        });
-        setEdgesHidden(true);
-
-        // Compute destination rect from graph data + viewport transform
-        const t = viewportHandle!.currentTransform();
-        const destNode = nextGraph.nodes.find((n) => n.id === ctx.anchorNodeId);
-        let destRect: { left: number; top: number; width: number; height: number } | null = null;
-        if (destNode?.position && destNode?.size) {
-          const w = destNode.size.width * t.k;
-          const h = destNode.size.height * t.k;
-          destRect = {
-            left: (destNode.position.x - destNode.size.width / 2) * t.k + t.x,
-            top: (destNode.position.y - destNode.size.height / 2) * t.k + t.y,
-            width: w,
-            height: h,
-          };
-        }
-
-        // Use entry rect as source, computed rect as destination
-        setDeepCardRect(ctx.anchorViewportRect ?? null);
-        setDeepCardDestRect(destRect);
-        setDeepCardDirection("reverse");
-        setDeepCardActive(true);
-
-        return;
-      }
-
-      const sequence = loadSequence;
-
-      void (async () => {
-        if (ctx.direction === "drill") {
-          await runDrillExit(presentation, currentGraph.nodes, ctx.anchorRect);
-        } else {
-          await runCollapseExit(presentation, currentGraph.nodes, {
-            x: ctx.anchorRect.centerX,
-            y: ctx.anchorRect.centerY,
-          });
-        }
-
-        if (sequence !== loadSequence) return;
-
-        replaceDisplayedGraph(nextGraph);
-
-        if (ctx.direction === "drill") {
-          await runDrillEnter(presentation, nextGraph.nodes, ctx.anchorRect);
-        } else {
-          await runCollapseEnter(presentation, nextGraph.nodes, ctx.anchorNodeId);
-        }
-      })();
-      return;
-    }
 
     // CSS fallback
     const currentNodeIds = currentGraph.nodes.map((node) => node.id);
@@ -509,7 +408,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
   const onDeepCardComplete = () => {
     setDeepCardActive(false);
     setDeepCardRect(null);
-    setEdgesHidden(false);
   };
 
   // Listen for play-scenario events from DetailPanel
