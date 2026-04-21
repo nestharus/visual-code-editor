@@ -427,31 +427,87 @@
   --node-bg: rgba(26, 21, 37, 0.96);
 }
 
-.graph-node[data-kind="module-group"] > .graph-node-inner > .graph-node-float > .graph-card {
-  border-style: dashed;
-  background:
-    linear-gradient(180deg, rgba(88, 166, 255, 0.05), transparent 55%),
-    rgba(17, 23, 34, 0.46);
-  box-shadow: inset 0 0 0 1px rgba(240, 246, 252, 0.02);
+/* --- Compound cards (containers with nested children) ---
+   Harmonized with leaf .graph-card: solid border, gradient-over-dark
+   fill, outer drop shadow + inset top highlight. Differentiation is
+   in intensity (softer alpha, lower blur) not dialect (no dashed
+   border, no cool wash, no inset-only shadow). Children render on
+   top via ELK's [36,20,20,20] padding. */
+
+/* Cool-neutral default accent for module-group so the container frame
+   does not compete with typed children (file = blue, agent = purple).
+   CompoundCard.tsx overrides --node-accent / --node-border when
+   data.color is present. */
+.graph-node[data-kind="module-group"] {
+  --node-accent: #9ec7ff;
+  --node-accent-glow: 158, 199, 255;
+  --node-border: rgba(158, 199, 255, 0.55);
 }
 
 .graph-card--compound {
   display: block;
   padding: 0;
   overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--node-border) 42%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 42%),
+    rgba(13, 17, 23, 0.52);
+  box-shadow:
+    0 10px 28px rgba(1, 4, 9, 0.32),
+    inset 0 1px 0 rgba(240, 246, 252, 0.035);
+  transition: box-shadow 400ms ease, border-color 400ms ease;
 }
 
 .compound-card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px 0;
+  gap: 8px;
+  padding: 8px 12px 7px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+  border-radius: 14px 14px 0 0;
+}
+
+.compound-card-header .graph-card-icon {
+  width: 13px;
+  height: 13px;
+  color: color-mix(in srgb, var(--node-accent) 78%, #c9d1d9 22%);
+}
+
+.compound-card-header .graph-card-label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--node-accent) 55%, #e6edf3 45%);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .compound-card-children {
   position: relative;
   width: 100%;
-  height: calc(100% - 18px);
+  height: calc(100% - 30px);
+}
+
+/* Compound hover: replace the generic leaf-glow halo (too loud at
+   container scale) with a proportional border/shadow lift. Children
+   keep their own per-leaf hover treatment unchanged. */
+.graph-node.is-compound.is-hovered > .graph-node-inner > .graph-node-float > .graph-card--compound,
+.graph-node.is-compound.is-settling > .graph-node-inner > .graph-node-float > .graph-card--compound {
+  box-shadow:
+    0 12px 32px rgba(1, 4, 9, 0.4),
+    inset 0 1px 0 rgba(240, 246, 252, 0.045);
+  border-color: color-mix(in srgb, var(--node-accent) 55%, transparent);
+}
+
+/* Zoom "dot" tier: labels hide on leaves, so hide the compound header
+   and let the frame itself read as a single tiny container. */
+.graph-node[data-zoom-tier="dot"] > .graph-node-inner > .graph-node-float > .graph-card--compound .compound-card-header {
+  background: none;
+  padding: 0;
+  height: 0;
+}
+.graph-node[data-zoom-tier="dot"] > .graph-node-inner > .graph-node-float > .graph-card--compound .compound-card-children {
+  height: 100%;
 }
 
 @keyframes card-float {
