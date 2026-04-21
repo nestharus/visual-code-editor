@@ -65,6 +65,12 @@ export const AppShell: ParentComponent = (props) => {
   const watcherState: WatcherState = useWatchSubscription();
   const navigate = useNavigate();
   const location = useLocation();
+  // Memoize pathname so downstream consumers (notably GraphSurface via
+  // <GraphSurface graphId=... />) don't re-invalidate when only search
+  // params change (panel open/close only mutate search). Without this,
+  // every panel toggle re-runs GraphSurface's build effect and replays
+  // the enter animation for every node on the unchanged diagram.
+  const pathname = createMemo(() => location().pathname);
   const diagramQuery = useDiagramData();
   const [diagramData, setDiagramData] = createSignal<DiagramShellData | undefined>();
   const [searchActive, setSearchActive] = createSignal(false);
@@ -480,7 +486,7 @@ export const AppShell: ParentComponent = (props) => {
             <div style={{ position: "relative" }}>
               <GraphSurface
                 graphId={
-                  searchActive() ? `search:${searchQuery()}` : location().pathname
+                  searchActive() ? `search:${searchQuery()}` : pathname()
                 }
                 graph={activeSearchGraph()}
                 elements={searchActive() ? undefined : diagramData()?.elements() || []}

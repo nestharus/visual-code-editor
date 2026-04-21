@@ -191,10 +191,56 @@ export function DetailPanel() {
       .filter(Boolean);
   });
 
+  // Walk the loaded data for a graph element whose id matches panelId and
+  // whose data.source is set (i.e. it's an edge). Used when details[panelId]
+  // is missing, which happens for several generator-synthesized edge kinds.
+  // Declared before isEdgePanel because isEdgePanel's memo body references it
+  // — Solid's createMemo bodies run lazily on access, but JS const bindings
+  // are in TDZ until the declaration line runs.
+  const findEdgeElement = createMemo(() => {
+    const id = panelId();
+    const data = diagramQuery.data;
+    if (!id || !data) return null;
+
+    const slices: Array<DiagramData["organizational"]["root"] | undefined> = [];
+    slices.push(data.organizational?.root);
+    if (data.organizational?.clusters) {
+      for (const s of Object.values(data.organizational.clusters)) slices.push(s);
+    }
+    if (data.organizational?.systems) {
+      for (const s of Object.values(data.organizational.systems)) slices.push(s);
+    }
+    slices.push(data.behavioral?.root);
+    if (data.behavioral?.lifecycles) {
+      for (const s of Object.values(data.behavioral.lifecycles)) slices.push(s);
+    }
+    if (data.behavioral?.stages) {
+      for (const s of Object.values(data.behavioral.stages)) slices.push(s);
+    }
+    // Optional UI exploration view if present on the data shape.
+    const ui = (data as unknown as { ui?: { root?: { elements: unknown[] } } }).ui;
+    if (ui?.root) slices.push(ui.root as DiagramData["organizational"]["root"]);
+
+    for (const slice of slices) {
+      if (!slice?.elements) continue;
+      for (const el of slice.elements) {
+        const d = (el as { data?: Record<string, unknown> }).data;
+        if (!d || d.id !== id) continue;
+        if (typeof d.source !== "string" || typeof d.target !== "string") continue;
+        return d as { id: string; source: string; target: string; kind?: string; label?: string };
+      }
+    }
+    return null;
+  });
+
   const isEdgePanel = createMemo(() => {
     const d = detail();
     if (d) return d.kind === "edge";
-    return EDGE_PANEL_KINDS.has(panelKind() || "");
+    if (EDGE_PANEL_KINDS.has(panelKind() || "")) return true;
+    // Some edge kinds the generator synthesizes in graph elements but
+    // never writes to details (e.g. behavioral-edge lifecycle transitions
+    // `be_lifecycle:X_lifecycle:Y`). Treat those as edges too.
+    return !!findEdgeElement();
   });
 
   const edgeIconKind = createMemo(() => {
@@ -208,7 +254,15 @@ export function DetailPanel() {
     const mechanism = stringValue(d?.mechanism);
     if (mechanism) return humanizeMechanism(mechanism);
 
-    const label = panelLabel() || stringValue(d?.label);
+    const el = findEdgeElement();
+    // Element.kind carries the edge semantic kind (e.g. "behavioral-edge",
+    // "store-read", "file-import") — use it as the mechanism when details
+    // are missing.
+    if (el?.kind && el.kind !== "edge" && EDGE_PANEL_KINDS.has(el.kind)) {
+      return humanizeMechanism(el.kind);
+    }
+
+    const label = panelLabel() || stringValue(d?.label) || el?.label || "";
     const kind = panelKind() || "";
     if (kind === "store-edge" && /^(read|write)$/i.test(label)) {
       return humanizeMechanism(`store-${label}`);
@@ -223,10 +277,14 @@ export function DetailPanel() {
     if (!isEdgePanel()) return null;
     const d = detail();
     const details = diagramQuery.data?.details;
-    if (!d || !details) return null;
+    if (!details) return null;
 
-    const fromId = stringValue(d.from);
-    const toId = stringValue(d.to);
+    // Primary: use details record. Fallback: resolve from the graph element
+    // (for edges whose details record isn't emitted by the generator — e.g.
+    // lifecycle transitions, some cluster edges).
+    const el = findEdgeElement();
+    const fromId = stringValue(d?.from) || el?.source || "";
+    const toId = stringValue(d?.to) || el?.target || "";
     if (!fromId || !toId) return null;
 
     const buildEndpoint = (
@@ -237,7 +295,7 @@ export function DetailPanel() {
       const endpointDetail = details[id] as DiagramDetailRecord | undefined;
       const rawKind = stringValue(endpointDetail?.kind);
       const label =
-        stringValue(d[labelField]) ||
+        stringValue(d?.[labelField]) ||
         stringValue(endpointDetail?.label) ||
         id;
       return {
@@ -838,7 +896,7 @@ export function DetailPanel() {
                 </table>
               </div>
             </Show>
-            <Show when={!htmlContent() && !fields().length && !description() && !codeBlocks().length}>
+            <Show when={!htmlContent() && !fields().length && !description() && !codeBlocks().length && !edgeEndpoints() && behaviorScenarioRefs().length === 0}>
               <div class="detail-module">
                 <p style={{ color: "var(--text-dim)" }}>No details available.</p>
               </div>
