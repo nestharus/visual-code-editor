@@ -1,17 +1,13 @@
 # AGENTS.md — Visual Code Editor
+Generic routing, workflows, and conventions live in `~/ai/AGENTS.md`. This file only adds what is project-specific to visual-code-editor.
+
 Interactive system visualization tool. Renders organizational (clusters -> systems -> modules/files/agents) and behavioral (lifecycles -> stages -> steps) views as Cytoscape.js graph diagrams. Users navigate by clicking cards, which either drill into sub-diagrams or open detail panels.
 **This is an interpretation, control, and communication problem.** Visuals must help humans:
 1. **Interpret** -> understand what a node/edge means at a glance.
 2. **Control** -> know what's interactive, what will happen on click, and where they are in the hierarchy.
 3. **Communicate** -> convey structure, flow, and relationships without requiring label reading.
-**Cross-project workflow library**: `~/ai/` (start at `~/ai/README.md`).
-**Agent CLI reference**: `/home/nes/projects/agent-runner/README.md`.
 ## Technology Stack
-- SolidJS + TanStack Solid Router -> reactive UI framework
-- ELK.js -> graph layout engine (layered algorithm with orthogonal edge routing)
-- Custom SVG/HTML rendering -> nodes as HTML cards, edges as layered SVG paths
-- Vite -> build tool
-- CSS custom properties -> dark theme with per-node-kind accent colors
+SolidJS + TanStack Solid Router power the UI, ELK.js handles layered graph layout, custom SVG/HTML rendering draws cards and edges, Vite builds the app, and CSS custom properties drive the dark theme and per-node-kind accents.
 ## Dual-View Problem
 Cards representing navigable containers (clusters, systems, lifecycles, stages) have BOTH:
 - A **drill-down diagram** (click navigates to a sub-diagram).
@@ -29,8 +25,8 @@ Users need an intuitive way to access both. Current state: click always drills d
 - Shadowbox playback includes token animation, step progress, scenario preamble, and node visit states.
 - Float animation pauses smoothly via `animation-play-state`.
 **Known remaining items:**
-- Token pulse in shadowbox -> needs video verification (Gemini quota).
-- Edge labels only visible at zoom `>= 0.8` (base) or `>= 0.5` (highlighted).
+- Token pulse in shadowbox still needs video verification (Gemini quota).
+- Edge labels are only visible at zoom `>= 0.8` (base) or `>= 0.5` (highlighted).
 This list is time-bound and decays. Update it as bugs close or new ones open.
 ## Model Roles
 Generic role matrix and workflow ownership live in `~/ai/models/roles.md`. This project adds a visual-design axis the generic matrix does not cover.
@@ -52,15 +48,13 @@ Generic role matrix and workflow ownership live in `~/ai/models/roles.md`. This 
 - If the task requires reading code to decide what's correct, use GPT.
 - Opus still owns communication-risk, clarity, and discoverability review under the generic role matrix.
 ## Workflow Routing
-Shared workflows and conventions live in `~/ai/`.
-| Cue | Pointer |
+See `~/ai/AGENTS.md` §Workflow Topologies for the generic workflow catalog.
+| Cue | Project-specific workflow |
 |---|---|
-| New feature / bug fix (code) | `~/ai/workflows/implementation-pipeline.md` |
-| PR review after CodeRabbit | `~/ai/workflows/pr-review.md` |
-| CodeRabbit loop | `~/ai/workflows/coderabbit-loop.md` |
-| Tiered approval / escalation | `~/ai/workflows/tiered-approval.md` |
-| Research workflow | `~/ai/workflows/research.md` |
-Supporting conventions live in `~/ai/workflows/agents-cli.md` and `~/ai/conventions/` (`git.md`, `worktree-isolation.md`, `no-backwards-compatibility.md`, `no-deferred-stubs.md`, `gate-ownership.md`, `workflow-routing.md`).
+| Visual design / styling / card treatment / shadow tuning | Visual Design Workflow |
+| SVG asset creation / SVG cleanup | SVG Self-Correcting Loop |
+| Animation design / motion bugs / video review | Animation QA Workflow |
+| Screenshot drift / baseline updates / diff triage | Visual Regression |
 ### Visual Design Workflow
 Purely visual work adds a project-specific override:
 1. RCA / research with `gemini-high` when screenshot judgment is required.
@@ -79,21 +73,11 @@ Gemini generates SVGs with a built-in visual review loop. Every Gemini SVG promp
 ```
 ## Animation Pipeline
 Gemini designs animations and figures out interpolation, selection, and parameterization.
-### Animation Types
-1. **Card hover** -> lift, float, settle.
-2. **Diagram transitions** -> crossfade between diagrams when navigating.
-3. **Edge flow** -> animated dashes showing data/control-flow direction.
-4. **Panel slide** -> detail panel entrance/exit.
-5. **Card type indicators** -> subtle ambient animations that signal card type (for example store nodes pulse, agent nodes shimmer).
-### Design Process
-1. **Design** (`gemini-high`) -> describe the interaction context; Gemini proposes easing curves, duration, delay, transform sequences, and whether SVG SMIL, CSS animation, or JS RAF is appropriate.
-2. **Prototype** (`gemini-high`) -> create a standalone HTML file for visual review and use the self-correcting loop.
-3. **Parameterize** -> extract animation parameters into a config object so they can be tuned without code changes.
-4. **Interpolation** -> define interpolation between easing curves, transform targets, shadow/glow intensity, and color states.
-5. **Selection** -> define precedence and blending when multiple animations could apply at once.
+Animation types: card hover (lift, float, settle), diagram transitions (crossfade between diagrams), edge flow (animated dashes for direction), panel slide (detail panel entrance/exit), and card type indicators (subtle ambient signals such as store pulse or agent shimmer).
+Design process: `gemini-high` proposes easing curves, duration, delay, transform sequences, and rendering approach; builds a standalone prototype with the self-correcting loop; then extracts tunable parameters, defines interpolation between motion and visual states, and sets precedence when multiple animations overlap.
 
 ## Research Areas
-Use `~/ai/workflows/research.md` for the generic research process. These are the standing project-specific research axes:
+Standing project-specific research axes:
 1. **Interactive graph visualization UX** -> how tools like Figma, Miro, Lucidchart, and GitHub dependency graphs handle node-type differentiation, drill-down vs detail split, information density at different zoom levels, edge rendering, and flow indication.
 2. **Card design for graph nodes** -> SVG-backed cards that signal type at a glance, show status without text, scale from `50px` to `200px+`, and work in a dark theme.
 3. **Panel design for entity detail** -> present metadata alongside navigable sub-diagrams, related entities with click-to-navigate, rich content, and the dual-view problem.
@@ -103,14 +87,11 @@ Use `~/ai/workflows/research.md` for the generic research process. These are the
 Semantic animation QA uses Playwright video capture plus Gemini video analysis through the `agents` CLI.
 ### Run Captures
 ```bash
-# Build and serve first
 cd ~/projects/visual-code-editor
 npm run build && npm run serve &
 
-# Run all QA captures -> .tmp/animation-qa/captures/
 npx playwright test e2e/animation-qa-full.capture.spec.ts
 
-# Run a single capture
 npx playwright test e2e/animation-hover-lift.capture.spec.ts
 ```
 ### Send Video to Gemini
@@ -131,7 +112,7 @@ Artifacts go in `.tmp/animation-qa/` (gitignored).
 | `e2e/animation-hover-lift.capture.spec.ts` | Single hover-lift with DOM measurements |
 | `e2e/animation-qa-full.capture.spec.ts` | 10 scenarios: org overview, behavioral overview, hover lift, edge hover, drill-down, detail panel, shadowbox modal, view toggle, entry animations, floating idle |
 ### When To Run
-Before or after animation and interaction changes, during visual-bug investigation, and for pre-review QA on motion-heavy PRs.
+Run before or after animation and interaction changes, during visual-bug investigation, and for pre-review QA on motion-heavy PRs.
 
 ## Visual Asset Pipeline
 All visual assets are SVGs in `app/assets/` and are imported into components.
@@ -152,27 +133,16 @@ app/assets/
 
 ## Build & Verify
 ```bash
-# Build
 cd ~/projects/visual-code-editor && npm run build
-
-# Regenerate diagram data (into public/ so vite build includes it)
 npm run regenerate
-
-# Preview (user views on port 8742)
 npm run serve
-
-# Screenshot verification via Playwright
 npx playwright test
-
-# Animation QA verification
 npx playwright test e2e/animation-qa-full.capture.spec.ts
-# Then send captures to Gemini for analysis
 ```
 All visual changes must be verified on port `8742` (Vite preview build), not port `3000` (dev server).
 
 ## Cross-Project References
-- Diagram data source: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/`
-- SVG-to-PNG conversion: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/svg_to_png.py`
+Diagram data source: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/`. SVG-to-PNG conversion: `~/projects/agent-implementation-skill/execution-philosophy/diagrams/svg_to_png.py`.
 
 ## Visual Regression
 Pixel baselines live under `e2e/visual-regression.spec.ts-snapshots/` (11 scenes A-K). JetBrains Mono and Inter (`400/500/600/700`) are bundled under `app/assets/fonts/` and wired through `@font-face` in `app/styles/theme.css`, so dominant text rendering no longer depends on the host OS font stack. DPR and rasterization still depend on the host compositor, but in practice WSL and the GitHub Actions `ubuntu-24.04` runner produced identical bytes for all 11 scenes.
