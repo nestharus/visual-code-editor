@@ -47,9 +47,17 @@
 
       const params = new URLSearchParams(window.location.search);
 
+      window.__prDeltaPanelAddCommentEvents = [];
+      window.__prDeltaPanelCreateThreadEvents = [];
       window.__prDeltaPanelEntityClickEvents = [];
+      window.__prDeltaPanelSubmitVerdictEvents = [];
+      window.__prDeltaPanelTransitionThreadEvents = [];
       window.__resetPRDeltaPanelEvents = () => {
+        window.__prDeltaPanelAddCommentEvents.length = 0;
+        window.__prDeltaPanelCreateThreadEvents.length = 0;
         window.__prDeltaPanelEntityClickEvents.length = 0;
+        window.__prDeltaPanelSubmitVerdictEvents.length = 0;
+        window.__prDeltaPanelTransitionThreadEvents.length = 0;
       };
 
       function numberParam(name, fallback) {
@@ -83,6 +91,31 @@
 
       function clone(value) {
         return JSON.parse(JSON.stringify(value));
+      }
+
+      function thread(overrides) {
+        const id = overrides.id;
+        return {
+          id,
+          deltaSetId: `prdelta:fixture.${prNumber}`,
+          anchorKind: "behavior",
+          anchorId: "behavior:removed-0",
+          anchorSide: "base",
+          status: "open",
+          comments: [
+            {
+              id: `${id.replace("review:", "comment:")}.1`,
+              threadId: id,
+              actor: "another-user",
+              text: "Please verify the removal path.",
+              createdAtMs: 1_700_000_000_000,
+            },
+          ],
+          createdAtMs: 1_700_000_000_000,
+          resolvedAtMs: null,
+          resolvedBy: null,
+          ...overrides,
+        };
       }
 
       function trust() {
@@ -202,11 +235,72 @@
 
       const props = {
         deltaSet,
+        threads: boolParam("threads", false)
+          ? [
+              thread({
+                id: "review:fixture-open-1",
+              }),
+              thread({
+                id: "review:fixture-open-2",
+                comments: [
+                  {
+                    id: "comment:fixture-open-2.1",
+                    threadId: "review:fixture-open-2",
+                    actor: "you-this-session",
+                    text: "The removed behavior still has callers.",
+                    createdAtMs: 1_700_000_000_100,
+                  },
+                ],
+              }),
+              thread({
+                id: "review:fixture-resolved-1",
+                anchorId: "behavior:added-0",
+                anchorSide: "head",
+                status: "resolved",
+                comments: [
+                  {
+                    id: "comment:fixture-resolved-1.1",
+                    threadId: "review:fixture-resolved-1",
+                    actor: "another-user",
+                    text: "Resolved thread should not show as open.",
+                    createdAtMs: 1_700_000_000_200,
+                  },
+                ],
+                resolvedAtMs: 1_700_000_000_300,
+                resolvedBy: "you-this-session",
+              }),
+            ]
+          : [],
+        verdict: params.has("verdict")
+          ? {
+              deltaSetId: `prdelta:fixture.${prNumber}`,
+              decision: params.get("verdict"),
+              decidedBy: "you-this-session",
+              decidedAtMs: 1_700_000_000_500,
+              rationale: "Fixture verdict rationale.",
+            }
+          : null,
         onEntityClick: (delta, side) => {
           window.__prDeltaPanelEntityClickEvents.push({
             delta: clone(delta),
             side,
           });
+        },
+        onCreateThread: (delta, side, initialComment) => {
+          window.__prDeltaPanelCreateThreadEvents.push({
+            delta: clone(delta),
+            side,
+            initialComment,
+          });
+        },
+        onAddComment: (threadId, text) => {
+          window.__prDeltaPanelAddCommentEvents.push({ threadId, text });
+        },
+        onTransitionThread: (threadId, toStatus) => {
+          window.__prDeltaPanelTransitionThreadEvents.push({ threadId, toStatus });
+        },
+        onSubmitVerdict: (decision, rationale) => {
+          window.__prDeltaPanelSubmitVerdictEvents.push({ decision, rationale });
         },
       };
 

@@ -53,6 +53,17 @@ import {
   validateComputePRDeltaRequest,
   type ComputePRDeltaRequest,
 } from "./pr_delta/types";
+import {
+  createReviewThreadManager,
+  ReviewThreadManagerError,
+  type ReviewThreadErrorKind,
+} from "./review_threads/manager";
+import {
+  validateAddReviewCommentRequest,
+  validateCreateReviewThreadRequest,
+  validateSubmitReviewVerdictRequest,
+  validateTransitionReviewThreadRequest,
+} from "./review_threads/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -805,6 +816,7 @@ function spawnAgents(
 
 const PROJECT_ROOT = join(__dirname, "..");
 const taskManager = createTaskManager(PROJECT_ROOT);
+const reviewThreadManager = createReviewThreadManager();
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
   || join(PROJECT_ROOT, "dist", "data", "diagram.json");
@@ -1114,6 +1126,129 @@ app.post("/api/pr-deltas/compute", async (req, res) => {
   }
 });
 
+app.post("/api/review-threads", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateCreateReviewThreadRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const thread = reviewThreadManager.createThread(validation.value);
+    return res.status(201).json({ ok: true, thread, request_id: requestId });
+  } catch (error) {
+    const reviewError = normalizeReviewThreadError(error);
+    return res.status(statusForReviewThreadError(reviewError.errorKind)).json({
+      ok: false,
+      error: reviewError.message,
+      error_kind: reviewError.errorKind,
+      request_id: requestId,
+    });
+  }
+});
+
+app.post("/api/review-threads/:id/comments", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateAddReviewCommentRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const thread = reviewThreadManager.addComment(req.params.id, validation.value);
+    return res.json({ ok: true, thread, request_id: requestId });
+  } catch (error) {
+    const reviewError = normalizeReviewThreadError(error);
+    return res.status(statusForReviewThreadError(reviewError.errorKind)).json({
+      ok: false,
+      error: reviewError.message,
+      error_kind: reviewError.errorKind,
+      request_id: requestId,
+    });
+  }
+});
+
+app.post("/api/review-threads/:id/transition", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateTransitionReviewThreadRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const thread = reviewThreadManager.transition(req.params.id, validation.value);
+    return res.json({ ok: true, thread, request_id: requestId });
+  } catch (error) {
+    const reviewError = normalizeReviewThreadError(error);
+    return res.status(statusForReviewThreadError(reviewError.errorKind)).json({
+      ok: false,
+      error: reviewError.message,
+      error_kind: reviewError.errorKind,
+      request_id: requestId,
+    });
+  }
+});
+
+app.get("/api/review-threads", (req, res) => {
+  const requestId = randomUUID();
+  const deltaSetId = req.query.delta_set_id;
+  if (typeof deltaSetId !== "string" || deltaSetId.trim().length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "delta_set_id must be a non-empty string",
+      error_kind: "validation",
+      request_id: requestId,
+    });
+  }
+
+  return res.json({
+    ok: true,
+    threads: reviewThreadManager.list(deltaSetId),
+    request_id: requestId,
+  });
+});
+
+app.post("/api/review-verdicts", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateSubmitReviewVerdictRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const verdict = reviewThreadManager.submitVerdict(validation.value);
+    return res.json({ ok: true, verdict, request_id: requestId });
+  } catch (error) {
+    const reviewError = normalizeReviewThreadError(error);
+    return res.status(statusForReviewThreadError(reviewError.errorKind)).json({
+      ok: false,
+      error: reviewError.message,
+      error_kind: reviewError.errorKind,
+      request_id: requestId,
+    });
+  }
+});
+
 app.post("/api/tasks/dispatch", (req, res) => {
   const startedAt = Date.now();
   let request: DispatchTaskRequest | undefined;
@@ -1271,6 +1406,27 @@ function statusForPRDeltaError(errorKind: PRDeltaErrorKind): number {
       return 400;
     case "git":
     case "extraction":
+    case "internal":
+      return 500;
+  }
+}
+
+function normalizeReviewThreadError(error: unknown): ReviewThreadManagerError {
+  if (error instanceof ReviewThreadManagerError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "review thread route failed";
+  return new ReviewThreadManagerError("internal", message, { cause: error });
+}
+
+function statusForReviewThreadError(errorKind: ReviewThreadErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+    case "invalid-transition":
+      return 400;
+    case "not-found":
+      return 404;
     case "internal":
       return 500;
   }

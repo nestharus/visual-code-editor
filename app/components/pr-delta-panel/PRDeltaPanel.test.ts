@@ -9,7 +9,11 @@ import {
 
 declare global {
   interface Window {
+    __prDeltaPanelAddCommentEvents: PRDeltaPanelAddCommentEvent[];
+    __prDeltaPanelCreateThreadEvents: PRDeltaPanelCreateThreadEvent[];
     __prDeltaPanelEntityClickEvents: PRDeltaPanelEntityClickEvent[];
+    __prDeltaPanelSubmitVerdictEvents: PRDeltaPanelSubmitVerdictEvent[];
+    __prDeltaPanelTransitionThreadEvents: PRDeltaPanelTransitionThreadEvent[];
     __resetPRDeltaPanelEvents: () => void;
   }
 }
@@ -35,6 +39,8 @@ type EntityKind =
   | 'test'
   | 'task';
 type PaneSide = 'base' | 'head';
+type ThreadStatus = 'open' | 'resolved' | 'dismissed' | 'frozen';
+type VerdictDecision = 'approved' | 'changes-requested' | 'rejected';
 
 interface PRDeltaPanelEntityClickEvent {
   side: PaneSide;
@@ -45,6 +51,27 @@ interface PRDeltaPanelEntityClickEvent {
     headId: string | null;
     relatedIds: string[];
   };
+}
+
+interface PRDeltaPanelCreateThreadEvent {
+  side: PaneSide;
+  initialComment: string;
+  delta: PRDeltaPanelEntityClickEvent['delta'];
+}
+
+interface PRDeltaPanelAddCommentEvent {
+  threadId: string;
+  text: string;
+}
+
+interface PRDeltaPanelTransitionThreadEvent {
+  threadId: string;
+  toStatus: ThreadStatus;
+}
+
+interface PRDeltaPanelSubmitVerdictEvent {
+  decision: VerdictDecision;
+  rationale: string;
 }
 
 interface FixtureOptions {
@@ -63,6 +90,8 @@ interface FixtureOptions {
   showUnchanged?: boolean;
   splitRelatedCount?: number;
   mergedRelatedCount?: number;
+  threads?: boolean;
+  verdict?: VerdictDecision;
 }
 
 interface FixtureLoad {
@@ -110,6 +139,12 @@ function fixtureUrl(baseURL: string | undefined, options: FixtureOptions = {}): 
   }
   if (options.mergedRelatedCount !== undefined) {
     url.searchParams.set('merged_related_count', String(options.mergedRelatedCount));
+  }
+  if (options.threads !== undefined) {
+    url.searchParams.set('threads', options.threads ? '1' : '0');
+  }
+  if (options.verdict !== undefined) {
+    url.searchParams.set('verdict', options.verdict);
   }
 
   return url.toString();
@@ -214,6 +249,18 @@ async function resetEvents(page: Page) {
 
 async function entityClickEvents(page: Page): Promise<PRDeltaPanelEntityClickEvent[]> {
   return page.evaluate(() => window.__prDeltaPanelEntityClickEvents.slice());
+}
+
+async function addCommentEvents(page: Page): Promise<PRDeltaPanelAddCommentEvent[]> {
+  return page.evaluate(() => window.__prDeltaPanelAddCommentEvents.slice());
+}
+
+async function transitionThreadEvents(page: Page): Promise<PRDeltaPanelTransitionThreadEvent[]> {
+  return page.evaluate(() => window.__prDeltaPanelTransitionThreadEvents.slice());
+}
+
+async function submitVerdictEvents(page: Page): Promise<PRDeltaPanelSubmitVerdictEvent[]> {
+  return page.evaluate(() => window.__prDeltaPanelSubmitVerdictEvents.slice());
 }
 
 test.describe('PRDeltaPanel', () => {
@@ -399,5 +446,123 @@ test.describe('PRDeltaPanel', () => {
     await expect(
       page.getByRole('button', { name: 'added behavior behavior:added-0' }),
     ).toBeVisible();
+  });
+
+  test('renders a thread indicator for entities with open review threads', async ({
+    page,
+    baseURL,
+  }) => {
+    await openFixture(page, baseURL, {
+      added: 1,
+      removed: 1,
+      threads: true,
+    });
+
+    await expect(page.getByTestId('pr-delta-thread-indicator-base-0')).toBeVisible();
+    await expect(page.getByTestId('pr-delta-thread-indicator-base-0')).toContainText('2');
+    await expect(page.getByTestId('pr-delta-thread-indicator-head-0')).toHaveCount(0);
+  });
+
+  test('opens an inline thread panel from the row thread indicator', async ({
+    page,
+    baseURL,
+  }) => {
+    await openFixture(page, baseURL, {
+      removed: 1,
+      threads: true,
+    });
+
+    const indicator = page.getByTestId('pr-delta-thread-indicator-base-0');
+    await expect(indicator).toBeVisible();
+    await indicator.click();
+
+    const panel = page.getByTestId('pr-delta-thread-panel-base-0');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('Please verify the removal path.');
+    await expect(panel).toContainText('The removed behavior still has callers.');
+  });
+
+  test('fires onAddComment from the inline thread panel', async ({ page, baseURL }) => {
+    await openFixture(page, baseURL, {
+      removed: 1,
+      threads: true,
+    });
+    await resetEvents(page);
+
+    const indicator = page.getByTestId('pr-delta-thread-indicator-base-0');
+    await expect(indicator).toBeVisible();
+    await indicator.click();
+    await page.getByTestId('pr-delta-thread-comment-input-base-0').fill('Reviewer follow-up.');
+    await page.getByTestId('pr-delta-thread-add-comment-base-0').click();
+
+    await expect.poll(() => addCommentEvents(page)).toEqual([
+      {
+        threadId: 'review:fixture-open-1',
+        text: 'Reviewer follow-up.',
+      },
+    ]);
+  });
+
+  test('fires onTransitionThread with RESOLVED from the inline thread panel', async ({
+    page,
+    baseURL,
+  }) => {
+    await openFixture(page, baseURL, {
+      removed: 1,
+      threads: true,
+    });
+    await resetEvents(page);
+
+    const indicator = page.getByTestId('pr-delta-thread-indicator-base-0');
+    await expect(indicator).toBeVisible();
+    await indicator.click();
+    await page.getByTestId('pr-delta-thread-resolve-base-0').click();
+
+    await expect.poll(() => transitionThreadEvents(page)).toEqual([
+      {
+        threadId: 'review:fixture-open-1',
+        toStatus: 'resolved',
+      },
+    ]);
+  });
+
+  test('renders the verdict bar with accept, request changes, and reject actions', async ({
+    page,
+    baseURL,
+  }) => {
+    await openFixture(page, baseURL, {
+      added: 1,
+      verdict: 'changes-requested',
+    });
+
+    const verdictBar = page.getByTestId('pr-delta-verdict-bar');
+    await expect(verdictBar).toBeVisible();
+    await expect(verdictBar.getByRole('button', { name: 'Accept' })).toBeVisible();
+    await expect(verdictBar.getByRole('button', { name: 'Request changes' })).toBeVisible();
+    await expect(verdictBar.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await expect(verdictBar).toContainText('changes requested');
+  });
+
+  test('fires onSubmitVerdict after composing a verdict rationale', async ({
+    page,
+    baseURL,
+  }) => {
+    await openFixture(page, baseURL, {
+      added: 1,
+    });
+    await resetEvents(page);
+
+    const verdictBar = page.getByTestId('pr-delta-verdict-bar');
+    await expect(verdictBar).toBeVisible();
+    await verdictBar.getByRole('button', { name: 'Request changes' }).click();
+    await page.getByTestId('pr-delta-verdict-rationale').fill('Needs another review pass.');
+    await page.getByTestId('pr-delta-verdict-submit').click();
+
+    await expect.poll(() => submitVerdictEvents(page)).toEqual([
+      {
+        decision: 'changes-requested',
+        rationale: 'Needs another review pass.',
+      },
+    ]);
   });
 });
