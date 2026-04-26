@@ -50,6 +50,34 @@
   white-space: nowrap;
 }
 
+.behaviour-card__promote-button {
+  appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(210, 153, 34, 0.44);
+  border-radius: 999px;
+  background: rgba(210, 153, 34, 0.12);
+  color: #f2cc60;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.behaviour-card__promote-button:hover {
+  border-color: rgba(210, 153, 34, 0.72);
+  background: rgba(210, 153, 34, 0.2);
+  color: #ffdf85;
+}
+
 .behaviour-card__chevron {
   appearance: none;
   display: inline-flex;
@@ -135,6 +163,157 @@
   line-height: 1.35;
 }
 
+.behaviour-card__editor {
+  display: grid;
+  gap: 10px;
+  cursor: default;
+}
+
+.behaviour-card__slice-editors {
+  display: grid;
+  gap: 10px;
+}
+
+.behaviour-card__slice-editor {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.behaviour-card__slice-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.behaviour-card__slice-editor-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary, #c9d1d9);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.behaviour-card__textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid rgba(72, 79, 88, 0.76);
+  border-radius: 6px;
+  background: rgba(1, 4, 9, 0.46);
+  color: var(--text, #e6edf3);
+  caret-color: var(--behaviour-card-accent);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.48;
+  outline: none;
+}
+
+.behaviour-card__textarea:focus {
+  border-color: rgba(88, 166, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.16);
+}
+
+.behaviour-card__textarea:disabled {
+  color: var(--text-dim, #8b949e);
+  cursor: wait;
+}
+
+.behaviour-card__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.behaviour-card__action-button,
+.behaviour-card__inline-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(139, 148, 158, 0.32);
+  border-radius: 6px;
+  background: rgba(33, 38, 45, 0.76);
+  color: var(--text, #e6edf3);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.behaviour-card__action-button {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.behaviour-card__action-button.is-primary {
+  border-color: rgba(88, 166, 255, 0.56);
+  background: rgba(88, 166, 255, 0.18);
+}
+
+.behaviour-card__action-button:hover:not(:disabled),
+.behaviour-card__inline-button:hover:not(:disabled) {
+  border-color: rgba(88, 166, 255, 0.62);
+  background: rgba(88, 166, 255, 0.14);
+}
+
+.behaviour-card__action-button:disabled,
+.behaviour-card__inline-button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.behaviour-card__status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+  padding: 9px 10px;
+  border: 1px solid rgba(88, 166, 255, 0.36);
+  border-radius: 6px;
+  background: rgba(88, 166, 255, 0.1);
+  color: var(--text, #e6edf3);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.behaviour-card__status-banner.is-success {
+  border-color: rgba(63, 185, 80, 0.4);
+  background: rgba(63, 185, 80, 0.12);
+  color: #7ee787;
+}
+
+.behaviour-card__status-banner.is-alert {
+  border-color: rgba(248, 81, 73, 0.38);
+  background: rgba(248, 81, 73, 0.1);
+  color: #ffa198;
+}
+
+.behaviour-card__inline-button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--text, #e6edf3);
+}
+
+.behaviour-card__spinner {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: behaviour-card-spin 800ms linear infinite;
+}
+
 .behaviour-card__slices {
   display: grid;
   gap: 6px;
@@ -203,5 +382,15 @@
   .behaviour-card__mode-toggle,
   .behaviour-card__mode-radio {
     transition: none;
+  }
+
+  .behaviour-card__spinner {
+    animation: none;
+  }
+}
+
+@keyframes behaviour-card-spin {
+  to {
+    transform: rotate(1turn);
   }
 }

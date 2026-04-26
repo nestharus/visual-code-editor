@@ -53,6 +53,11 @@
       window.__resetBehaviourCardEvents = () => {
         window.__behaviourCardEvents.length = 0;
       };
+      window.__behaviourCardGetSliceTextCalls = [];
+      window.__resetBehaviourCardGetSliceTextCalls = () => {
+        window.__behaviourCardGetSliceTextCalls.length = 0;
+      };
+      window.__behaviourCardWritebackRequests = [];
 
       function boolParam(name, fallback) {
         const value = params.get(name);
@@ -154,13 +159,143 @@
 
       const [mode, setMode] = createSignal(modeParam("mode", "view"));
       const behaviour = buildBehavior();
+      const parentRevision = params.get("parentRevision") ?? "rev:behaviour-card-fixture";
+
+      window.__behaviourCardSliceTextByIndex = behaviour.sourceSlices.map((slice, index) => {
+        return (
+          params.get(`sliceText${index}`) ??
+          [
+            `// ${slice.filePath}`,
+            `export const slice${index} = "line ${slice.startLine}";`,
+            "",
+          ].join("\n")
+        );
+      });
+
+      function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function sliceIndex(slice) {
+        return behaviour.sourceSlices.findIndex((candidate) => {
+          return (
+            candidate.filePath === slice.filePath &&
+            candidate.startLine === slice.startLine &&
+            candidate.endLine === slice.endLine
+          );
+        });
+      }
+
+      function getSliceText(slice) {
+        const index = sliceIndex(slice);
+        window.__behaviourCardGetSliceTextCalls.push({
+          index,
+          slice: clone(slice),
+        });
+        return Promise.resolve(window.__behaviourCardSliceTextByIndex[index] ?? "");
+      }
+
+      function parseWritebackBody(init) {
+        if (typeof init?.body !== "string") {
+          return {};
+        }
+
+        try {
+          return JSON.parse(init.body);
+        } catch {
+          return {};
+        }
+      }
+
+      function writebackResponseBody(kind, requestBody) {
+        const draft = requestBody?.draft ?? {};
+        const draftId = draft.id ?? "draft:fixture";
+        const expectedRevision =
+          draft.parent_revision ?? draft.parentRevision ?? parentRevision;
+
+        if (kind === "success") {
+          return {
+            ok: true,
+            plan: {
+              draft,
+              effective_diff: "--- fixture\n+++ fixture\n",
+              applies_against_revision: expectedRevision,
+              validated_at_ms: Date.now(),
+            },
+            applied_revision: "rev:fixture-applied",
+            files_written: (draft.proposed_slices ?? draft.proposedSlices ?? []).map(
+              (slice) => slice.file_path ?? slice.filePath,
+            ),
+            request_id: "request:fixture-success",
+          };
+        }
+
+        if (kind === "conflict") {
+          return {
+            ok: false,
+            conflict: {
+              draft_id: draftId,
+              conflicting_files: [
+                {
+                  file_path:
+                    draft.proposed_slices?.[0]?.file_path ??
+                    draft.proposedSlices?.[0]?.filePath ??
+                    "src/checkout/request.ts",
+                  conflict_kind: "lines-changed",
+                  source_unchanged: false,
+                },
+              ],
+              observed_revision: "rev:fixture-observed",
+              expected_revision: expectedRevision,
+            },
+            request_id: "request:fixture-conflict",
+          };
+        }
+
+        return {
+          ok: false,
+          error: "Fixture writeback error",
+          error_kind: "internal",
+          request_id: "request:fixture-error",
+        };
+      }
+
+      const writebackResponse = params.get("writebackResponse");
+      if (["success", "conflict", "error"].includes(writebackResponse)) {
+        const realFetch = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+          const rawUrl =
+            typeof input === "string"
+              ? input
+              : input instanceof Request
+                ? input.url
+                : String(input);
+          const url = new URL(rawUrl, window.location.href);
+
+          if (url.pathname === "/api/writeback") {
+            const requestBody = parseWritebackBody(init);
+            window.__behaviourCardWritebackRequests.push(clone(requestBody));
+            const status = writebackResponse === "error" ? 500 : 200;
+            return Promise.resolve(
+              new Response(JSON.stringify(writebackResponseBody(writebackResponse, requestBody)), {
+                status,
+                headers: { "content-type": "application/json" },
+              }),
+            );
+          }
+
+          return realFetch(input, init);
+        };
+      }
 
       const props = {
         behaviour,
         headerLabel: "Checkout lifecycle",
+        parentRevision,
         get mode() {
           return mode();
         },
+        getSliceText: boolParam("withGetSliceText", false) ? getSliceText : undefined,
         onCardClick: () => {
           window.__behaviourCardEvents.push({ type: "card" });
         },
@@ -176,6 +311,24 @@
         onToggleMode: (next) => {
           window.__behaviourCardEvents.push({ type: "toggle", next });
           setMode(next);
+        },
+        onPromoteToTest: boolParam("withPromoteCallback", false)
+          ? (promotedBehaviour) => {
+              window.__behaviourCardEvents.push({
+                type: "promote",
+                behaviour: clone(promotedBehaviour),
+              });
+            }
+          : undefined,
+        onSaved: (plan) => {
+          window.__behaviourCardEvents.push({ type: "saved", plan: clone(plan) });
+          setMode("view");
+        },
+        onConflict: (conflict) => {
+          window.__behaviourCardEvents.push({ type: "conflict", conflict: clone(conflict) });
+        },
+        onError: (error) => {
+          window.__behaviourCardEvents.push({ type: "error", error: clone(error) });
         },
       };
 

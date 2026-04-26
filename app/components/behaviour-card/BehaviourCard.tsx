@@ -1,7 +1,17 @@
-import { For, Show, createMemo, createSignal, type JSX } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  type JSX,
+} from "solid-js";
 
 import { TrustBadge } from "../TrustBadge";
 import type { Behavior, BehaviorSourceSlice } from "../../lib/behavior";
+import type { ConflictState, WritebackPlan } from "../../lib/writeback";
+import { createBehaviourCardEditorState } from "./editor-state";
 
 import "./behaviour-card.css";
 
@@ -11,10 +21,16 @@ export interface BehaviourCardProps {
   behaviour: Behavior;
   headerLabel?: string;
   mode?: BehaviourCardMode;
+  getSliceText?: (slice: BehaviorSourceSlice) => Promise<string>;
+  parentRevision?: string;
   onToggleMode?: (next: BehaviourCardMode) => void;
   onSliceClick?: (slice: BehaviorSourceSlice) => void;
   onChevronClick?: () => void;
   onCardClick?: () => void;
+  onPromoteToTest?: (behaviour: Behavior) => void;
+  onSaved?: (plan: WritebackPlan) => void;
+  onConflict?: (conflict: ConflictState) => void;
+  onError?: (error: { error: string; error_kind: string }) => void;
 }
 
 const MODES: readonly BehaviourCardMode[] = ["view", "edit"];
@@ -32,13 +48,113 @@ function sliceLabel(slice: BehaviorSourceSlice): string {
   return `${slice.filePath}:${slice.startLine}-${slice.endLine}`;
 }
 
+interface RouteProposedSlice {
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  new_text: string;
+  intent_role: string;
+}
+
+interface RouteBehaviorDraft {
+  id: string;
+  behavior_id: string;
+  proposed_slices: readonly RouteProposedSlice[];
+  origin: {
+    actor: "you-this-session";
+    intent: "user-edit";
+    timestamp_ms: number;
+    request_id: null;
+  };
+  parent_revision: string;
+  created_at_ms: number;
+}
+
+interface WritebackRouteResponse {
+  ok?: boolean;
+  plan?: unknown;
+  conflict?: unknown;
+  error?: string;
+  error_kind?: string;
+}
+
+function buildDraft(
+  behaviour: Behavior,
+  sourceSlices: readonly BehaviorSourceSlice[],
+  draftTexts: readonly string[],
+  initialTexts: readonly string[],
+  parentRevision: string,
+): RouteBehaviorDraft {
+  const now = Date.now();
+  const proposedSlices = sourceSlices.flatMap((slice, index): RouteProposedSlice[] => {
+    const newText = draftTexts[index] ?? "";
+    if (newText === (initialTexts[index] ?? "")) {
+      return [];
+    }
+
+    return [
+      {
+        file_path: slice.filePath,
+        start_line: slice.startLine,
+        end_line: slice.endLine,
+        new_text: newText,
+        intent_role: slice.sliceRole,
+      },
+    ];
+  });
+
+  return {
+    id: `draft:${behaviour.id}:${now}`,
+    behavior_id: behaviour.id,
+    proposed_slices: proposedSlices,
+    origin: {
+      actor: "you-this-session",
+      intent: "user-edit",
+      timestamp_ms: now,
+      request_id: null,
+    },
+    parent_revision: parentRevision,
+    created_at_ms: now,
+  };
+}
+
+function routeErrorPayload(message: string, errorKind = "internal") {
+  return { error: message, error_kind: errorKind };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function BehaviourCard(props: BehaviourCardProps) {
   const [uncontrolledMode, setUncontrolledMode] = createSignal<BehaviourCardMode>("view");
+  const editor = createBehaviourCardEditorState();
   let rootRef: HTMLElement | undefined;
+  let loadRun = 0;
+  let savedTimer: number | undefined;
 
   const mode = createMemo<BehaviourCardMode>(() => props.mode ?? uncontrolledMode());
   const titleId = createMemo(() => titleIdFor(props.behaviour.id));
   const headerLabel = createMemo(() => props.headerLabel ?? props.behaviour.label);
+  const hasModifiedDrafts = createMemo(() => {
+    return editor.draftTexts().some((text, index) => text !== (editor.initialTexts()[index] ?? ""));
+  });
+  const isBusy = createMemo(() => {
+    const banner = editor.banner().kind;
+    return banner === "loading" || banner === "saving";
+  });
+  const canSave = createMemo(() => {
+    return Boolean(props.getSliceText && props.parentRevision) && hasModifiedDrafts() && !isBusy();
+  });
+  const canPromoteToTest = createMemo(() => {
+    return props.behaviour.trust.state === "candidate" && typeof props.onPromoteToTest === "function";
+  });
+
+  onCleanup(() => {
+    if (savedTimer !== undefined) {
+      window.clearTimeout(savedTimer);
+    }
+  });
 
   const selectMode = (nextMode: BehaviourCardMode) => {
     if (mode() === nextMode) return;
@@ -107,6 +223,11 @@ export function BehaviourCard(props: BehaviourCardProps) {
     props.onChevronClick?.();
   };
 
+  const handlePromoteToTest: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    event.stopPropagation();
+    props.onPromoteToTest?.(props.behaviour);
+  };
+
   const handleSliceClick = (
     slice: BehaviorSourceSlice,
   ): JSX.EventHandler<HTMLButtonElement, MouseEvent> => {
@@ -114,6 +235,110 @@ export function BehaviourCard(props: BehaviourCardProps) {
       event.stopPropagation();
       props.onSliceClick?.(slice);
     };
+  };
+
+  const loadSliceTexts = async () => {
+    if (!props.getSliceText) {
+      editor.reset();
+      editor.setBanner({ kind: "unavailable" });
+      return;
+    }
+
+    const currentRun = ++loadRun;
+    editor.setBanner({ kind: "loading" });
+
+    try {
+      const texts = await Promise.all(
+        props.behaviour.sourceSlices.map((slice) => props.getSliceText?.(slice) ?? ""),
+      );
+      if (currentRun !== loadRun || mode() !== "edit") {
+        return;
+      }
+      editor.replaceTexts(texts);
+      editor.setBanner({ kind: "idle" });
+    } catch (error) {
+      if (currentRun !== loadRun || mode() !== "edit") {
+        return;
+      }
+      const payload = routeErrorPayload(errorMessage(error), "source-fetch");
+      editor.setBanner({ kind: "error", message: payload.error });
+      props.onError?.(payload);
+    }
+  };
+
+  createEffect(() => {
+    if (mode() !== "edit") {
+      loadRun += 1;
+      editor.reset();
+      return;
+    }
+
+    void loadSliceTexts();
+  });
+
+  const handleCancel: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    event.stopPropagation();
+    editor.reset();
+    selectMode("view");
+  };
+
+  const handleReload: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    event.stopPropagation();
+    void loadSliceTexts();
+  };
+
+  const handleSave: JSX.EventHandler<HTMLButtonElement, MouseEvent> = async (event) => {
+    event.stopPropagation();
+    if (!canSave()) {
+      return;
+    }
+
+    const draft = buildDraft(
+      props.behaviour,
+      props.behaviour.sourceSlices,
+      editor.draftTexts(),
+      editor.initialTexts(),
+      props.parentRevision ?? "",
+    );
+
+    editor.setBanner({ kind: "saving" });
+
+    try {
+      const response = await fetch("/api/writeback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ draft, apply: true }),
+      });
+      const data = (await response.json()) as WritebackRouteResponse;
+
+      if (data.ok && data.plan) {
+        editor.setBanner({ kind: "saved" });
+        props.onSaved?.(data.plan as WritebackPlan);
+        savedTimer = window.setTimeout(() => {
+          selectMode("view");
+        }, 1500);
+        return;
+      }
+
+      if (data.conflict) {
+        editor.setBanner({ kind: "conflict" });
+        props.onConflict?.(data.conflict as ConflictState);
+        return;
+      }
+
+      const payload = routeErrorPayload(
+        data.error ?? (response.ok ? "Writeback failed" : `Writeback failed (${response.status})`),
+        data.error_kind ?? "internal",
+      );
+      editor.setBanner({ kind: "error", message: payload.error });
+      props.onError?.(payload);
+    } catch (error) {
+      const payload = routeErrorPayload(errorMessage(error));
+      editor.setBanner({ kind: "error", message: payload.error });
+      props.onError?.(payload);
+    }
   };
 
   return (
@@ -132,6 +357,17 @@ export function BehaviourCard(props: BehaviourCardProps) {
             grounding={props.behaviour.trust.grounding}
             size="md"
           />
+          <Show when={canPromoteToTest()}>
+            <button
+              class="behaviour-card__promote-button"
+              data-testid="behaviour-card-promote-to-test"
+              type="button"
+              aria-label={`Promote ${props.behaviour.label} to test`}
+              onClick={handlePromoteToTest}
+            >
+              Promote to test
+            </button>
+          </Show>
           <h3
             id={titleId()}
             class="behaviour-card__title"
@@ -192,44 +428,168 @@ export function BehaviourCard(props: BehaviourCardProps) {
       </div>
 
       <Show when={mode() === "edit"}>
-        <div
-          class="behaviour-card__edit-banner"
-          data-testid="behaviour-card-edit-banner"
-          role="status"
-        >
-          Editing — D writeback machinery lands later.
+        <div class="behaviour-card__editor" onClick={stopPropagation}>
+          <Show when={!props.getSliceText}>
+            <div
+              class="behaviour-card__edit-banner"
+              data-testid="behaviour-card-edit-banner"
+              role="status"
+            >
+              Editing — D writeback machinery lands later.
+            </div>
+          </Show>
+
+          <Show when={editor.banner().kind === "loading"}>
+            <div
+              class="behaviour-card__status-banner"
+              data-testid="behaviour-card-status-banner"
+              role="status"
+            >
+              <span class="behaviour-card__spinner" aria-hidden="true" />
+              Loading slice content…
+            </div>
+          </Show>
+
+          <Show when={editor.banner().kind === "unavailable"}>
+            <div
+              class="behaviour-card__status-banner is-alert"
+              data-testid="behaviour-card-status-banner"
+              role="alert"
+            >
+              Slice content unavailable
+            </div>
+          </Show>
+
+          <Show when={props.getSliceText && editor.banner().kind !== "loading"}>
+            <div class="behaviour-card__slice-editors" aria-label="Editable source slices">
+              <For each={props.behaviour.sourceSlices}>
+                {(slice, index) => (
+                  <label class="behaviour-card__slice-editor">
+                    <span class="behaviour-card__slice-editor-header">
+                      <span class="behaviour-card__slice-editor-path">{sliceLabel(slice)}</span>
+                      <span class="behaviour-card__slice-role">{slice.sliceRole}</span>
+                    </span>
+                    <textarea
+                      class="behaviour-card__textarea"
+                      data-testid={`behaviour-card-slice-editor-${index()}`}
+                      aria-label={`Edit ${slice.filePath} lines ${slice.startLine}-${slice.endLine}`}
+                      spellcheck={false}
+                      value={editor.draftTexts()[index()] ?? ""}
+                      disabled={isBusy()}
+                      onInput={(event) => {
+                        editor.updateDraftText(index(), event.currentTarget.value);
+                      }}
+                    />
+                  </label>
+                )}
+              </For>
+            </div>
+          </Show>
+
+          <div class="behaviour-card__edit-actions">
+            <button
+              class="behaviour-card__action-button is-primary"
+              data-testid="behaviour-card-save-button"
+              type="button"
+              disabled={!canSave()}
+              aria-busy={editor.banner().kind === "saving" ? "true" : "false"}
+              onClick={handleSave}
+            >
+              Save
+            </button>
+            <button
+              class="behaviour-card__action-button"
+              data-testid="behaviour-card-cancel-button"
+              type="button"
+              disabled={isBusy()}
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+          </div>
+
+          <Show when={editor.banner().kind === "saving"}>
+            <div
+              class="behaviour-card__status-banner"
+              data-testid="behaviour-card-status-banner"
+              role="status"
+            >
+              <span class="behaviour-card__spinner" aria-hidden="true" />
+              Saving…
+            </div>
+          </Show>
+
+          <Show when={editor.banner().kind === "saved"}>
+            <div
+              class="behaviour-card__status-banner is-success"
+              data-testid="behaviour-card-status-banner"
+              role="status"
+            >
+              Saved
+            </div>
+          </Show>
+
+          <Show when={editor.banner().kind === "conflict"}>
+            <div
+              class="behaviour-card__status-banner is-alert"
+              data-testid="behaviour-card-status-banner"
+              role="alert"
+            >
+              <span>Source has changed since you started editing</span>
+              <button
+                class="behaviour-card__inline-button"
+                data-testid="behaviour-card-reload-button"
+                type="button"
+                onClick={handleReload}
+              >
+                Reload
+              </button>
+            </div>
+          </Show>
+
+          <Show when={editor.banner().kind === "error"}>
+            <div
+              class="behaviour-card__status-banner is-alert"
+              data-testid="behaviour-card-status-banner"
+              role="alert"
+            >
+              {editor.banner().kind === "error" ? editor.banner().message : ""}
+            </div>
+          </Show>
         </div>
       </Show>
 
-      <div class="behaviour-card__slices" aria-label="Source slices">
-        <For each={props.behaviour.sourceSlices}>
-          {(slice, index) => {
-            const confirmed = () => slice.confirmedBy !== null;
+      <Show when={mode() === "view"}>
+        <div class="behaviour-card__slices" aria-label="Source slices">
+          <For each={props.behaviour.sourceSlices}>
+            {(slice, index) => {
+              const confirmed = () => slice.confirmedBy !== null;
 
-            return (
-              <button
-                class="behaviour-card__slice"
-                data-testid={`behaviour-card-slice-${index()}`}
-                data-confirmed={String(confirmed())}
-                type="button"
-                role="button"
-                aria-label={`Open ${slice.filePath} lines ${slice.startLine}-${slice.endLine}`}
-                onClick={handleSliceClick(slice)}
-              >
-                <span
-                  classList={{
-                    "behaviour-card__slice-dot": true,
-                    "is-confirmed": confirmed(),
-                  }}
-                  aria-hidden="true"
-                />
-                <span class="behaviour-card__slice-role">{slice.sliceRole}</span>
-                <span class="behaviour-card__slice-path">{sliceLabel(slice)}</span>
-              </button>
-            );
-          }}
-        </For>
-      </div>
+              return (
+                <button
+                  class="behaviour-card__slice"
+                  data-testid={`behaviour-card-slice-${index()}`}
+                  data-confirmed={String(confirmed())}
+                  type="button"
+                  role="button"
+                  aria-label={`Open ${slice.filePath} lines ${slice.startLine}-${slice.endLine}`}
+                  onClick={handleSliceClick(slice)}
+                >
+                  <span
+                    classList={{
+                      "behaviour-card__slice-dot": true,
+                      "is-confirmed": confirmed(),
+                    }}
+                    aria-hidden="true"
+                  />
+                  <span class="behaviour-card__slice-role">{slice.sliceRole}</span>
+                  <span class="behaviour-card__slice-path">{sliceLabel(slice)}</span>
+                </button>
+              );
+            }}
+          </For>
+        </div>
+      </Show>
     </article>
   );
 }

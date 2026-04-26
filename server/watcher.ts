@@ -6,7 +6,7 @@
 import express from "express";
 import cors from "cors";
 import chokidar from "chokidar";
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
@@ -24,6 +24,15 @@ import {
   type ComposerSelection,
   type ComposerSelectionItem,
 } from "./prompts/compose";
+import { applyWritebackDraft, assertSlicesFitCurrentFiles, buildWritebackPlan } from "./writeback/apply";
+import { detectWritebackConflict } from "./writeback/conflict";
+import {
+  validateWritebackRequest,
+  type BehaviorDraft,
+  type ConflictState,
+  type WritebackPlan,
+  type WritebackRequest,
+} from "./writeback/validate";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -77,6 +86,8 @@ type ExtractJsonResult =
   | { parsed: unknown; parsePath: "raw" | "brace" | "fenced" | "lenient" }
   | { parsed: null; parsePath: "degraded" };
 
+type WritebackErrorKind = "validation" | "internal" | "io";
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -84,6 +95,7 @@ app.use(express.json());
 const watches = new Map<string, WatchEntry>();
 const sseClients = new Set<express.Response>();
 let buildCounter = 0;
+let writebackInProgress: Promise<void> | null = null;
 
 // --- SSE ---
 
@@ -404,6 +416,140 @@ function logPromptComposerOutcome(fields: {
   }));
 }
 
+function logWritebackOutcome(fields: {
+  request_id: string;
+  apply: boolean;
+  draft_id: string;
+  behavior_id: string;
+  parent_revision: string;
+  file_count: number;
+  duration_ms: number;
+  status: "ok" | "conflict" | "error";
+  error_kind?: WritebackErrorKind;
+  files_written?: number;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: "/api/writeback",
+    apply: fields.apply,
+    draft_id: fields.draft_id,
+    behavior_id: fields.behavior_id,
+    parent_revision: fields.parent_revision,
+    file_count: fields.file_count,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+    ...(fields.files_written !== undefined ? { files_written: fields.files_written } : {}),
+  }));
+}
+
+async function withWritebackLock<T>(task: () => Promise<T>): Promise<T> {
+  while (writebackInProgress) {
+    await writebackInProgress;
+  }
+
+  let releaseLock = () => {};
+  const lock = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+  writebackInProgress = lock;
+
+  try {
+    return await task();
+  } finally {
+    if (writebackInProgress === lock) {
+      writebackInProgress = null;
+    }
+    releaseLock();
+  }
+}
+
+async function waitForWritebackLock(): Promise<void> {
+  while (writebackInProgress) {
+    await writebackInProgress;
+  }
+}
+
+function gitHead(): string {
+  return execSync("git rev-parse HEAD", {
+    cwd: PROJECT_ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+function gitPorcelainV2(): string {
+  return execSync("git status --porcelain=v2", {
+    cwd: PROJECT_ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+async function buildConflictState(
+  draft: BehaviorDraft,
+  observedRevision: string,
+): Promise<ConflictState> {
+  return detectWritebackConflict({
+    draft,
+    workspaceRoot: PROJECT_ROOT,
+    observedRevision,
+  });
+}
+
+function routePlan(plan: WritebackPlan) {
+  return {
+    draft: routeDraft(plan.draft),
+    effective_diff: plan.effectiveDiff,
+    applies_against_revision: plan.appliesAgainstRevision,
+    validated_at_ms: plan.validatedAtMs,
+  };
+}
+
+function routeDraft(draft: BehaviorDraft) {
+  return {
+    id: draft.id,
+    behavior_id: draft.behaviorId,
+    proposed_slices: draft.proposedSlices.map((slice) => ({
+      file_path: slice.filePath,
+      start_line: slice.startLine,
+      end_line: slice.endLine,
+      new_text: slice.newText,
+      intent_role: slice.intentRole,
+    })),
+    origin: {
+      actor: draft.origin.actor,
+      intent: draft.origin.intent,
+      timestamp_ms: draft.origin.timestampMs,
+      request_id: draft.origin.requestId,
+    },
+    parent_revision: draft.parentRevision,
+    created_at_ms: draft.createdAtMs,
+  };
+}
+
+function routeConflict(conflict: ConflictState) {
+  return {
+    draft_id: conflict.draftId,
+    conflicting_files: conflict.conflictingFiles.map((file) => ({
+      file_path: file.filePath,
+      conflict_kind: file.conflictKind,
+      source_unchanged: file.sourceUnchanged,
+    })),
+    observed_revision: conflict.observedRevision,
+    expected_revision: conflict.expectedRevision,
+  };
+}
+
+function isIoError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof (error as NodeJS.ErrnoException).code === "string"
+  );
+}
+
 function promptComposerCapBytes(mode: ComposerMode): number {
   switch (mode) {
     case "ask":
@@ -690,6 +836,121 @@ app.post("/api/prompt-composer", async (req, res) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "internal prompt composer error";
     return fail(500, "internal", message, composerRequest);
+  }
+});
+
+app.post("/api/writeback", async (req, res) => {
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  let request: WritebackRequest | undefined;
+
+  const log = (
+    status: "ok" | "conflict" | "error",
+    errorKind?: WritebackErrorKind,
+    filesWritten?: number,
+  ) => {
+    const draft = request?.draft;
+    logWritebackOutcome({
+      request_id: requestId,
+      apply: request?.apply ?? false,
+      draft_id: draft?.id ?? "-",
+      behavior_id: draft?.behaviorId ?? "-",
+      parent_revision: draft?.parentRevision ?? "-",
+      file_count: draft ? new Set(draft.proposedSlices.map((slice) => slice.filePath)).size : 0,
+      duration_ms: Date.now() - startedAt,
+      status,
+      ...(errorKind ? { error_kind: errorKind } : {}),
+      ...(filesWritten !== undefined ? { files_written: filesWritten } : {}),
+    });
+  };
+
+  const fail = (statusCode: number, errorKind: WritebackErrorKind, error: string) => {
+    log("error", errorKind);
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+    });
+  };
+
+  const validation = validateWritebackRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+  request = validation.value;
+
+  const execute = async () => {
+    const observedRevision = gitHead();
+    gitPorcelainV2();
+
+    if (request!.draft.parentRevision !== observedRevision) {
+      const conflict = await buildConflictState(request!.draft, observedRevision);
+      log("conflict");
+      return res.json({
+        ok: false,
+        conflict: routeConflict(conflict),
+        request_id: requestId,
+      });
+    }
+
+    try {
+      await assertSlicesFitCurrentFiles(request!.draft, PROJECT_ROOT);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "invalid writeback file range";
+      return fail(400, "validation", message);
+    }
+
+    if (!request!.apply) {
+      const plan = await buildWritebackPlan(request!.draft, PROJECT_ROOT);
+      log("ok");
+      return res.json({
+        ok: true,
+        plan: routePlan(plan),
+        applied: false,
+        request_id: requestId,
+      });
+    }
+
+    const beforeApplyRevision = gitHead();
+    if (beforeApplyRevision !== observedRevision) {
+      const conflict = await buildConflictState(request!.draft, beforeApplyRevision);
+      log("conflict");
+      return res.json({
+        ok: false,
+        conflict: routeConflict(conflict),
+        request_id: requestId,
+      });
+    }
+
+    const result = await applyWritebackDraft(request!.draft, PROJECT_ROOT);
+    const afterApplyRevision = gitHead();
+    if (afterApplyRevision !== beforeApplyRevision) {
+      throw new Error("git HEAD changed during writeback apply");
+    }
+    gitPorcelainV2();
+
+    log("ok", undefined, result.filesWritten.length);
+    return res.json({
+      ok: true,
+      plan: routePlan(result.plan),
+      applied_revision: afterApplyRevision,
+      files_written: result.filesWritten,
+      request_id: requestId,
+    });
+  };
+
+  try {
+    if (request.apply) {
+      return await withWritebackLock(execute);
+    }
+
+    await waitForWritebackLock();
+    return await execute();
+  } catch (error) {
+    const errorKind: WritebackErrorKind = isIoError(error) ? "io" : "internal";
+    const message = error instanceof Error ? error.message : "writeback failed";
+    return fail(500, errorKind, message);
   }
 });
 
