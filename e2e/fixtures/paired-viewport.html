@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PairedGraphViewport fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      #mount {
+        width: 1000px;
+        height: 360px;
+      }
+
+      .fixture-child {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        padding: 16px;
+        border: 1px solid #30363d;
+        background: #161b22;
+      }
+
+      .fixture-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { render } from "solid-js/web";
+      import { PairedGraphViewport } from "/app/lib/paired-viewport/PairedGraphViewport.tsx";
+
+      const params = new URLSearchParams(window.location.search);
+      const withLabels = params.get("labels") !== "0";
+      const variant = params.get("variant") ?? "basic";
+      const initialParam = params.get("initial");
+
+      window.__pairedViewportEvents = [];
+      window.__pairedViewportChildEvents = [];
+      window.__resetPairedViewportEvents = () => {
+        window.__pairedViewportEvents.length = 0;
+      };
+
+      function appendText(parent, text) {
+        parent.appendChild(document.createTextNode(text));
+      }
+
+      function makeButton(testId, text, onClick) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.testid = testId;
+        button.addEventListener("click", onClick);
+        appendText(button, text);
+        return button;
+      }
+
+      function makeInput(testId, labelText) {
+        const label = document.createElement("label");
+        label.className = "fixture-controls";
+        appendText(label, labelText);
+
+        const input = document.createElement("input");
+        input.dataset.testid = testId;
+        input.setAttribute("aria-label", labelText);
+        label.appendChild(input);
+        return label;
+      }
+
+      function makeChild(side) {
+        const child = document.createElement("div");
+        child.className = "fixture-child";
+        child.dataset.testid = side === "left" ? "L" : "R";
+        appendText(child, side === "left" ? "L" : "R");
+
+        const controls = document.createElement("div");
+        controls.className = "fixture-controls";
+
+        controls.appendChild(
+          makeButton(
+            side === "left" ? "left-focus" : "right-focus",
+            side === "left" ? "Left focus target" : "Right focus target",
+            () => {
+              window.__pairedViewportChildEvents.push(`${side}:focus-button`);
+            },
+          ),
+        );
+
+        if (variant === "interactive") {
+          child.appendChild(makeInput(`${side}-input`, `${side} input`));
+          controls.appendChild(
+            makeButton(`${side}-action`, `${side} action`, () => {
+              window.__pairedViewportChildEvents.push(`${side}:action`);
+            }),
+          );
+        }
+
+        child.appendChild(controls);
+        return child;
+      }
+
+      const props = {
+        left: makeChild("left"),
+        right: makeChild("right"),
+        ariaLabel: params.get("ariaLabel") ?? "Paired viewport test",
+        onSplitChange: (ratio) => {
+          window.__pairedViewportEvents.push(ratio);
+        },
+      };
+
+      if (withLabels) {
+        props.leftLabel = params.get("leftLabel") ?? "Left pane";
+        props.rightLabel = params.get("rightLabel") ?? "Right pane";
+      }
+
+      if (initialParam !== null) {
+        props.initialSplitRatio = Number(initialParam);
+      }
+
+      render(() => PairedGraphViewport(props), document.getElementById("mount"));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,109 @@
+.paired-graph-viewport {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, var(--left-width)) var(--split-width, 6px) minmax(
+      0,
+      var(--right-width)
+    );
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 8px;
+  background: var(--bg, #0d1117);
+}
+
+.paired-graph-viewport,
+.paired-graph-viewport * {
+  box-sizing: border-box;
+}
+
+.paired-graph-viewport__pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel, #161b22);
+}
+
+.paired-graph-viewport__pane:not(:has(.paired-graph-viewport__header)) {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.paired-graph-viewport__header {
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, #30363d);
+  color: var(--muted, #8b949e);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(13, 17, 23, 0.72);
+}
+
+.paired-graph-viewport__body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.paired-graph-viewport__separator {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--split-width, 6px);
+  min-width: var(--split-width, 6px);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  color: var(--accent, #58a6ff);
+  background: var(--border, #30363d);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.paired-graph-viewport__separator::before {
+  content: "";
+  position: absolute;
+  inset: 0 -5px;
+}
+
+.paired-graph-viewport__separator-line {
+  width: 2px;
+  height: 32px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.42;
+}
+
+.paired-graph-viewport__separator:hover .paired-graph-viewport__separator-line,
+.paired-graph-viewport__separator:focus-visible .paired-graph-viewport__separator-line,
+.paired-graph-viewport.is-dragging .paired-graph-viewport__separator-line {
+  opacity: 0.9;
+}
+
+.paired-graph-viewport__separator:focus-visible {
+  box-shadow:
+    0 0 0 1px var(--bg, #0d1117),
+    0 0 0 3px currentColor;
+  z-index: 1;
+}
+
+.paired-graph-viewport.is-snapping .paired-graph-viewport__separator-line {
+  transition: opacity 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paired-graph-viewport.is-snapping .paired-graph-viewport__separator-line {
+    transition: none;
+  }
+}
