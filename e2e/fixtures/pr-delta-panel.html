@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRDeltaPanel fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      #mount {
+        width: min(1120px, 100%);
+        min-height: 520px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { render } from "solid-js/web";
+      import { PRDeltaPanel } from "/app/components/pr-delta-panel/PRDeltaPanel.tsx";
+      import { makeEntityDelta, makePRDeltaSet } from "/app/lib/pr-delta.ts";
+
+      const params = new URLSearchParams(window.location.search);
+
+      window.__prDeltaPanelEntityClickEvents = [];
+      window.__resetPRDeltaPanelEvents = () => {
+        window.__prDeltaPanelEntityClickEvents.length = 0;
+      };
+
+      function numberParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null || value.trim() === "") {
+          return fallback;
+        }
+
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function boolParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null) {
+          return fallback;
+        }
+        return value !== "0" && value !== "false";
+      }
+
+      function stringParam(names, fallback) {
+        for (const name of names) {
+          const value = params.get(name);
+          if (value !== null && value.trim() !== "") {
+            return value;
+          }
+        }
+
+        return fallback;
+      }
+
+      function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function trust() {
+        return { state: "grounded", grounding: "lsp-type" };
+      }
+
+      function delta(partial) {
+        return makeEntityDelta({
+          deltaKind: "reshaped",
+          entityKind: "behavior",
+          baseId: "behavior:fixture",
+          headId: "behavior:fixture",
+          relatedIds: [],
+          trust: trust(),
+          attributionActor: "generator",
+          ...partial,
+        });
+      }
+
+      function repeat(count, build) {
+        return Array.from({ length: Math.max(0, Math.trunc(count)) }, (_, index) =>
+          build(index),
+        );
+      }
+
+      const splitRelatedCount = Math.max(1, Math.trunc(numberParam("split_related_count", 2)));
+      const mergedRelatedCount = Math.max(1, Math.trunc(numberParam("merged_related_count", 2)));
+
+      const deltas = [
+        ...repeat(numberParam("added", 0), (index) =>
+          delta({
+            deltaKind: "added",
+            baseId: null,
+            headId: `behavior:added-${index}`,
+          }),
+        ),
+        ...repeat(numberParam("removed", 0), (index) =>
+          delta({
+            deltaKind: "removed",
+            baseId: `behavior:removed-${index}`,
+            headId: null,
+          }),
+        ),
+        ...repeat(numberParam("renamed", 0), (index) =>
+          delta({
+            deltaKind: "renamed",
+            baseId: `behavior:renamed-base-${index}`,
+            headId: `behavior:renamed-head-${index}`,
+          }),
+        ),
+        ...repeat(numberParam("reshaped", 0), (index) =>
+          delta({
+            deltaKind: "reshaped",
+            baseId: `behavior:reshaped-${index}`,
+            headId: `behavior:reshaped-${index}`,
+          }),
+        ),
+        ...repeat(numberParam("unchanged", 0), (index) =>
+          delta({
+            deltaKind: "unchanged",
+            baseId: `behavior:unchanged-${index}`,
+            headId: `behavior:unchanged-${index}`,
+          }),
+        ),
+        ...repeat(numberParam("split", 0), (index) =>
+          delta({
+            deltaKind: "split",
+            baseId: `behavior:split-base-${index}`,
+            headId: `behavior:split-head-${index}`,
+            relatedIds: repeat(
+              splitRelatedCount,
+              (relatedIndex) => `behavior:split-head-${index}-related-${relatedIndex}`,
+            ),
+          }),
+        ),
+        ...repeat(numberParam("merged", 0), (index) =>
+          delta({
+            deltaKind: "merged",
+            baseId: `behavior:merged-base-${index}`,
+            headId: `behavior:merged-head-${index}`,
+            relatedIds: repeat(
+              mergedRelatedCount,
+              (relatedIndex) => `behavior:merged-base-${index}-related-${relatedIndex}`,
+            ),
+          }),
+        ),
+        ...repeat(numberParam("unmatched_base", 0), (index) =>
+          delta({
+            deltaKind: "unmatched",
+            baseId: `behavior:unmatched-base-${index}`,
+            headId: null,
+          }),
+        ),
+        ...repeat(numberParam("unmatched_head", 0), (index) =>
+          delta({
+            deltaKind: "unmatched",
+            baseId: null,
+            headId: `behavior:unmatched-head-${index}`,
+          }),
+        ),
+      ];
+
+      const prNumber = Math.trunc(numberParam("pr_number", numberParam("prNumber", 42)));
+      const taskId = params.get("task_id") ?? params.get("taskId");
+      const deltaSet = makePRDeltaSet({
+        id: `prdelta:fixture.${prNumber}`,
+        baseRevision: stringParam(["base_revision", "baseRevision"], "rev:fixture-base"),
+        headRevision: stringParam(["head_revision", "headRevision"], "rev:fixture-head"),
+        baseBranch: stringParam(["base_branch", "baseBranch"], "main"),
+        headBranch: stringParam(["head_branch", "headBranch"], "feature/pr-delta"),
+        prNumber: taskId === null ? prNumber : null,
+        taskId,
+        deltas,
+        computedAtMs: 1_700_000_000_000,
+        attributionActor: "generator",
+      });
+
+      const props = {
+        deltaSet,
+        onEntityClick: (delta, side) => {
+          window.__prDeltaPanelEntityClickEvents.push({
+            delta: clone(delta),
+            side,
+          });
+        },
+      };
+
+      if (params.has("show_unchanged") || params.has("showUnchanged")) {
+        props.showUnchanged = boolParam("show_unchanged", boolParam("showUnchanged", false));
+      }
+
+      render(() => PRDeltaPanel(props), document.getElementById("mount"));
+    </script>
+  </body>
+</html>

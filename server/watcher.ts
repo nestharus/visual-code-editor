@@ -44,6 +44,15 @@ import {
   type DispatchTaskRequest,
   type TransitionTaskRequest,
 } from "./tasks/types";
+import {
+  computePRDeltaSet,
+  PRDeltaComputeError,
+  type PRDeltaErrorKind,
+} from "./pr_delta/compute";
+import {
+  validateComputePRDeltaRequest,
+  type ComputePRDeltaRequest,
+} from "./pr_delta/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -469,6 +478,36 @@ function logTaskOutcome(fields: {
     ts: new Date().toISOString(),
     route: fields.route,
     task_id: fields.task_id,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+  }));
+}
+
+function logPRDeltaOutcome(fields: {
+  request_id: string;
+  variant: "revisions" | "task" | "-";
+  base_revision: string;
+  head_revision: string;
+  task_id?: string;
+  pr_number?: number | null;
+  changed_file_count: number;
+  delta_count_total: number;
+  duration_ms: number;
+  status: "ok" | "error";
+  error_kind?: PRDeltaErrorKind;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: "/api/pr-deltas/compute",
+    variant: fields.variant,
+    base_revision: fields.base_revision,
+    head_revision: fields.head_revision,
+    ...(fields.task_id ? { task_id: fields.task_id } : {}),
+    ...(fields.pr_number !== undefined ? { pr_number: fields.pr_number } : {}),
+    changed_file_count: fields.changed_file_count,
+    delta_count_total: fields.delta_count_total,
     duration_ms: fields.duration_ms,
     status: fields.status,
     ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
@@ -986,6 +1025,95 @@ app.post("/api/writeback", async (req, res) => {
   }
 });
 
+app.post("/api/pr-deltas/compute", async (req, res) => {
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  let request: ComputePRDeltaRequest | undefined;
+
+  const fail = (
+    statusCode: number,
+    errorKind: PRDeltaErrorKind,
+    error: string,
+    fields?: {
+      baseRevision?: string;
+      headRevision?: string;
+      taskId?: string;
+      prNumber?: number | null;
+      changedFileCount?: number;
+      deltaCountTotal?: number;
+    },
+  ) => {
+    logPRDeltaOutcome({
+      request_id: requestId,
+      variant: request?.variant ?? "-",
+      base_revision:
+        fields?.baseRevision ??
+        (request?.variant === "revisions" ? request.baseRevision : "-"),
+      head_revision:
+        fields?.headRevision ??
+        (request?.variant === "revisions" ? request.headRevision : "-"),
+      ...(fields?.taskId ?? (request?.variant === "task" ? request.taskId : undefined)
+        ? { task_id: fields?.taskId ?? (request?.variant === "task" ? request.taskId : undefined) }
+        : {}),
+      ...(fields?.prNumber !== undefined ||
+      (request?.variant === "revisions" && request.prNumber !== undefined)
+        ? { pr_number: fields?.prNumber ?? (request?.variant === "revisions" ? request.prNumber : undefined) }
+        : {}),
+      changed_file_count: fields?.changedFileCount ?? 0,
+      delta_count_total: fields?.deltaCountTotal ?? 0,
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+    });
+  };
+
+  const validation = validateComputePRDeltaRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+  request = validation.value;
+
+  try {
+    const result = await computePRDeltaSet({
+      request,
+      workspaceRoot: PROJECT_ROOT,
+      taskLookup: taskManager,
+    });
+
+    logPRDeltaOutcome({
+      request_id: requestId,
+      variant: result.variant,
+      base_revision: result.baseRevision,
+      head_revision: result.headRevision,
+      ...(result.taskId ? { task_id: result.taskId } : {}),
+      ...(result.prNumber !== undefined ? { pr_number: result.prNumber } : {}),
+      changed_file_count: result.changedFileCount,
+      delta_count_total: result.deltaCountTotal,
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+
+    return res.json({
+      ok: true,
+      delta_set: result.deltaSet,
+      request_id: requestId,
+    });
+  } catch (error) {
+    const deltaError = normalizePRDeltaError(error);
+    return fail(
+      statusForPRDeltaError(deltaError.errorKind),
+      deltaError.errorKind,
+      deltaError.message,
+    );
+  }
+});
+
 app.post("/api/tasks/dispatch", (req, res) => {
   const startedAt = Date.now();
   let request: DispatchTaskRequest | undefined;
@@ -1123,6 +1251,26 @@ function statusForTaskError(errorKind: TaskErrorKind): number {
       return 404;
     case "git":
     case "worktree":
+    case "internal":
+      return 500;
+  }
+}
+
+function normalizePRDeltaError(error: unknown): PRDeltaComputeError {
+  if (error instanceof PRDeltaComputeError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "PR delta computation failed";
+  return new PRDeltaComputeError("internal", message, { cause: error });
+}
+
+function statusForPRDeltaError(errorKind: PRDeltaErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+      return 400;
+    case "git":
+    case "extraction":
     case "internal":
       return 500;
   }

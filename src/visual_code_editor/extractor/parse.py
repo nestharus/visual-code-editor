@@ -90,24 +90,34 @@ def _parse_python(file_path: str, source: str) -> ParseTree:
     return ParseTree(file_path=file_path, language="python", units=tuple(units))
 
 
-def parse(file_path: str) -> ParseTree:
-    """Return a structural parse tree for a source file."""
+def parse_content(
+    content: str,
+    file_path: str,
+    language: str | None = None,
+) -> ParseTree:
+    """Return a structural parse tree for source content."""
 
-    language = _language_for_path(file_path)
-    source = Path(file_path).read_text(encoding="utf-8")
+    resolved_language = language or _language_for_path(file_path)
 
-    if language == "python":
-        return _parse_python(file_path, source)
+    if resolved_language == "python":
+        return _parse_python(file_path, content)
 
     return ParseTree(
         file_path=file_path,
-        language=language,
+        language=resolved_language,
         units=(
             ParseUnit(
                 kind=ParseUnitKind.TOP_LEVEL,
                 name=None,
                 start_line=1,
-                end_line=_line_count(source),
+                end_line=_line_count(content),
             ),
         ),
     )
+
+
+def parse(file_path: str) -> ParseTree:
+    """Return a structural parse tree for a source file."""
+
+    source = Path(file_path).read_text(encoding="utf-8")
+    return parse_content(source, file_path)
