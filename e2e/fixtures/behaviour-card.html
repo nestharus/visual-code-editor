@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BehaviourCard fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      #mount {
+        width: min(720px, 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { createSignal } from "solid-js";
+      import { render } from "solid-js/web";
+      import { BehaviourCard } from "/app/components/behaviour-card/BehaviourCard.tsx";
+      import { makeBehavior } from "/app/lib/behavior.ts";
+      import { makeTrustSignal, trustStateFromString } from "/app/lib/trust.ts";
+
+      const params = new URLSearchParams(window.location.search);
+      const MODES = new Set(["view", "edit"]);
+
+      window.__behaviourCardEvents = [];
+      window.__resetBehaviourCardEvents = () => {
+        window.__behaviourCardEvents.length = 0;
+      };
+
+      function boolParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null) {
+          return fallback;
+        }
+        return value !== "false" && value !== "0";
+      }
+
+      function modeParam(name, fallback) {
+        const value = params.get(name);
+        return value !== null && MODES.has(value) ? value : fallback;
+      }
+
+      function numberParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null || value.trim() === "") {
+          return fallback;
+        }
+
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      const sliceTemplates = [
+        {
+          filePath: "src/checkout/request.ts",
+          startLine: 12,
+          endLine: 28,
+          startCol: null,
+          endCol: null,
+          sliceRole: "entry-point",
+          discoveredBy: "agents:slice-constructor",
+        },
+        {
+          filePath: "src/checkout/payment.ts",
+          startLine: 41,
+          endLine: 86,
+          startCol: null,
+          endCol: null,
+          sliceRole: "body",
+          discoveredBy: "agents:slice-constructor",
+        },
+        {
+          filePath: "src/checkout/receipt.ts",
+          startLine: 101,
+          endLine: 132,
+          startCol: null,
+          endCol: null,
+          sliceRole: "exit",
+          discoveredBy: "agents:slice-constructor",
+        },
+        {
+          filePath: "src/checkout/errors.ts",
+          startLine: 17,
+          endLine: 36,
+          startCol: null,
+          endCol: null,
+          sliceRole: "error-path",
+          discoveredBy: "agents:slice-constructor",
+        },
+      ];
+
+      function buildSlices(sliceCount, confirmedCount) {
+        return Array.from({ length: sliceCount }, (_, index) => {
+          const template = sliceTemplates[index % sliceTemplates.length];
+          const cycle = Math.floor(index / sliceTemplates.length);
+          const lineOffset = cycle * 200;
+
+          return {
+            ...template,
+            startLine: template.startLine + lineOffset,
+            endLine: template.endLine + lineOffset,
+            confirmedBy: index < confirmedCount ? "you-this-session" : null,
+          };
+        });
+      }
+
+      function buildBehavior() {
+        const trustState = trustStateFromString(params.get("trustState") ?? "grounded");
+        const sliceCount = Math.max(1, Math.trunc(numberParam("sliceCount", 3)));
+        const confirmedCount = Math.max(
+          0,
+          Math.min(sliceCount, Math.trunc(numberParam("confirmedCount", 2))),
+        );
+
+        return makeBehavior({
+          id: "behavior:checkout.lifecycle",
+          label: "Checkout behavior",
+          description: boolParam("withDescription", true)
+            ? "Coordinates checkout request validation, payment authorization, and receipt emission."
+            : null,
+          sourceSlices: buildSlices(sliceCount, confirmedCount),
+          trust: makeTrustSignal(trustState, trustState === "grounded" ? "test" : null),
+          parentBehaviorId: null,
+          attributionActor: "agents:slice-constructor",
+        });
+      }
+
+      const [mode, setMode] = createSignal(modeParam("mode", "view"));
+      const behaviour = buildBehavior();
+
+      const props = {
+        behaviour,
+        headerLabel: "Checkout lifecycle",
+        get mode() {
+          return mode();
+        },
+        onCardClick: () => {
+          window.__behaviourCardEvents.push({ type: "card" });
+        },
+        onChevronClick: () => {
+          window.__behaviourCardEvents.push({ type: "chevron" });
+        },
+        onSliceClick: (slice) => {
+          window.__behaviourCardEvents.push({
+            type: "slice",
+            slice: JSON.parse(JSON.stringify(slice)),
+          });
+        },
+        onToggleMode: (next) => {
+          window.__behaviourCardEvents.push({ type: "toggle", next });
+          setMode(next);
+        },
+      };
+
+      render(() => BehaviourCard(props), document.getElementById("mount"));
+    </script>
+  </body>
+</html>
