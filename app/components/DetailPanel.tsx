@@ -15,8 +15,13 @@ import type { GroundingSource, TrustSignal, TrustState } from "../lib/trust";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
+import {
+  makeSelectionItem,
+  makeSelectionScope,
+  type AnchorKind,
+} from "../lib/anchor";
+import { useComposerContext } from "../lib/composer-context";
 import { IconSvg } from "./IconSvg";
-import { PanelPrompt } from "./PanelPrompt";
 import { TrustBadge } from "./TrustBadge";
 
 const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
@@ -306,6 +311,7 @@ export function DetailPanel() {
   const navigate = useNavigate();
   const routeParams = useParams({ strict: false });
   const diagramQuery = useDiagramData();
+  const composer = useComposerContext();
   const [htmlContent, setHtmlContent] = createSignal("");
   const [focusedBlockId, setFocusedBlockId] = createSignal<string | null>(null);
   let panelRef: HTMLElement | undefined;
@@ -317,6 +323,20 @@ export function DetailPanel() {
   const panelKind = () => s().panelKind;
   const panelId = () => s().panelId;
   const panelLabel = () => s().panelLabel;
+
+  const openPromptComposer: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const id = panelId();
+    if (!id) return;
+
+    const surfaceAnchor = panelComposerAnchor();
+    composer.open({
+      surfaceAnchor,
+      trigger: event.currentTarget,
+      selection: makeSelectionScope([
+        makeSelectionItem(id, surfaceAnchor, "entity"),
+      ]),
+    });
+  };
 
   // Look up the detail record and its href
   const detail = () => {
@@ -416,6 +436,17 @@ export function DetailPanel() {
     // never writes to details (e.g. behavioral-edge lifecycle transitions
     // `be_lifecycle:X_lifecycle:Y`). Treat those as edges too.
     return !!findEdgeElement();
+  });
+
+  const panelComposerAnchor = createMemo<AnchorKind>(() => {
+    if (isEdgePanel()) return "edge";
+    const kind = panelKind();
+    if (kind === "lifecycle" || kind === "stage" || kind === "step") {
+      return "behaviour-card";
+    }
+    if (kind === "ui-screen" || kind === "screen") return "screen";
+    if (kind === "widget") return "widget";
+    return "node";
   });
 
   const edgeIconKind = createMemo(() => {
@@ -873,6 +904,14 @@ export function DetailPanel() {
                 </button>
               </Show>
               <button
+                type="button"
+                class="button detail-panel-prompt-trigger"
+                data-testid="prompt-trigger-button"
+                onClick={openPromptComposer}
+              >
+                Prompt
+              </button>
+              <button
                 id="detail-panel-close"
                 type="button"
                 class="button"
@@ -1096,20 +1135,6 @@ export function DetailPanel() {
                 </div>
               </div>
             </Show>
-            <PanelPrompt
-              entityId={panelId() || ""}
-              entityKind={panelKind() || ""}
-              entityLabel={panelLabel() || detail()?.label || ""}
-              description={description()}
-              codeBlocks={codeBlocks()}
-              scenarios={panelScenarios().map((scenario) => ({
-                behaviorId: scenario.behaviorId,
-                title: scenario.title,
-              }))}
-              focusedBlockId={focusedBlockId()}
-              onClearFocus={() => setFocusedBlockId(null)}
-              accent={panelAccent()}
-            />
             <Show when={behaviorScenarioRefs().length > 0}>
               <div class="detail-module detail-behaviors">
                 <h3 class="detail-behaviors-title">

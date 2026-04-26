@@ -3,7 +3,6 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { gotoDiagram } from "./helpers";
 
 const FIND_SHORTCUT = process.platform === "darwin" ? "Meta+f" : "Control+f";
-const MULTI_SELECT_MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
 
 function nodeByText(page: Page, kind: string, text: string): Locator {
   return page.locator(`.graph-node[data-kind='${kind}']`).filter({ hasText: text }).first();
@@ -45,39 +44,6 @@ test.describe("Overlay Accessibility", () => {
     await page.keyboard.press("Escape");
     await expect(page.locator("#watcher-panel")).not.toBeVisible();
     await expect(watcherButton).toBeFocused();
-  });
-
-  test("Prompt dock traps Tab and restores focus to the Prompt button", async ({ page }) => {
-    await gotoDiagram(page, "/organizational");
-
-    await nodeByText(page, "cluster", "Alpha").click({ modifiers: [MULTI_SELECT_MODIFIER] });
-    await nodeByText(page, "cluster", "Beta").click({ modifiers: [MULTI_SELECT_MODIFIER] });
-
-    const promptButton = page.locator('[data-toolbar="prompt"]');
-    await promptButton.click();
-
-    const dock = page.locator(".prompt-dock");
-    await expect(dock).toBeVisible();
-    await expect(page.locator("#prompt-dock-input")).toBeFocused();
-    await page.locator("#prompt-dock-input").fill("Summarize the selected entities");
-
-    const focusOrder = [
-      page.locator(".prompt-dock-submit"),
-      page.locator(".prompt-dock-close"),
-      page.locator(".prompt-dock-clear"),
-      page.locator(".prompt-dock-chip").nth(0),
-      page.locator(".prompt-dock-chip").nth(1),
-      page.locator("#prompt-dock-input"),
-    ];
-
-    for (const target of focusOrder) {
-      await page.keyboard.press("Tab");
-      await expect(target).toBeFocused();
-    }
-
-    await page.keyboard.press("Escape");
-    await expect(dock).not.toBeVisible();
-    await expect(promptButton).toBeFocused();
   });
 
   test("Detail panel focuses its title and returns focus to its opener", async ({ page }) => {

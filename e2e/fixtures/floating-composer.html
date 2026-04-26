@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FloatingComposer fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        min-height: 100vh;
+      }
+
+      #outside-target {
+        position: fixed;
+        inset: auto 24px 24px auto;
+      }
+
+      .anchor-marker {
+        position: fixed;
+        box-sizing: border-box;
+        border: 1px dashed #58a6ff;
+        background: rgb(56 139 253 / 0.08);
+        pointer-events: none;
+      }
+
+      [data-testid="floating-composer"] {
+        width: 280px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <button id="outside-target" type="button" data-testid="outside-target">Outside target</button>
+      <div id="anchor-marker" class="anchor-marker" aria-hidden="true"></div>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { createSignal } from "solid-js";
+      import { render } from "solid-js/web";
+      import { FloatingComposer } from "/app/components/floating-composer/FloatingComposer.tsx";
+      import {
+        anchorKindFromString,
+        makeSelectionItem,
+        makeSelectionScope,
+      } from "/app/lib/anchor.ts";
+
+      const params = new URLSearchParams(window.location.search);
+
+      const MODES = new Set(["ask", "edit", "direct"]);
+      const ANCHORS = new Set([
+        "node",
+        "edge",
+        "code-block",
+        "section",
+        "behaviour-card",
+        "task",
+        "pr-delta",
+        "selection-box",
+        "slice",
+        "screen",
+        "widget",
+      ]);
+
+      const anchorRects = {
+        default: { x: 120, y: 96, width: 72, height: 36 },
+        "above-right": { x: 120, y: 548, width: 72, height: 36 },
+        "above-left": { x: 720, y: 548, width: 56, height: 36 },
+        "below-left": { x: 720, y: 24, width: 56, height: 36 },
+        pin: { x: 0, y: 0, width: 800, height: 600 },
+      };
+
+      window.__floatingComposerCloseEvents = [];
+      window.__floatingComposerSubmissions = [];
+      window.__resetFloatingComposerEvents = () => {
+        window.__floatingComposerCloseEvents.length = 0;
+        window.__floatingComposerSubmissions.length = 0;
+      };
+
+      function boolParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null) {
+          return fallback;
+        }
+        return value !== "false" && value !== "0";
+      }
+
+      function modeParam(name, fallback) {
+        const value = params.get(name);
+        return value !== null && MODES.has(value) ? value : fallback;
+      }
+
+      function anchorParam(name, fallback) {
+        const value = params.get(name);
+        return value !== null && ANCHORS.has(value) ? anchorKindFromString(value) : fallback;
+      }
+
+      function enabledModesParam() {
+        const value = params.get("enabledModes");
+        if (value === null) {
+          return undefined;
+        }
+
+        return value
+          .split(",")
+          .map((mode) => mode.trim())
+          .filter((mode) => MODES.has(mode));
+      }
+
+      function plainRect(rect) {
+        return {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          top: rect.y,
+          right: rect.x + rect.width,
+          bottom: rect.y + rect.height,
+          left: rect.x,
+        };
+      }
+
+      function buildAnchorRect() {
+        const anchorName = params.get("anchor") ?? "default";
+        if (anchorName === "none") {
+          return null;
+        }
+
+        const base = anchorRects[anchorName] ?? anchorRects.default;
+        const rect = {
+          x: Number(params.get("x") ?? base.x),
+          y: Number(params.get("y") ?? base.y),
+          width: Number(params.get("width") ?? base.width),
+          height: Number(params.get("height") ?? base.height),
+        };
+
+        return DOMRectReadOnly.fromRect(rect);
+      }
+
+      function buildSelection() {
+        const selectionKind = anchorParam("selectionKind", "node");
+        const selectionMode = params.get("selectionMode") === "contents" ? "contents" : "entity";
+        const ids = params.has("selectionIds")
+          ? params
+              .get("selectionIds")
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean)
+          : ["node-alpha"];
+
+        return makeSelectionScope(
+          ids.map((id) => makeSelectionItem(id, selectionKind, selectionMode)),
+        );
+      }
+
+      const [open, setOpen] = createSignal(boolParam("open", true));
+      const anchorRect = buildAnchorRect();
+      const anchorMarker = document.getElementById("anchor-marker");
+
+      window.__floatingComposerAnchorRect = anchorRect === null ? null : plainRect(anchorRect);
+
+      if (anchorRect === null) {
+        anchorMarker.hidden = true;
+      } else {
+        anchorMarker.style.left = `${anchorRect.x}px`;
+        anchorMarker.style.top = `${anchorRect.y}px`;
+        anchorMarker.style.width = `${anchorRect.width}px`;
+        anchorMarker.style.height = `${anchorRect.height}px`;
+      }
+
+      function prefillPrompt() {
+        if (!params.has("prompt")) {
+          return;
+        }
+
+        const input = document.querySelector('[data-testid="prompt-input"]');
+        if (input === null) {
+          return;
+        }
+
+        input.value = params.get("prompt");
+        input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      }
+
+      const props = {
+        get open() {
+          return open();
+        },
+        anchorRect,
+        enabledModes: enabledModesParam(),
+        initialMode: modeParam("mode", "ask"),
+        onClose: () => {
+          window.__floatingComposerCloseEvents.push("close");
+          setOpen(false);
+        },
+        onSubmit: (payload) => {
+          window.__floatingComposerSubmissions.push(JSON.parse(JSON.stringify(payload)));
+        },
+        selection: buildSelection(),
+        surfaceAnchor: anchorParam("surfaceAnchor", "node"),
+      };
+
+      render(() => FloatingComposer(props), document.getElementById("mount"));
+
+      setTimeout(prefillPrompt, 0);
+    </script>
+  </body>
+</html>

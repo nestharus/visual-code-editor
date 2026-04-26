@@ -4,23 +4,37 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  onCleanup,
   Show,
   useContext,
   type ParentComponent,
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
-import { PromptDock } from "./PromptDock";
 import { SearchOverlay } from "./SearchOverlay";
 import { WatcherPanel } from "./WatcherPanel";
+import {
+  FloatingComposer,
+  type ComposerResult,
+  type ComposerSubmission,
+} from "./floating-composer/FloatingComposer";
 import { buildDiffStatusMap } from "../graph/diff-overlay";
+import type { CombinedData } from "../graph/BehaviorPlayback";
 import { GraphSurface, type GraphSelectionApi } from "../graph/GraphSurface";
 import type { GraphDefinition } from "../graph/layout/types";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
+import { ComposerContext, type ComposerOpenIntent } from "../lib/composer-context";
 import {
   useWatchSubscription,
   type WatcherState,
 } from "../lib/live/useWatchSubscription";
 import { useDiagramData, WATCHER_URL } from "../lib/diagram-data";
+import {
+  makeSelectionItem,
+  makeSelectionScope,
+  type AnchorKind,
+  type SelectionScope,
+} from "../lib/anchor";
+import { createSelectionStore } from "../lib/selection-store";
 
 type DiagramShellData = {
   elements: () => DiagramElementDefinition[];
@@ -81,10 +95,19 @@ export const AppShell: ParentComponent = (props) => {
   const [searchOpenRequest, setSearchOpenRequest] = createSignal(0);
   const [selectionApi, setSelectionApi] = createSignal<GraphSelectionApi | undefined>();
   const [watcherPanelOpen, setWatcherPanelOpen] = createSignal(false);
-  const [promptDockOpen, setPromptDockOpen] = createSignal(false);
+  const selectionStore = createSelectionStore();
+  const [composerOpen, setComposerOpen] = createSignal(false);
+  const [composerSurfaceAnchor, setComposerSurfaceAnchor] =
+    createSignal<AnchorKind>("selection-box");
+  const [composerAnchorRect, setComposerAnchorRect] =
+    createSignal<DOMRectReadOnly | null>(null);
+  const [composerResult, setComposerResult] = createSignal<ComposerResult | null>(null);
+  const [composerError, setComposerError] = createSignal("");
+  const [composerSubmitting, setComposerSubmitting] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
   const [diffVisible, setDiffVisible] = createSignal(initialDiffVisible());
   let viewportRef: HTMLElement | undefined;
+  let composerAnchorElement: HTMLElement | null = null;
   let searchRequestVersion = 0;
 
   function initialTestsVisible(): boolean {
@@ -179,6 +202,11 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   const selectedPromptNodes = createMemo(() => selectionApi()?.selectedNodes() ?? []);
+  const graphSelectionScope = createMemo<SelectionScope>(() =>
+    makeSelectionScope(
+      selectedPromptNodes().map((node) => makeSelectionItem(node.id, "node", "entity")),
+    ),
+  );
   const testsData = createMemo(() => diagramQuery.data?.tests ?? null);
   const testByEntity = createMemo(() => testsData()?.byEntity ?? {});
   const hasTests = createMemo(() => Object.keys(testByEntity()).length > 0);
@@ -191,16 +219,157 @@ export const AppShell: ParentComponent = (props) => {
   const diffStatusMap = createMemo(() => buildDiffStatusMap(currentDiff()));
   const hasDiff = createMemo(() => !!currentDiff());
 
+  function closeComposer() {
+    setComposerOpen(false);
+    setComposerAnchorRect(null);
+    setComposerResult(null);
+    setComposerError("");
+    setComposerSubmitting(false);
+    composerAnchorElement = null;
+  }
+
+  function updateComposerAnchorRect() {
+    if (!composerOpen()) return;
+    if (composerAnchorElement?.isConnected) {
+      setComposerAnchorRect(composerAnchorElement.getBoundingClientRect());
+    }
+  }
+
+  function openComposer(intent: ComposerOpenIntent) {
+    if (intent.selection) {
+      selectionStore.replace(intent.selection.items);
+    }
+
+    composerAnchorElement = intent.trigger ?? null;
+    setComposerSurfaceAnchor(intent.surfaceAnchor);
+    setComposerAnchorRect(
+      intent.anchorRect ??
+        intent.trigger?.getBoundingClientRect() ??
+        viewportRef?.getBoundingClientRect() ??
+        null,
+    );
+    setComposerResult(null);
+    setComposerError("");
+    setComposerSubmitting(false);
+    setComposerOpen(true);
+  }
+
+  function isTextEntryElement(element: Element | null): boolean {
+    if (!(element instanceof HTMLElement)) return false;
+    const tagName = element.tagName.toLowerCase();
+    return (
+      tagName === "input" ||
+      tagName === "textarea" ||
+      tagName === "select" ||
+      element.isContentEditable
+    );
+  }
+
+  function resultText(data: unknown): string {
+    if (!data || typeof data !== "object") return "";
+    const record = data as Record<string, unknown>;
+    if (typeof record.response === "string") return record.response;
+    if (typeof record.output === "string") return record.output.trim();
+    const parsed = record.parsed;
+    if (parsed && typeof parsed === "object") {
+      const parsedRecord = parsed as Record<string, unknown>;
+      if (typeof parsedRecord.response === "string") return parsedRecord.response;
+      if (typeof parsedRecord.message === "string") return parsedRecord.message;
+    }
+    return "";
+  }
+
+  function patchText(data: unknown): string {
+    if (!data || typeof data !== "object") return "";
+    const record = data as Record<string, unknown>;
+    if (typeof record.patch === "string") return record.patch;
+    const parsed = record.parsed;
+    if (parsed && typeof parsed === "object") {
+      const parsedRecord = parsed as Record<string, unknown>;
+      if (typeof parsedRecord.patch === "string") return parsedRecord.patch;
+    }
+    return "";
+  }
+
+  async function handleComposerSubmit(payload: ComposerSubmission) {
+    setComposerSubmitting(true);
+    setComposerError("");
+    setComposerResult(null);
+
+    try {
+      const response = await fetch(`${WATCHER_URL}/api/prompt-composer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Prompt composer request failed");
+      }
+
+      const data = await response.json();
+      const text = resultText(data) || "Composer response received.";
+      if (payload.mode === "edit") {
+        setComposerResult({
+          kind: "edit",
+          text,
+          patch: patchText(data) || text,
+        });
+      } else if (payload.mode === "direct") {
+        setComposerResult({ kind: "direct", text });
+      } else {
+        setComposerResult({ kind: "answer", text });
+      }
+    } catch (submissionError) {
+      const message =
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Prompt composer request failed";
+      setComposerError(message);
+    } finally {
+      setComposerSubmitting(false);
+    }
+  }
+
   createEffect(() => {
     location().pathname;
     selectionApi()?.clearSelection();
-    setPromptDockOpen(false);
+    selectionStore.clear();
+    closeComposer();
   });
 
   createEffect(() => {
-    if (selectedPromptNodes().length === 0) {
-      setPromptDockOpen(false);
-    }
+    selectionStore.replace(graphSelectionScope().items);
+  });
+
+  createEffect(() => {
+    if (!composerOpen()) return;
+
+    const handleResize = () => updateComposerAnchorRect();
+    window.addEventListener("resize", handleResize);
+    onCleanup(() => window.removeEventListener("resize", handleResize));
+  });
+
+  createEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== "/" || composerOpen()) return;
+      if (isTextEntryElement(document.activeElement)) return;
+
+      event.preventDefault();
+      const selection = selectionStore.selection();
+      openComposer({
+        surfaceAnchor: "selection-box",
+        selection,
+        trigger:
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : viewportRef,
+        anchorRect: viewportRef?.getBoundingClientRect(),
+      });
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => document.removeEventListener("keydown", handleKeyDown));
   });
 
   createEffect(() => {
@@ -213,7 +382,7 @@ export const AppShell: ParentComponent = (props) => {
     window.sessionStorage?.setItem("diffVisible", diffVisible() ? "true" : "false");
   });
 
-  const handleSkipToDiagram = (event) => {
+  const handleSkipToDiagram = (event: MouseEvent) => {
     if (!viewportRef) return;
     event.preventDefault();
     viewportRef.focus();
@@ -265,41 +434,17 @@ export const AppShell: ParentComponent = (props) => {
     setSearchResultCount(0);
   };
 
-  const handlePromptSubmit = async (prompt: string) => {
-    const selection = selectedPromptNodes();
-    if (selection.length === 0) {
-      throw new Error("Select at least one entity before prompting.");
-    }
-
-    const response = await fetch(`${WATCHER_URL}/api/prompt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pathname: location().pathname,
-        prompt,
-        selection,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Prompt request failed");
-    }
-
-    const data = await response.json();
-    if (!data || typeof data.response !== "string") {
-      throw new Error("Prompt response missing text");
-    }
-
-    return data.response;
-  };
-
   return (
     <DiagramShellContext.Provider value={{ publish }}>
-      <div
-        classList={{
-          "page-shell": true,
-          "has-prompt-dock": promptDockOpen() && selectedPromptNodes().length > 0,
+      <ComposerContext.Provider
+        value={{
+          open: openComposer,
+          close: closeComposer,
+          selection: selectionStore.selection,
         }}
+      >
+      <div
+        class="page-shell"
       >
         <a
           href="#diagram-viewport"
@@ -401,19 +546,20 @@ export const AppShell: ParentComponent = (props) => {
               </svg>
               <span>Search</span>
             </button>
-            <Show when={selectedPromptNodes().length > 0}>
+            <Show when={selectionStore.selection().items.length > 0}>
               <button
                 type="button"
-                classList={{
-                  "toolbar-button": true,
-                  "is-open": promptDockOpen(),
-                }}
+                class="toolbar-button"
                 data-toolbar="prompt"
-                onClick={() => setPromptDockOpen(true)}
-                aria-expanded={promptDockOpen()}
-                aria-controls="prompt-dock"
+                onClick={(event) =>
+                  openComposer({
+                    surfaceAnchor: "selection-box",
+                    trigger: event.currentTarget,
+                  })
+                }
+                aria-expanded={composerOpen()}
               >
-                {`Prompt (${selectedPromptNodes().length})`}
+                {`Prompt (${selectionStore.selection().items.length})`}
               </button>
             </Show>
             <div class="view-toggle" role="tablist" aria-label="Diagram view">
@@ -465,7 +611,7 @@ export const AppShell: ParentComponent = (props) => {
             <>
               {i > 0 && <span class="breadcrumb-sep">/</span>}
               {crumb.href && i < breadcrumbs().length - 1 ? (
-                <Link href={crumb.href} class="breadcrumb-item">
+                <Link to={crumb.href} class="breadcrumb-item">
                   {crumb.label}
                 </Link>
               ) : (
@@ -491,7 +637,11 @@ export const AppShell: ParentComponent = (props) => {
                 graph={activeSearchGraph()}
                 elements={searchActive() ? undefined : diagramData()?.elements() || []}
                 mermaidText={searchActive() ? undefined : diagramData()?.mermaidText()}
-                scenarioData={searchActive() ? undefined : diagramQuery.data?.combined}
+                scenarioData={
+                  searchActive()
+                    ? undefined
+                    : (diagramQuery.data?.combined as CombinedData | undefined)
+                }
                 testByEntity={testByEntity()}
                 testsVisible={testsVisible()}
                 diffStatusMap={diffStatusMap()}
@@ -543,15 +693,19 @@ export const AppShell: ParentComponent = (props) => {
           </main>
           <DetailPanel />
         </div>
-        <PromptDock
-          isOpen={promptDockOpen() && selectedPromptNodes().length > 0}
-          selection={selectedPromptNodes()}
-          onToggleSelection={(nodeId) => selectionApi()?.toggleSelection(nodeId)}
-          onClearSelection={() => selectionApi()?.clearSelection()}
-          onSubmit={handlePromptSubmit}
-          onClose={() => setPromptDockOpen(false)}
+        <FloatingComposer
+          open={composerOpen()}
+          anchorRect={composerAnchorRect()}
+          surfaceAnchor={composerSurfaceAnchor()}
+          selection={selectionStore.selection()}
+          onClose={closeComposer}
+          onSubmit={handleComposerSubmit}
+          result={composerResult()}
+          error={composerError()}
+          isSubmitting={composerSubmitting()}
         />
       </div>
+      </ComposerContext.Provider>
     </DiagramShellContext.Provider>
   );
 };

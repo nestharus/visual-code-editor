@@ -12,6 +12,18 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  isAnchorKind,
+  isContainerAnchorKind,
+  isSelectionMode,
+  type AnchorKind,
+} from "./anchor-vocab";
+import {
+  composePrompt as composeComposerPrompt,
+  type ComposerMode,
+  type ComposerSelection,
+  type ComposerSelectionItem,
+} from "./prompts/compose";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -28,66 +40,27 @@ type WatchEntry = WatchConfig & {
   lastEvent?: string;
 };
 
-type PromptMode = "ask" | "edit";
-
-type PanelPromptCodeBlock = {
-  id: string;
-  path: string;
-  lineStart: number;
-  lineEnd: number;
-  language?: string;
-  symbol?: string;
-  content?: string;
-};
-
-type PanelPromptRequest = {
-  pathname: string;
+type PromptComposerRequest = {
+  mode: ComposerMode;
   prompt: string;
-  mode: PromptMode;
-  panel: {
-    kind: string;
-    id: string;
-    label: string;
-  };
-  focus: {
-    blockIds: string[];
-  };
-  context: {
-    entity?: {
-      id?: string;
-      kind?: string;
-      label?: string;
-      description?: string;
-    };
-    codeBlocks: PanelPromptCodeBlock[];
-  };
+  selection: ComposerSelection;
+  surfaceAnchor: AnchorKind;
 };
 
-type PanelPromptAnswer = {
-  kind: "answer";
-  response: string;
-};
+type PromptComposerErrorKind =
+  | "validation"
+  | "spawn"
+  | "timeout"
+  | "cap"
+  | "agents_unreachable"
+  | "disabled"
+  | "internal";
 
-type PanelPromptEdit = {
-  kind: "code-edit";
-  response: string;
-  edits: Array<{
-    blockId: string;
-    path: string;
-    before: string;
-    after: string;
-    language?: string;
-    symbol?: string;
-  }>;
-};
+type ValidateAnchorContextResult =
+  | { ok: true; value: PromptComposerRequest }
+  | { ok: false; error: string; error_kind: "validation" };
 
-type PanelPromptResponse = PanelPromptAnswer | PanelPromptEdit;
-
-type ValidateBodyResult =
-  | { ok: true; parsed: PanelPromptRequest }
-  | { ok: false; error: string };
-
-type SpawnAgentsOutcome = "ok" | "timeout" | "exit" | "oversize";
+type SpawnAgentsOutcome = "ok" | "timeout" | "exit" | "oversize" | "spawn_error";
 
 type SpawnAgentsResult = {
   outcome: SpawnAgentsOutcome;
@@ -96,6 +69,7 @@ type SpawnAgentsResult = {
   stdoutBytes: number;
   stderrBytes: number;
   exitCode: number | null;
+  agentPid: number | null;
   elapsedMs: number;
 };
 
@@ -261,210 +235,90 @@ async function loadConfig() {
   }
 }
 
-function validateBody(body: unknown): ValidateBodyResult {
-  if (!body || typeof body !== "object") {
-    return { ok: false, error: "body must be an object" };
+function validateAnchorContext(payload: unknown): ValidateAnchorContextResult {
+  if (!payload || typeof payload !== "object") {
+    return validationError("body must be an object");
   }
 
-  const candidate = body as Record<string, unknown>;
-  const { pathname, prompt, mode, panel, focus, context } = candidate;
+  const candidate = payload as Record<string, unknown>;
+  const { mode, prompt, selection, surfaceAnchor } = candidate;
 
-  if (typeof pathname !== "string" || pathname.length === 0) {
-    return { ok: false, error: "pathname must be a non-empty string" };
+  if (mode !== "ask" && mode !== "edit" && mode !== "direct") {
+    return validationError("mode must be ask, edit, or direct");
   }
 
   if (typeof prompt !== "string" || prompt.trim().length === 0) {
-    return { ok: false, error: "prompt must be a non-empty string" };
+    return validationError("prompt must be a non-empty string");
   }
 
-  if (mode !== "ask" && mode !== "edit") {
-    return { ok: false, error: "mode must be ask or edit" };
+  if (!isAnchorKind(surfaceAnchor)) {
+    return validationError("surfaceAnchor must be a known AnchorKind");
   }
 
-  if (!panel || typeof panel !== "object") {
-    return { ok: false, error: "panel must be an object" };
+  if (!selection || typeof selection !== "object") {
+    return validationError("selection must be an object");
   }
 
-  const panelRecord = panel as Record<string, unknown>;
-  if (
-    typeof panelRecord.kind !== "string"
-    || typeof panelRecord.id !== "string"
-    || typeof panelRecord.label !== "string"
-  ) {
-    return { ok: false, error: "panel.kind, panel.id, and panel.label must be strings" };
+  const selectionRecord = selection as Record<string, unknown>;
+  if (!Array.isArray(selectionRecord.items)) {
+    return validationError("selection.items must be an array");
   }
 
-  if (!focus || typeof focus !== "object") {
-    return { ok: false, error: "focus must be an object" };
-  }
-
-  const focusRecord = focus as Record<string, unknown>;
-  if (!Array.isArray(focusRecord.blockIds) || !focusRecord.blockIds.every((id) => typeof id === "string")) {
-    return { ok: false, error: "focus.blockIds must be an array of strings" };
-  }
-
-  if (!context || typeof context !== "object") {
-    return { ok: false, error: "context must be an object" };
-  }
-
-  const contextRecord = context as Record<string, unknown>;
-  if (!Array.isArray(contextRecord.codeBlocks)) {
-    return { ok: false, error: "context.codeBlocks must be an array" };
-  }
-
-  const parsedCodeBlocks: PanelPromptCodeBlock[] = [];
-  for (const block of contextRecord.codeBlocks) {
-    if (!block || typeof block !== "object") {
-      return { ok: false, error: "context.codeBlocks entries must be objects" };
+  const items: ComposerSelectionItem[] = [];
+  for (const [index, item] of selectionRecord.items.entries()) {
+    if (!item || typeof item !== "object") {
+      return validationError(`selection.items[${index}] must be an object`);
     }
 
-    const blockRecord = block as Record<string, unknown>;
-    if (
-      typeof blockRecord.id !== "string"
-      || typeof blockRecord.path !== "string"
-      || typeof blockRecord.lineStart !== "number"
-      || typeof blockRecord.lineEnd !== "number"
-    ) {
-      return {
-        ok: false,
-        error: "context.codeBlocks entries must include string id/path and numeric lineStart/lineEnd",
-      };
+    const itemRecord = item as Record<string, unknown>;
+    if (typeof itemRecord.id !== "string" || itemRecord.id.trim().length === 0) {
+      return validationError(`selection.items[${index}].id must be a non-empty string`);
     }
 
-    if (blockRecord.language !== undefined && typeof blockRecord.language !== "string") {
-      return { ok: false, error: "context.codeBlocks[].language must be a string when present" };
+    if (!isAnchorKind(itemRecord.kind)) {
+      return validationError(`selection.items[${index}].kind must be a known AnchorKind`);
     }
 
-    if (blockRecord.symbol !== undefined && typeof blockRecord.symbol !== "string") {
-      return { ok: false, error: "context.codeBlocks[].symbol must be a string when present" };
+    if (!isSelectionMode(itemRecord.mode)) {
+      return validationError(`selection.items[${index}].mode must be entity or contents`);
     }
 
-    if (blockRecord.content !== undefined && typeof blockRecord.content !== "string") {
-      return { ok: false, error: "context.codeBlocks[].content must be a string when present" };
+    if (itemRecord.mode === "contents" && !isContainerAnchorKind(itemRecord.kind)) {
+      return validationError("SelectionMode.CONTENTS is only valid for container anchor kinds");
     }
 
-    parsedCodeBlocks.push({
-      id: blockRecord.id,
-      path: blockRecord.path,
-      lineStart: blockRecord.lineStart,
-      lineEnd: blockRecord.lineEnd,
-      language: typeof blockRecord.language === "string" ? blockRecord.language : undefined,
-      symbol: typeof blockRecord.symbol === "string" ? blockRecord.symbol : undefined,
-      content: typeof blockRecord.content === "string" ? blockRecord.content : undefined,
+    items.push({
+      id: itemRecord.id,
+      kind: itemRecord.kind,
+      mode: itemRecord.mode,
     });
   }
 
-  if (contextRecord.entity !== undefined && (!contextRecord.entity || typeof contextRecord.entity !== "object")) {
-    return { ok: false, error: "context.entity must be an object when present" };
-  }
-
-  const entityRecord = (contextRecord.entity as Record<string, unknown> | undefined) ?? undefined;
-  for (const key of ["id", "kind", "label", "description"] as const) {
-    const value = entityRecord?.[key];
-    if (value !== undefined && typeof value !== "string") {
-      return { ok: false, error: `context.entity.${key} must be a string when present` };
+  const primaryAnchor = selectionRecord.primaryAnchor;
+  if (items.length === 0) {
+    if (primaryAnchor !== null) {
+      return validationError("selection.primaryAnchor must be null when selection.items is empty");
     }
+  } else if (primaryAnchor !== items[items.length - 1].kind) {
+    return validationError("selection.primaryAnchor must match the last selected item kind");
   }
 
   return {
     ok: true,
-    parsed: {
-      pathname,
-      prompt,
+    value: {
       mode,
-      panel: {
-        kind: panelRecord.kind,
-        id: panelRecord.id,
-        label: panelRecord.label,
+      prompt,
+      selection: {
+        items,
+        primaryAnchor: primaryAnchor as AnchorKind | null,
       },
-      focus: {
-        blockIds: focusRecord.blockIds,
-      },
-      context: {
-        entity: entityRecord
-          ? {
-              id: typeof entityRecord.id === "string" ? entityRecord.id : undefined,
-              kind: typeof entityRecord.kind === "string" ? entityRecord.kind : undefined,
-              label: typeof entityRecord.label === "string" ? entityRecord.label : undefined,
-              description: typeof entityRecord.description === "string" ? entityRecord.description : undefined,
-            }
-          : undefined,
-        codeBlocks: parsedCodeBlocks,
-      },
+      surfaceAnchor,
     },
   };
 }
 
-function composePrompt(req: PanelPromptRequest): string {
-  const focusedBlocks = req.focus.blockIds
-    .map((blockId) => req.context.codeBlocks.find((block) => block.id === blockId))
-    .filter((block): block is PanelPromptCodeBlock => Boolean(block));
-  const panelDescription = req.context.entity?.description?.trim();
-
-  const blockSections = focusedBlocks.length > 0
-    ? focusedBlocks.map((block, index) => {
-        const blockMeta = [
-          `blockId: ${block.id}`,
-          `path: ${block.path}`,
-          `lines: ${block.lineStart}-${block.lineEnd}`,
-          `language: ${block.language || "-"}`,
-          `symbol: ${block.symbol || "-"}`,
-        ].join("\n");
-        return [
-          `## Focused Block ${index + 1}`,
-          blockMeta,
-          "",
-          "```",
-          block.content || "",
-          "```",
-        ].join("\n");
-      }).join("\n\n")
-    : "## Focused Blocks\nNone selected.";
-
-  const responseContract = req.mode === "edit"
-    ? [
-        "## Response Contract",
-        "Return exactly one JSON object and nothing else.",
-        "Use this shape:",
-        "{",
-        '  "kind": "code-edit",',
-        '  "response": "Short summary of the edit suggestion.",',
-        '  "edits": [',
-        "    {",
-        '      "blockId": "one of the provided focused block ids",',
-        '      "before": "exact current content for that block",',
-        '      "after": "your suggested replacement content"',
-        "    }",
-        "  ]",
-        "}",
-        "Only use these block ids:",
-        req.focus.blockIds.length > 0 ? req.focus.blockIds.map((blockId) => `- ${blockId}`).join("\n") : "- none",
-      ].join("\n")
-    : [
-        "## Response Contract",
-        "Respond with plain text only.",
-        "Do not return JSON or markdown fences.",
-      ].join("\n");
-
-  return [
-    `# Panel Prompt (${req.mode})`,
-    "",
-    "## Route",
-    req.pathname,
-    "",
-    "## Panel",
-    `kind: ${req.panel.kind}`,
-    `id: ${req.panel.id}`,
-    `label: ${req.panel.label}`,
-    `description: ${panelDescription || "-"}`,
-    "",
-    "## User Request",
-    req.prompt,
-    "",
-    blockSections,
-    "",
-    responseContract,
-  ].join("\n");
+function validationError(error: string): ValidateAnchorContextResult {
+  return { ok: false, error, error_kind: "validation" };
 }
 
 function normalizeForLenientJson(candidate: string): string {
@@ -518,30 +372,79 @@ function extractJson(stdout: string): ExtractJsonResult {
   }
 }
 
-function sanitizeLogValue(value: string | number | null): string {
-  if (value === null) return "-";
-  return String(value).trim().replace(/\s+/g, "_") || "-";
-}
-
-function logOutcome(fields: Record<string, string | number | null>) {
-  const parts = Object.entries(fields).map(([key, value]) => `${key}=${sanitizeLogValue(value)}`);
-  console.log(`panel_prompt ${parts.join(" ")}`);
-}
-
 function trimExcerpt(text: string, maxChars = 240): string {
   const trimmed = text.trim().replace(/\s+/g, " ");
   if (trimmed.length <= maxChars) return trimmed || "-";
   return `${trimmed.slice(0, maxChars - 3)}...`;
 }
 
-function trimForDisplay(text: string, maxChars = 4000): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxChars) return trimmed;
-  return `${trimmed.slice(0, maxChars - 3)}...`;
+function logFailureExcerpt(requestId: string, stderr: string) {
+  console.log(`prompt_composer_detail request_id=${requestId} stderr=${JSON.stringify(trimExcerpt(stderr))}`);
 }
 
-function logFailureExcerpt(requestId: string, stderr: string) {
-  console.log(`panel_prompt_detail request_id=${requestId} stderr=${JSON.stringify(trimExcerpt(stderr))}`);
+function logPromptComposerOutcome(fields: {
+  request_id: string;
+  mode: ComposerMode | "-";
+  selection_count: number;
+  surface_anchor: AnchorKind | "-";
+  duration_ms: number;
+  status: "ok" | "error";
+  error_kind?: PromptComposerErrorKind;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: "/api/prompt-composer",
+    mode: fields.mode,
+    selection_count: fields.selection_count,
+    surface_anchor: fields.surface_anchor,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+  }));
+}
+
+function promptComposerCapBytes(mode: ComposerMode): number {
+  switch (mode) {
+    case "ask":
+      return 256 * 1024;
+    case "edit":
+      return 512 * 1024;
+    case "direct":
+      return 1024 * 1024;
+  }
+}
+
+function promptComposerTimeoutMs(mode: ComposerMode): number {
+  if (mode === "ask") {
+    return parseInt(process.env.PROMPT_COMPOSER_ASK_TIMEOUT_MS || "", 10) || 20000;
+  }
+
+  if (mode === "edit") {
+    return parseInt(process.env.PROMPT_COMPOSER_EDIT_TIMEOUT_MS || "", 10) || 45000;
+  }
+
+  return parseInt(process.env.PROMPT_COMPOSER_DIRECT_TIMEOUT_MS || "", 10) || 45000;
+}
+
+function promptComposerModel(mode: ComposerMode): string {
+  if (mode === "ask") {
+    return process.env.PROMPT_COMPOSER_ASK_MODEL || "claude-haiku";
+  }
+
+  if (mode === "edit") {
+    return process.env.PROMPT_COMPOSER_EDIT_MODEL || "gpt-high";
+  }
+
+  return process.env.PROMPT_COMPOSER_DIRECT_MODEL || "gpt-high";
+}
+
+async function readWorkspaceSnapshot(): Promise<unknown | undefined> {
+  try {
+    return JSON.parse(await readFile(DIAGRAM_JSON_PATH, "utf-8"));
+  } catch {
+    return undefined;
+  }
 }
 
 function spawnAgents(
@@ -559,6 +462,7 @@ function spawnAgents(
     let stdoutBytes = 0;
     let stderrBytes = 0;
     let exitCode: number | null = null;
+    let agentPid: number | null = null;
     let settled = false;
     let outcome: SpawnAgentsOutcome | null = null;
     let forceResolveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -569,6 +473,7 @@ function spawnAgents(
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],
     });
+    agentPid = child.pid ?? null;
 
     const finish = () => {
       if (settled || !outcome) return;
@@ -582,6 +487,7 @@ function spawnAgents(
         stdoutBytes,
         stderrBytes,
         exitCode,
+        agentPid,
         elapsedMs: Date.now() - startedAt,
       });
     };
@@ -656,7 +562,7 @@ function spawnAgents(
     child.on("error", (error) => {
       clearTimeout(timeoutTimer);
       if (!outcome) {
-        outcome = "exit";
+        outcome = "spawn_error";
       }
       const appended = appendChunk(Buffer.from(error.message, "utf8"), stderrCapBytes, stderrChunks, stderrBytes);
       stderrBytes = appended.totalBytes;
@@ -696,243 +602,95 @@ app.get("/api/diagram", async (_req, res) => {
   }
 });
 
-app.post("/api/prompt", (req, res) => {
-  const selection = Array.isArray(req.body?.selection) ? req.body.selection : [];
-  const labels = selection
-    .map((item) => (item && typeof item.label === "string" ? item.label : "unnamed"))
-    .join(", ");
-
-  res.json({
-    response: `Analysis of ${selection.length} entities (${labels}): These entities are part of the system architecture and interact through defined edges. The selected components handle core functionality.`,
-  });
-});
-
-app.post("/api/panel-prompt", async (req, res) => {
+app.post("/api/prompt-composer", async (req, res) => {
   const requestId = randomUUID();
-  const ref = requestId.slice(0, 8);
-  const askModel = process.env.PANEL_PROMPT_ASK_MODEL || "claude-haiku";
-  const editModel = process.env.PANEL_PROMPT_EDIT_MODEL || "gpt-high";
-  const askTimeoutMs = parseInt(process.env.PANEL_PROMPT_ASK_TIMEOUT_MS || "", 10) || 20000;
-  const editTimeoutMs = parseInt(process.env.PANEL_PROMPT_EDIT_TIMEOUT_MS || "", 10) || 45000;
-  const enabled = process.env.PANEL_PROMPT_ENABLED !== "0";
-  const debugPrompt = process.env.PANEL_PROMPT_DEBUG === "1";
+  const startedAt = Date.now();
 
-  const validation = validateBody(req.body);
+  const fail = (
+    statusCode: number,
+    errorKind: PromptComposerErrorKind,
+    error: string,
+    request?: PromptComposerRequest,
+  ) => {
+    const durationMs = Date.now() - startedAt;
+    logPromptComposerOutcome({
+      request_id: requestId,
+      mode: request?.mode ?? "-",
+      selection_count: request?.selection.items.length ?? 0,
+      surface_anchor: request?.surfaceAnchor ?? "-",
+      duration_ms: durationMs,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+      duration_ms: durationMs,
+    });
+  };
+
+  const validation = validateAnchorContext(req.body);
   if (!validation.ok) {
-    logOutcome({
-      request_id: requestId,
-      outcome: "validation_error",
-      mode: "-",
-      panel: "-",
-      model: "-",
-      elapsed_ms: 0,
-      parse_path: "-",
-      stdout_bytes: 0,
-      stderr_bytes: 0,
-      exit_code: "-",
-    });
-    logFailureExcerpt(requestId, validation.error);
-    return res.json({
-      kind: "answer",
-      response: `Invalid request. [ref: ${ref}]`,
-    } satisfies PanelPromptResponse);
+    return fail(400, validation.error_kind, validation.error);
   }
 
-  const panelRequest = validation.parsed;
-  const panelKey = `${panelRequest.panel.kind}/${panelRequest.panel.id}`;
-  const model = panelRequest.mode === "edit" ? editModel : askModel;
-
-  if (!enabled) {
-    logOutcome({
-      request_id: requestId,
-      outcome: "disabled",
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: 0,
-      parse_path: "-",
-      stdout_bytes: 0,
-      stderr_bytes: 0,
-      exit_code: "-",
-    });
-    return res.json({
-      kind: "answer",
-      response: `Panel prompt is temporarily unavailable in this environment. [ref: ${ref}]`,
-    } satisfies PanelPromptResponse);
+  const composerRequest = validation.value;
+  if (process.env.PROMPT_COMPOSER_ENABLED === "0") {
+    return fail(503, "disabled", "prompt composer is disabled", composerRequest);
   }
 
-  if (panelRequest.mode === "edit" && panelRequest.focus.blockIds.length === 0) {
-    logOutcome({
-      request_id: requestId,
-      outcome: "no_focus",
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: 0,
-      parse_path: "-",
-      stdout_bytes: 0,
-      stderr_bytes: 0,
-      exit_code: "-",
+  try {
+    const workspace = await readWorkspaceSnapshot();
+    const agentInput = composeComposerPrompt({
+      ...composerRequest,
+      workspace,
     });
-    return res.json({
-      kind: "answer",
-      response: `Select a code block with 'Use in Prompt' to get a concrete edit suggestion. [ref: ${ref}]`,
-    } satisfies PanelPromptResponse);
-  }
-
-  const prompt = composePrompt(panelRequest);
-  if (debugPrompt) {
-    console.log(
-      `panel_prompt_debug request_id=${requestId} prompt_bytes=${Buffer.byteLength(prompt, "utf8")}\n---prompt---\n${prompt}\n---end prompt---`,
+    const spawnResult = await spawnAgents(
+      promptComposerModel(composerRequest.mode),
+      agentInput,
+      promptComposerTimeoutMs(composerRequest.mode),
+      promptComposerCapBytes(composerRequest.mode),
     );
-  }
 
-  const spawnResult = await spawnAgents(
-    model,
-    prompt,
-    panelRequest.mode === "edit" ? editTimeoutMs : askTimeoutMs,
-    panelRequest.mode === "edit" ? 512 * 1024 : 256 * 1024,
-  );
-
-  if (spawnResult.outcome !== "ok") {
-    logOutcome({
-      request_id: requestId,
-      outcome: spawnResult.outcome,
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: spawnResult.elapsedMs,
-      parse_path: "-",
-      stdout_bytes: spawnResult.stdoutBytes,
-      stderr_bytes: spawnResult.stderrBytes,
-      exit_code: spawnResult.exitCode ?? "-",
-    });
-    logFailureExcerpt(requestId, spawnResult.stderr);
-
-    const degradedMessage =
-      spawnResult.outcome === "timeout"
-        ? `Panel prompt timed out before the model returned a result. Please retry. [ref: ${ref}]`
-        : spawnResult.outcome === "oversize"
-          ? `Panel prompt response exceeded the server size limit. Please narrow the request. [ref: ${ref}]`
-          : `Panel prompt could not generate a response right now. Please retry. [ref: ${ref}]`;
-    return res.json({
-      kind: "answer",
-      response: degradedMessage,
-    } satisfies PanelPromptResponse);
-  }
-
-  if (panelRequest.mode === "ask") {
-    logOutcome({
-      request_id: requestId,
-      outcome: "ok",
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: spawnResult.elapsedMs,
-      parse_path: "-",
-      stdout_bytes: spawnResult.stdoutBytes,
-      stderr_bytes: spawnResult.stderrBytes,
-      exit_code: spawnResult.exitCode ?? "-",
-    });
-    return res.json({
-      kind: "answer",
-      response: spawnResult.stdout.trim(),
-    } satisfies PanelPromptResponse);
-  }
-
-  const extracted = extractJson(spawnResult.stdout);
-  if (extracted.parsePath === "degraded" || !extracted.parsed || typeof extracted.parsed !== "object") {
-    logOutcome({
-      request_id: requestId,
-      outcome: "parse_fail",
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: spawnResult.elapsedMs,
-      parse_path: extracted.parsePath,
-      stdout_bytes: spawnResult.stdoutBytes,
-      stderr_bytes: spawnResult.stderrBytes,
-      exit_code: spawnResult.exitCode ?? "-",
-    });
-    logFailureExcerpt(requestId, spawnResult.stderr);
-    return res.json({
-      kind: "answer",
-      response: `Panel prompt returned an unstructured edit suggestion instead of parseable edits.\n\n${trimForDisplay(spawnResult.stdout)}\n\n[ref: ${ref}]`,
-    } satisfies PanelPromptResponse);
-  }
-
-  const parsedResponse = extracted.parsed as Record<string, unknown>;
-  const parsedKind = parsedResponse.kind;
-  const rawResponse = typeof parsedResponse.response === "string"
-    ? parsedResponse.response
-    : "Panel prompt returned an edit suggestion.";
-  const rawEdits =
-    parsedKind === "code-edit" && Array.isArray(parsedResponse.edits)
-      ? parsedResponse.edits
-      : [];
-  const allowedBlockIds = new Set(panelRequest.focus.blockIds);
-  const blockById = new Map(panelRequest.context.codeBlocks.map((block) => [block.id, block]));
-  const validatedEdits = rawEdits.flatMap((edit) => {
-    if (!edit || typeof edit !== "object") return [];
-    const editRecord = edit as Record<string, unknown>;
-    if (
-      typeof editRecord.blockId !== "string"
-      || !allowedBlockIds.has(editRecord.blockId)
-      || typeof editRecord.before !== "string"
-      || typeof editRecord.after !== "string"
-    ) {
-      return [];
+    if (spawnResult.outcome === "timeout") {
+      return fail(504, "timeout", "prompt composer timed out before agents returned a result", composerRequest);
     }
 
-    const block = blockById.get(editRecord.blockId);
-    if (!block) return [];
+    if (spawnResult.outcome === "spawn_error") {
+      return fail(503, "agents_unreachable", "agents runtime is unavailable", composerRequest);
+    }
 
-    return [{
-      blockId: editRecord.blockId,
-      path: block.path,
-      before: editRecord.before,
-      after: editRecord.after,
-      language: block.language,
-      symbol: block.symbol,
-    }];
-  });
+    if (spawnResult.outcome === "exit") {
+      logFailureExcerpt(requestId, spawnResult.stderr);
+      return fail(500, "spawn", "agents runtime exited before producing a successful result", composerRequest);
+    }
 
-  if (validatedEdits.length === 0) {
-    logOutcome({
+    const extracted = extractJson(spawnResult.stdout);
+    const durationMs = Date.now() - startedAt;
+    logPromptComposerOutcome({
       request_id: requestId,
-      outcome: "ok",
-      mode: panelRequest.mode,
-      panel: panelKey,
-      model,
-      elapsed_ms: spawnResult.elapsedMs,
-      parse_path: extracted.parsePath,
-      stdout_bytes: spawnResult.stdoutBytes,
-      stderr_bytes: spawnResult.stderrBytes,
-      exit_code: spawnResult.exitCode ?? "-",
+      mode: composerRequest.mode,
+      selection_count: composerRequest.selection.items.length,
+      surface_anchor: composerRequest.surfaceAnchor,
+      duration_ms: durationMs,
+      status: "ok",
     });
-    return res.json({
-      kind: "answer",
-      response: `${rawResponse}\n\nNo valid edits matched the selected focused block(s). [ref: ${ref}]`,
-    } satisfies PanelPromptResponse);
-  }
 
-  logOutcome({
-    request_id: requestId,
-    outcome: "ok",
-    mode: panelRequest.mode,
-    panel: panelKey,
-    model,
-    elapsed_ms: spawnResult.elapsedMs,
-    parse_path: extracted.parsePath,
-    stdout_bytes: spawnResult.stdoutBytes,
-    stderr_bytes: spawnResult.stderrBytes,
-    exit_code: spawnResult.exitCode ?? "-",
-  });
-  return res.json({
-    kind: "code-edit",
-    response: rawResponse,
-    edits: validatedEdits,
-  } satisfies PanelPromptResponse);
+    return res.json({
+      ok: true,
+      mode: composerRequest.mode,
+      output: spawnResult.stdout,
+      parsed: extracted.parsed,
+      duration_ms: durationMs,
+      agent_pid: spawnResult.agentPid ?? 0,
+      request_id: requestId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "internal prompt composer error";
+    return fail(500, "internal", message, composerRequest);
+  }
 });
 
 // Serve static site pages

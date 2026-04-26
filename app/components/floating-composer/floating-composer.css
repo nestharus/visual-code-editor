@@ -1,0 +1,193 @@
+.floating-composer,
+.floating-composer * {
+  box-sizing: border-box;
+}
+
+.floating-composer {
+  position: fixed;
+  z-index: var(--z-floating-composer, 950);
+  display: grid;
+  gap: 10px;
+  min-width: 260px;
+  max-width: min(420px, 100vw);
+  padding: 12px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 8px;
+  background: var(--surface-2, #161b22);
+  color: var(--text, #e6edf3);
+  box-shadow: var(--shadow, 0 18px 48px rgb(1 4 9 / 0.44));
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.floating-composer.is-positioned {
+  opacity: 1;
+}
+
+.floating-composer.is-reduced-motion {
+  transition: none;
+}
+
+.floating-composer__anchor-info {
+  min-width: 0;
+  color: var(--text-dim, #8b949e);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floating-composer__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.floating-composer__prompt {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 38px;
+  resize: none;
+  padding: 9px 10px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 6px;
+  background: var(--bg, #0d1117);
+  color: var(--text, #e6edf3);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.floating-composer__prompt::placeholder {
+  color: var(--muted, #8b949e);
+}
+
+.floating-composer__submit,
+.floating-composer__close,
+.floating-composer__mode {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 999px;
+  background: var(--surface-3, #21262d);
+  color: var(--text, #e6edf3);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.floating-composer__submit {
+  padding: 0 14px;
+  border-color: rgba(88, 166, 255, 0.42);
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.2), rgba(88, 166, 255, 0.09));
+}
+
+.floating-composer__submit:disabled,
+.floating-composer__mode:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.floating-composer__modes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.floating-composer__mode {
+  min-width: 58px;
+  padding: 0 10px;
+  color: var(--text-dim, #8b949e);
+  background: transparent;
+}
+
+.floating-composer__mode.is-selected {
+  border-color: var(--accent, #58a6ff);
+  background: rgba(88, 166, 255, 0.14);
+  color: var(--text, #e6edf3);
+}
+
+.floating-composer__close {
+  padding: 0 12px;
+  color: var(--text-dim, #8b949e);
+  background: transparent;
+}
+
+.floating-composer__submit:not(:disabled):hover,
+.floating-composer__close:hover,
+.floating-composer__mode:not(:disabled):hover {
+  border-color: var(--border-light, #8b949e);
+  color: var(--text, #e6edf3);
+}
+
+.floating-composer__error {
+  margin: 0;
+  color: #ffb4ab;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.floating-composer__result {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #30363d);
+}
+
+.floating-composer__result-text {
+  margin: 0;
+  color: var(--text-secondary, #c9d1d9);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.floating-composer__patch {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 6px;
+  background: var(--bg, #0d1117);
+  color: var(--text-secondary, #c9d1d9);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.floating-composer__copy {
+  justify-self: end;
+  appearance: none;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim, #8b949e);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.floating-composer__copy:hover {
+  border-color: var(--border-light, #8b949e);
+  color: var(--text, #e6edf3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-composer {
+    transition: none;
+  }
+}
