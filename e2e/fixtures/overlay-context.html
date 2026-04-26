@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Overlay context fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      #mount {
+        width: 520px;
+      }
+
+      .fixture-readout,
+      .fixture-error {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #30363d;
+        background: #161b22;
+        font-family:
+          "JetBrains Mono",
+          ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        font-size: 12px;
+      }
+
+      .fixture-readout + .fixture-readout {
+        margin-top: 8px;
+      }
+
+      .fixture-error {
+        border-color: #f85149;
+        color: #ffdcd7;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { createEffect, createSignal } from "solid-js";
+      import { createComponent, render } from "solid-js/web";
+      import { OverlayProvider, useOverlaySignals } from "/app/lib/overlay-context.tsx";
+
+      const PROVIDER_IDS = ["g:test", "g:pr-delta", "g:deploy", "g:profile", "g:task-active"];
+      const params = new URLSearchParams(window.location.search);
+      const mount = document.getElementById("mount");
+
+      function emptyOverlay() {
+        return {
+          layers: [],
+          computedAtMs: 0,
+        };
+      }
+
+      function readOverlayParam() {
+        const rawOverlay = params.get("overlay");
+        if (rawOverlay === null) {
+          return emptyOverlay();
+        }
+
+        return JSON.parse(rawOverlay);
+      }
+
+      const [overlay, setOverlay] = createSignal(readOverlayParam());
+      const entityId = params.get("entityId") ?? "system:api";
+      const secondaryEntityId = params.get("secondaryEntityId");
+
+      window.__overlayContextProbeRuns = { primary: 0, secondary: 0 };
+      window.setOverlay = (nextOverlay) => {
+        setOverlay(nextOverlay);
+      };
+
+      function appendText(parent, text) {
+        parent.appendChild(document.createTextNode(text));
+      }
+
+      function makeReadout(testId) {
+        const readout = document.createElement("span");
+        readout.className = "fixture-readout";
+        readout.dataset.testid = testId;
+        return readout;
+      }
+
+      function renderError(error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const errorBox = document.createElement("span");
+        errorBox.className = "fixture-error";
+        errorBox.dataset.testid = "overlay-error";
+        appendText(errorBox, message);
+        mount.replaceChildren(errorBox);
+      }
+
+      function readoutText(signals) {
+        return JSON.stringify(
+          Object.fromEntries(
+            PROVIDER_IDS.map((providerId) => [providerId, signals.byProvider[providerId]]),
+          ),
+        );
+      }
+
+      function SignalsProbe(props) {
+        const signals = useOverlaySignals(() => props.entityId);
+        const readout = makeReadout(props.testId);
+
+        createEffect(() => {
+          const nextSignals = signals();
+          window.__overlayContextProbeRuns[props.counterKey] += 1;
+          readout.textContent = readoutText(nextSignals);
+        });
+
+        return readout;
+      }
+
+      function ProbeGroup() {
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(
+          createComponent(SignalsProbe, {
+            entityId,
+            testId: "signals-readout",
+            counterKey: "primary",
+          }),
+        );
+
+        if (secondaryEntityId !== null) {
+          fragment.appendChild(
+            createComponent(SignalsProbe, {
+              entityId: secondaryEntityId,
+              testId: "secondary-signals-readout",
+              counterKey: "secondary",
+            }),
+          );
+        }
+
+        return fragment;
+      }
+
+      function NoProviderProbe() {
+        const signals = useOverlaySignals(() => entityId);
+        const readout = makeReadout("signals-readout");
+
+        createEffect(() => {
+          readout.textContent = readoutText(signals());
+        });
+
+        return readout;
+      }
+
+      try {
+        if (params.get("noprovider") === "true") {
+          render(() => createComponent(NoProviderProbe, {}), mount);
+        } else {
+          render(
+            () =>
+              createComponent(OverlayProvider, {
+                overlay,
+                get children() {
+                  return createComponent(ProbeGroup, {});
+                },
+              }),
+            mount,
+          );
+        }
+      } catch (error) {
+        renderError(error);
+      }
+    </script>
+  </body>
+</html>

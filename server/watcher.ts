@@ -74,6 +74,17 @@ import {
   validateConstructSliceRequest,
   validateTransitionSliceRequest,
 } from "./slices/types";
+import {
+  createOverlayManager,
+  OverlayManagerError,
+  type OverlayErrorKind,
+} from "./overlays/manager";
+import {
+  overlayProviderIdFromString,
+  validateSetOverlayLayerRequest,
+  type OverlayProviderId,
+  type SetOverlayLayerRequest,
+} from "./overlays/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -129,6 +140,7 @@ type ExtractJsonResult =
 
 type WritebackErrorKind = "validation" | "internal" | "io";
 type TaskRouteStatus = "ok" | "error";
+type OverlayRouteStatus = "ok" | "error";
 
 const app = express();
 app.use(cors());
@@ -535,6 +547,27 @@ function logPRDeltaOutcome(fields: {
   }));
 }
 
+function logOverlayOutcome(fields: {
+  request_id: string;
+  route: string;
+  provider_id: string;
+  signal_count: number;
+  duration_ms: number;
+  status: OverlayRouteStatus;
+  error_kind?: OverlayErrorKind;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: fields.route,
+    provider_id: fields.provider_id,
+    signal_count: fields.signal_count,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+  }));
+}
+
 async function withWritebackLock<T>(task: () => Promise<T>): Promise<T> {
   while (writebackInProgress) {
     await writebackInProgress;
@@ -828,6 +861,7 @@ const PROJECT_ROOT = join(__dirname, "..");
 const taskManager = createTaskManager(PROJECT_ROOT);
 const reviewThreadManager = createReviewThreadManager();
 const sliceManager = createSliceManager();
+const overlayManager = createOverlayManager();
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
   || join(PROJECT_ROOT, "public", "data", "diagram.json");
@@ -840,6 +874,114 @@ app.get("/api/diagram", async (_req, res) => {
   } catch {
     res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
   }
+});
+
+app.post("/api/overlays/layers", (req, res) => {
+  const startedAt = Date.now();
+  let request: SetOverlayLayerRequest | undefined;
+  const requestId = requestIdFromBody(req.body);
+
+  const fail = (statusCode: number, errorKind: OverlayErrorKind, error: string) => {
+    logOverlayOutcome({
+      request_id: request?.requestId ?? requestId,
+      route: "/api/overlays/layers",
+      provider_id: request?.providerId ?? providerIdFromBody(req.body),
+      signal_count: request?.signals.length ?? signalCountFromBody(req.body),
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: request?.requestId ?? requestId,
+    });
+  };
+
+  const validation = validateSetOverlayLayerRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+  request = validation.value;
+
+  try {
+    const layer = overlayManager.setLayer({
+      providerId: request.providerId,
+      signals: request.signals,
+      computedAtMs: request.computedAtMs,
+      attributionActor: request.attributionActor,
+    });
+    logOverlayOutcome({
+      request_id: request.requestId,
+      route: "/api/overlays/layers",
+      provider_id: layer.providerId,
+      signal_count: layer.signals.length,
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+    return res.json({ ok: true, layer, request_id: request.requestId });
+  } catch (error) {
+    const overlayError = normalizeOverlayError(error);
+    return fail(
+      statusForOverlayError(overlayError.errorKind),
+      overlayError.errorKind,
+      overlayError.message,
+    );
+  }
+});
+
+app.get("/api/overlays", (_req, res) => {
+  const startedAt = Date.now();
+  const overlay = overlayManager.getOverlay();
+  logOverlayOutcome({
+    request_id: "-",
+    route: "/api/overlays",
+    provider_id: "-",
+    signal_count: overlay.layers.reduce((count, layer) => count + layer.signals.length, 0),
+    duration_ms: Date.now() - startedAt,
+    status: "ok",
+  });
+  return res.json({ overlay });
+});
+
+app.delete("/api/overlays/layers/:provider_id", (req, res) => {
+  const startedAt = Date.now();
+  const providerId = req.params.provider_id;
+
+  let normalizedProviderId: OverlayProviderId;
+  try {
+    normalizedProviderId = overlayProviderIdFromString(providerId);
+  } catch (error) {
+    logOverlayOutcome({
+      request_id: "-",
+      route: "/api/overlays/layers/:provider_id",
+      provider_id: providerId,
+      signal_count: 0,
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: "validation",
+    });
+    const message = error instanceof Error ? error.message : "invalid provider_id";
+    return res.status(400).json({ ok: false, error: message, error_kind: "validation" });
+  }
+
+  const deleted = overlayManager.removeLayer(normalizedProviderId);
+  logOverlayOutcome({
+    request_id: "-",
+    route: "/api/overlays/layers/:provider_id",
+    provider_id: normalizedProviderId,
+    signal_count: 0,
+    duration_ms: Date.now() - startedAt,
+    status: deleted ? "ok" : "error",
+    ...(deleted ? {} : { error_kind: "not-found" as const }),
+  });
+
+  if (!deleted) {
+    return res.status(404).json({ ok: false, error: "not-found" });
+  }
+
+  return res.json({ ok: true });
 });
 
 app.post("/api/slices/construct", (req, res) => {
@@ -1453,6 +1595,52 @@ function requestIdFromBody(payload: unknown): string {
   }
 
   return "-";
+}
+
+function providerIdFromBody(payload: unknown): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "provider_id" in payload &&
+    typeof (payload as { provider_id?: unknown }).provider_id === "string"
+  ) {
+    return (payload as { provider_id: string }).provider_id;
+  }
+
+  return "-";
+}
+
+function signalCountFromBody(payload: unknown): number {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "signals" in payload &&
+    Array.isArray((payload as { signals?: unknown }).signals)
+  ) {
+    return (payload as { signals: unknown[] }).signals.length;
+  }
+
+  return 0;
+}
+
+function normalizeOverlayError(error: unknown): OverlayManagerError {
+  if (error instanceof OverlayManagerError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "overlay route failed";
+  return new OverlayManagerError("internal", message, { cause: error });
+}
+
+function statusForOverlayError(errorKind: OverlayErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+      return 400;
+    case "not-found":
+      return 404;
+    case "internal":
+      return 500;
+  }
 }
 
 function normalizeTaskError(error: unknown): TaskManagerError {

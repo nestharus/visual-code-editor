@@ -3,6 +3,7 @@ import { Dynamic } from "solid-js/web";
 
 import { ControlIcon } from "../components/ControlIcon";
 import type { DiagramDiffStatus, DiagramEntityTestRecord } from "../lib/diagram-data";
+import { useOverlaySignals } from "../lib/overlay-context";
 import { captureClickRect } from "./DrillTransition";
 import type { DiffStatusMap } from "./diff-overlay";
 import { resolveNodeShape } from "./layout/shapes";
@@ -119,6 +120,18 @@ function GraphNodeItem(props: GraphNodeItemProps) {
     return props.diffStatusMap?.get(props.node.id);
   };
   const isDiffGhost = () => diffStatus() === "removed";
+  const overlaySignals = useOverlaySignals(() => props.node.id);
+  const overlayDataAttributes = () => {
+    const byProvider = overlaySignals().byProvider;
+
+    return {
+      "data-overlay-test": byProvider["g:test"] ?? undefined,
+      "data-overlay-pr-delta": byProvider["g:pr-delta"] ?? undefined,
+      "data-overlay-deploy": byProvider["g:deploy"] ?? undefined,
+      "data-overlay-profile": byProvider["g:profile"] ?? undefined,
+      "data-overlay-task-active": byProvider["g:task-active"] ?? undefined,
+    };
+  };
 
   const isFloating = () =>
     !hasChildren() &&
@@ -149,6 +162,7 @@ function GraphNodeItem(props: GraphNodeItemProps) {
       data-diff-status={diffStatus()}
       data-test-coverage={bucket() === "none" ? undefined : bucket()}
       data-zoom-tier={zoomTier()}
+      {...overlayDataAttributes()}
       style={{
         left: `${relativeLeft()}px`,
         top: `${relativeTop()}px`,

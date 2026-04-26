@@ -2,6 +2,8 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Acce
 
 import type { DiagramEntityTestRecord } from "../lib/diagram-data";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
+import type { OperationalOverlay } from "../lib/overlay";
+import { OverlayProvider } from "../lib/overlay-context";
 import { ZoomBandProvider } from "../lib/zoom-context";
 import {
   BaseEdgeLayer,
@@ -45,6 +47,7 @@ type GraphSurfaceProps = {
   testsVisible?: boolean;
   diffStatusMap?: DiffStatusMap;
   diffVisible?: boolean;
+  overlay?: OperationalOverlay;
 };
 
 export type PromptSelectionItem = {
@@ -63,6 +66,11 @@ const EMPTY_GRAPH: GraphDefinition = {
   id: "empty",
   nodes: [],
   edges: [],
+};
+
+const EMPTY_OPERATIONAL_OVERLAY: OperationalOverlay = {
+  layers: [],
+  computedAtMs: 0,
 };
 
 function getNodeBounds(nodes: GraphNode[]) {
@@ -427,93 +435,95 @@ export function GraphSurface(props: GraphSurfaceProps) {
       class="graph-surface-root"
       style={{ position: "relative", width: "100%", height: "100%" }}
     >
-      <GraphViewport
-        graph={activeGraph()}
-        fitKey={`${activeGraph().id}:${fitVersion()}`}
-        onZoomChange={setZoomLevel}
-        onFitZoomChange={setFitZoomLevel}
-        onViewportReady={(h) => { viewportHandle = h; }}
-      >
-        <BaseEdgeLayer
+      <OverlayProvider overlay={() => props.overlay ?? EMPTY_OPERATIONAL_OVERLAY}>
+        <GraphViewport
           graph={activeGraph()}
-          interaction={interaction}
-          transition={transition}
-          presentation={presentation}
-          zoom={zoomLevel()}
+          fitKey={`${activeGraph().id}:${fitVersion()}`}
+          onZoomChange={setZoomLevel}
+          onFitZoomChange={setFitZoomLevel}
+          onViewportReady={(h) => { viewportHandle = h; }}
+        >
+          <BaseEdgeLayer
+            graph={activeGraph()}
+            interaction={interaction}
+            transition={transition}
+            presentation={presentation}
+            zoom={zoomLevel()}
+          />
+          <HighlightedEdgeLayer
+            graph={activeGraph()}
+            zoom={zoomLevel()}
+            interaction={interaction}
+            presentation={presentation}
+            transport={transport}
+            onEdgeTap={props.onEdgeTap}
+          />
+          <NodeLayer
+            graph={activeGraph()}
+            zoom={zoomLevel()}
+            interaction={interaction}
+            transition={transition}
+            presentation={presentation}
+            onNodeTap={props.onNodeTap}
+            onNodeInfo={props.onNodeInfo}
+            playableNodeIds={playableNodeIds()}
+            testByEntity={props.testByEntity}
+            testsVisible={props.testsVisible}
+            diffStatusMap={props.diffStatusMap}
+            diffVisible={props.diffVisible}
+          />
+          <EdgeHitLayer
+            graph={activeGraph()}
+            zoom={zoomLevel()}
+            interaction={interaction}
+            presentation={presentation}
+            transport={transport}
+            onEdgeTap={props.onEdgeTap}
+          />
+          <TransportLayer
+            graph={activeGraph()}
+            zoom={zoomLevel()}
+            interaction={interaction}
+            presentation={presentation}
+            transport={transport}
+            onEdgeTap={props.onEdgeTap}
+          />
+        </GraphViewport>
+        {/* These render OUTSIDE the zoom-transformed scene, in viewport space */}
+        <ShadowboxModal
+          playback={playback}
+          transport={modalTransport}
+          onClose={closeShadowbox}
         />
-        <HighlightedEdgeLayer
-          graph={activeGraph()}
-          zoom={zoomLevel()}
-          interaction={interaction}
-          presentation={presentation}
-          transport={transport}
-          onEdgeTap={props.onEdgeTap}
-        />
-        <NodeLayer
-          graph={activeGraph()}
-          zoom={zoomLevel()}
-          interaction={interaction}
-          transition={transition}
-          presentation={presentation}
-          onNodeTap={props.onNodeTap}
-          onNodeInfo={props.onNodeInfo}
-          playableNodeIds={playableNodeIds()}
-          testByEntity={props.testByEntity}
-          testsVisible={props.testsVisible}
-          diffStatusMap={props.diffStatusMap}
-          diffVisible={props.diffVisible}
-        />
-        <EdgeHitLayer
-          graph={activeGraph()}
-          zoom={zoomLevel()}
-          interaction={interaction}
-          presentation={presentation}
-          transport={transport}
-          onEdgeTap={props.onEdgeTap}
-        />
-        <TransportLayer
-          graph={activeGraph()}
-          zoom={zoomLevel()}
-          interaction={interaction}
-          presentation={presentation}
-          transport={transport}
-          onEdgeTap={props.onEdgeTap}
-        />
-      </GraphViewport>
-      {/* These render OUTSIDE the zoom-transformed scene, in viewport space */}
-      <ShadowboxModal
-        playback={playback}
-        transport={modalTransport}
-        onClose={closeShadowbox}
-      />
-      {/* Edge type legend */}
-      <div class="graph-legend">
-        <details>
-          <summary>Legend</summary>
-          <div class="graph-legend-items">
-            <div class="graph-legend-item">
-              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#8b949e" stroke-width="2" /></svg>
-              <span>Default</span>
+        {/* Edge type legend */}
+        <div class="graph-legend">
+          <details>
+            <summary>Legend</summary>
+            <div class="graph-legend-items">
+              <div class="graph-legend-item">
+                <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#8b949e" stroke-width="2" /></svg>
+                <span>Default</span>
+              </div>
+              <div class="graph-legend-item">
+                <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#d29922" stroke-width="2" stroke-dasharray="4 2" /></svg>
+                <span>Store</span>
+              </div>
+              <div class="graph-legend-item">
+                <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#4fa9a0" stroke-width="2" /></svg>
+                <span>Behavioral</span>
+              </div>
+              <div class="graph-legend-item">
+                <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#d29922" stroke-width="2" stroke-dasharray="6 4" /></svg>
+                <span>Back-edge</span>
+              </div>
+              <div class="graph-legend-item">
+                <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#9D7BEE" stroke-width="2" stroke-dasharray="2 2" /></svg>
+                <span>Agent</span>
+              </div>
             </div>
-            <div class="graph-legend-item">
-              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#d29922" stroke-width="2" stroke-dasharray="4 2" /></svg>
-              <span>Store</span>
-            </div>
-            <div class="graph-legend-item">
-              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#4fa9a0" stroke-width="2" /></svg>
-              <span>Behavioral</span>
-            </div>
-            <div class="graph-legend-item">
-              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#d29922" stroke-width="2" stroke-dasharray="6 4" /></svg>
-              <span>Back-edge</span>
-            </div>
-            <div class="graph-legend-item">
-              <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#9D7BEE" stroke-width="2" stroke-dasharray="2 2" /></svg>
-              <span>Agent</span>
-            </div>
-          </div>
-        </details>
-      </div>
+          </details>
+        </div>
+      </OverlayProvider>
     </ZoomBandProvider>
   );
 }
