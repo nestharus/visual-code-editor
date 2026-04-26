@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
+from enum import Enum
 from pathlib import Path
 
 from visual_code_editor.render.behavioral import build_behavioral_runtime
@@ -15,6 +17,10 @@ from visual_code_editor.render.mermaid import (
     render_cluster_mermaid,
     render_root_mermaid,
     render_system_mermaid,
+)
+from visual_code_editor.render.edge_transfer import (
+    build_edge_transfer,
+    classify_mechanism,
 )
 
 
@@ -154,6 +160,65 @@ def _find_connecting_edge_id(
             if (src == from_node and tgt == to_node) or (src == to_node and tgt == from_node):
                 return data.get("id", f"e_{src}_{tgt}")
     return None
+
+
+def _transfer_payload(
+    edge_id: str,
+    edge_detail: dict,
+    click_map_entry: dict | None = None,
+) -> dict:
+    return _json_ready(asdict(build_edge_transfer(edge_id, edge_detail, click_map_entry)))
+
+
+def _json_ready(value):
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, dict):
+        return {key: _json_ready(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready(item) for item in value]
+    return value
+
+
+def _with_transfer(
+    edge_detail: dict,
+    click_map_entry: dict | None = None,
+    *,
+    transfer_mechanism: str | None = None,
+) -> dict:
+    transfer_source = edge_detail
+    if transfer_mechanism is not None:
+        transfer_source = {**edge_detail, "mechanism": transfer_mechanism}
+    edge_detail["transfer"] = _transfer_payload(
+        str(edge_detail["id"]),
+        transfer_source,
+        click_map_entry,
+    )
+    return edge_detail
+
+
+def _canonical_render_mechanism(edge_kind: str) -> str:
+    if edge_kind in {"cluster-edge", "system-edge"}:
+        return "cluster-link"
+    return edge_kind
+
+
+def _canonical_site_edge_transfer_mechanism(edge: dict) -> str | None:
+    mechanism = edge.get("mechanism")
+    mechanism_kind, legacy = classify_mechanism(mechanism)
+    if legacy is None and mechanism_kind.value != "unknown":
+        return mechanism
+
+    mechanism_text = str(mechanism or "").lower()
+    label_text = str(edge.get("label") or "").lower()
+    combined = f"{mechanism_text} {label_text}"
+    if "agent_for() call" in combined or " call " in f" {combined} ":
+        return "call"
+    if "artifact flow" in combined:
+        return "artifact flow"
+    if edge.get("imports"):
+        return "import"
+    return "cluster-link"
 
 
 def _build_combined_scenarios(site: dict, root_elements: list[dict]) -> dict:
@@ -485,7 +550,6 @@ def export_diagram_json(site: dict) -> dict:
                 "to": edge["to"],
                 "fromLabel": source_label,
                 "toLabel": target_label,
-                "mechanism": edge_kind,
                 "systemId": system_id,
             }
             edge_imports = edge.get("imports")
@@ -494,6 +558,7 @@ def export_diagram_json(site: dict) -> dict:
             edge_desc = edge.get("description")
             if edge_desc:
                 edge_detail["description"] = edge_desc
+            edge_detail = _with_transfer(edge_detail, transfer_mechanism=edge_kind)
             details[edge_id] = edge_detail
 
     if behavioral.get("available"):
@@ -531,7 +596,10 @@ def export_diagram_json(site: dict) -> dict:
         # Behavioral edge details for root, lifecycle, and stage slices.
         # Use the already-parsed behavioral element collections.
         behavioral_edge_sources = [
-            {"elements": behavioral_root_elements},
+            {
+                "elements": behavioral_root_elements,
+                "edgeClickMap": behavioral_root_edge_click_map,
+            },
             *lifecycles.values(),
             *stages.values(),
         ]
@@ -547,7 +615,12 @@ def export_diagram_json(site: dict) -> dict:
                     continue
                 source_label = details.get(edge_data["source"], {}).get("label", edge_data["source"])
                 target_label = details.get(edge_data["target"], {}).get("label", edge_data["target"])
-                details[edge_id] = {
+                click_info = (
+                    parent_data.get("edgeClickMap", {}).get(edge_id, {})
+                    if isinstance(parent_data.get("edgeClickMap", {}), dict)
+                    else {}
+                )
+                details[edge_id] = _with_transfer({
                     "kind": "edge",
                     "id": edge_id,
                     "label": edge_data.get("label", ""),
@@ -555,20 +628,27 @@ def export_diagram_json(site: dict) -> dict:
                     "to": edge_data["target"],
                     "fromLabel": source_label,
                     "toLabel": target_label,
-                    "mechanism": "artifact flow" if not edge_data.get("loop") else "feedback loop",
-                }
+                },
+                    click_info,
+                    transfer_mechanism=(
+                        "artifact flow" if not edge_data.get("loop") else "feedback loop"
+                    ),
+                )
 
     for edge in site.get("edges", []):
         edge_id = f'e_{edge["from"]}_{edge["to"]}'
-        details[edge_id] = {
+        edge_detail = {
             "kind": "edge",
             "id": edge_id,
             "label": edge.get("label", ""),
             "href": edge.get("href", ""),
             "from": edge["from"],
             "to": edge["to"],
-            "mechanism": edge.get("mechanism", ""),
         }
+        details[edge_id] = _with_transfer(
+            edge_detail,
+            transfer_mechanism=_canonical_site_edge_transfer_mechanism(edge),
+        )
 
     for store in site.get("stores", []):
         details[store["id"]] = {
@@ -591,7 +671,7 @@ def export_diagram_json(site: dict) -> dict:
         if not edge_id or edge_id in details:
             continue
         click_info = root_edge_click_map.get(edge_id, {})
-        details[edge_id] = {
+        details[edge_id] = _with_transfer({
             "kind": "edge",
             "id": edge_id,
             "label": edge_data.get("label", click_info.get("label", "")),
@@ -599,8 +679,7 @@ def export_diagram_json(site: dict) -> dict:
             "to": edge_data["target"],
             "fromLabel": cluster_labels.get(edge_data["source"], edge_data["source"]),
             "toLabel": cluster_labels.get(edge_data["target"], edge_data["target"]),
-            "mechanism": edge_data.get("kind", ""),
-        }
+        }, transfer_mechanism=_canonical_render_mechanism(edge_data.get("kind", "")))
 
     # Cluster-level edges (system-to-system within a cluster)
     for cluster_id, cluster_data in clusters.items():
@@ -613,7 +692,7 @@ def export_diagram_json(site: dict) -> dict:
             if not edge_id or edge_id in details:
                 continue
             click_info = cluster_click_map.get(edge_id, {})
-            details[edge_id] = {
+            details[edge_id] = _with_transfer({
                 "kind": "edge",
                 "id": edge_id,
                 "label": edge_data.get("label", click_info.get("label", "")),
@@ -621,8 +700,7 @@ def export_diagram_json(site: dict) -> dict:
                 "to": edge_data["target"],
                 "fromLabel": system_labels.get(edge_data["source"], edge_data["source"]),
                 "toLabel": system_labels.get(edge_data["target"], edge_data["target"]),
-                "mechanism": edge_data.get("kind", ""),
-            }
+            }, transfer_mechanism=_canonical_render_mechanism(edge_data.get("kind", "")))
 
     # --- Mermaid text for organizational ---
     org_root_mermaid = render_root_mermaid(site)

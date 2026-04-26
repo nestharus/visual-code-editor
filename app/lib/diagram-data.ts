@@ -1,5 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import type { DiagramElementDefinition } from "./diagram-elements";
+import type { EdgeTransfer } from "./edge-transfer";
 
 const DEFAULT_WATCHER_URL = "http://localhost:3001";
 
@@ -14,6 +15,7 @@ export type DiagramDetailRecord = Record<string, unknown> & {
   kind?: string;
   label?: string;
   href?: string;
+  transfer?: EdgeTransfer;
 };
 
 export type DiagramEdgeRecord = Record<string, unknown> & {

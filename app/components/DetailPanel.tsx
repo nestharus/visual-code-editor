@@ -4,11 +4,20 @@ import { useSearch, useNavigate, useParams } from "@tanstack/solid-router";
 import { WATCHER_URL } from "../lib/diagram-data";
 import { useDiagramData } from "../lib/diagram-data";
 import type { DiagramData, DiagramDetailRecord } from "../lib/diagram-data";
+import type {
+  EdgeArtifact,
+  EdgeArtifactRole,
+  EdgeBehaviorCandidate,
+  EdgeMechanismKind,
+  EdgeTransfer,
+} from "../lib/edge-transfer";
+import type { GroundingSource, TrustSignal, TrustState } from "../lib/trust";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
 import { IconSvg } from "./IconSvg";
 import { PanelPrompt } from "./PanelPrompt";
+import { TrustBadge } from "./TrustBadge";
 
 const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
 const SUMMARY_ONLY_FIELDS = new Set([
@@ -17,7 +26,7 @@ const SUMMARY_ONLY_FIELDS = new Set([
   "fileCount",
   "agentCount",
 ]);
-const EDGE_METADATA_FIELDS = new Set(["from", "to", "fromLabel", "toLabel"]);
+const EDGE_METADATA_FIELDS = new Set(["from", "to", "fromLabel", "toLabel", "transfer"]);
 const EDGE_PANEL_KINDS = new Set([
   "store-edge",
   "cluster-edge",
@@ -50,6 +59,76 @@ type EdgeEndpoint = {
   iconKind?: string;
   available: boolean;
 };
+
+type NormalizedEdgeTransfer = Omit<EdgeTransfer, "trust"> & {
+  trust: TrustSignal | null;
+};
+
+type EdgeTransferWire = Record<string, unknown> & {
+  edgeId?: unknown;
+  edge_id?: unknown;
+  mechanismKind?: unknown;
+  mechanism_kind?: unknown;
+  summary?: unknown;
+  trust?: unknown;
+  artifacts?: unknown;
+  behaviourCandidates?: unknown;
+  behaviour_candidates?: unknown;
+  attributionActor?: unknown;
+  attribution_actor?: unknown;
+  legacyMechanism?: unknown;
+  legacy_mechanism?: unknown;
+};
+
+type EdgeBehaviorCandidateWire = Record<string, unknown> & {
+  behaviourId?: unknown;
+  behaviour_id?: unknown;
+  trust?: unknown;
+  evidenceSource?: unknown;
+  evidence_source?: unknown;
+};
+
+const EDGE_MECHANISM_KIND_LABELS: Record<EdgeMechanismKind, string> = {
+  "artifact-flow": "Artifact flow",
+  "feedback-loop": "Feedback loop",
+  call: "Call",
+  import: "Import",
+  "store-read": "Store read",
+  "store-write": "Store write",
+  publish: "Publish",
+  subscribe: "Subscribe",
+  "agent-invoke": "Agent invoke",
+  "cluster-link": "Cluster link",
+  unknown: "Unknown",
+};
+
+const EDGE_ARTIFACT_ROLE_LABELS: Record<EdgeArtifactRole, string> = {
+  produced: "Produced (source emits)",
+  consumed: "Consumed (target reads)",
+  shared: "Shared (read by both)",
+  carried: "Carried",
+};
+
+const EDGE_ARTIFACT_ROLE_ORDER: readonly EdgeArtifactRole[] = [
+  "produced",
+  "consumed",
+  "shared",
+  "carried",
+];
+
+const EDGE_MECHANISM_KIND_SET: ReadonlySet<string> = new Set(
+  Object.keys(EDGE_MECHANISM_KIND_LABELS),
+);
+const EDGE_ARTIFACT_ROLE_SET: ReadonlySet<string> = new Set(
+  EDGE_ARTIFACT_ROLE_ORDER,
+);
+const TRUST_STATE_SET: ReadonlySet<string> = new Set([
+  "grounded",
+  "candidate",
+  "conflicting",
+  "stale",
+  "orphaned",
+]);
 
 function metadataFieldLabel(key: string): string {
   const labels: Record<string, string> = {
@@ -111,13 +190,109 @@ function stringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function humanizeMechanism(value: string): string {
-  if (!value) return "";
-  return value
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isEdgeMechanismKind(value: unknown): value is EdgeMechanismKind {
+  return typeof value === "string" && EDGE_MECHANISM_KIND_SET.has(value);
+}
+
+function isEdgeArtifactRole(value: unknown): value is EdgeArtifactRole {
+  return typeof value === "string" && EDGE_ARTIFACT_ROLE_SET.has(value);
+}
+
+function isTrustState(value: unknown): value is TrustState {
+  return typeof value === "string" && TRUST_STATE_SET.has(value);
+}
+
+function humanizeMechanismKind(kind: EdgeMechanismKind): string {
+  return EDGE_MECHANISM_KIND_LABELS[kind];
+}
+
+function humanizeEntityId(value: string): string {
+  const leaf = value.split(":").pop() || value;
+  return leaf
     .split(/[-_]/)
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
+}
+
+function normalizeTrustSignal(value: unknown): TrustSignal | null {
+  if (!isRecord(value) || !isTrustState(value.state)) return null;
+
+  return {
+    state: value.state,
+    grounding:
+      typeof value.grounding === "string"
+        ? (value.grounding as GroundingSource)
+        : null,
+  };
+}
+
+function normalizeEdgeArtifact(value: unknown): EdgeArtifact | null {
+  if (!isRecord(value)) return null;
+  const name = stringValue(value.name).trim();
+  if (!name || !isEdgeArtifactRole(value.role)) return null;
+  return { name, role: value.role };
+}
+
+function normalizeEdgeBehaviorCandidate(
+  value: unknown,
+): EdgeBehaviorCandidate | null {
+  if (!isRecord(value)) return null;
+  const raw = value as EdgeBehaviorCandidateWire;
+  const behaviourId = stringValue(raw.behaviourId) || stringValue(raw.behaviour_id);
+  if (!behaviourId) return null;
+
+  return {
+    behaviourId,
+    trust: normalizeTrustSignal(raw.trust) ?? { state: "candidate", grounding: null },
+    evidenceSource:
+      stringValue(raw.evidenceSource) || stringValue(raw.evidence_source),
+  };
+}
+
+function normalizeEdgeTransfer(value: unknown): NormalizedEdgeTransfer | null {
+  if (!isRecord(value)) return null;
+  const raw = value as EdgeTransferWire;
+  const mechanismKind = isEdgeMechanismKind(raw.mechanismKind)
+    ? raw.mechanismKind
+    : isEdgeMechanismKind(raw.mechanism_kind)
+      ? raw.mechanism_kind
+      : "unknown";
+
+  const artifacts = Array.isArray(raw.artifacts)
+    ? raw.artifacts
+        .map(normalizeEdgeArtifact)
+        .filter((artifact): artifact is EdgeArtifact => artifact !== null)
+    : [];
+  const rawCandidates = Array.isArray(raw.behaviourCandidates)
+    ? raw.behaviourCandidates
+    : Array.isArray(raw.behaviour_candidates)
+      ? raw.behaviour_candidates
+      : [];
+  const behaviourCandidates = rawCandidates
+    .map(normalizeEdgeBehaviorCandidate)
+    .filter(
+      (candidate): candidate is EdgeBehaviorCandidate => candidate !== null,
+    );
+
+  return {
+    edgeId: stringValue(raw.edgeId) || stringValue(raw.edge_id),
+    mechanismKind,
+    summary: stringValue(raw.summary),
+    trust: normalizeTrustSignal(raw.trust),
+    artifacts,
+    behaviourCandidates,
+    attributionActor:
+      (stringValue(raw.attributionActor) || stringValue(raw.attribution_actor) || null) as
+        | EdgeTransfer["attributionActor"]
+        | null,
+    legacyMechanism:
+      stringValue(raw.legacyMechanism) || stringValue(raw.legacy_mechanism) || null,
+  };
 }
 
 function resolveEndpointKind(rawKind: string | undefined): string | undefined {
@@ -248,30 +423,38 @@ export function DetailPanel() {
     return panelKind() || "edge";
   });
 
+  const edgeTransfer = createMemo(() => {
+    if (!isEdgePanel()) return null;
+    return normalizeEdgeTransfer(detail()?.transfer);
+  });
+
   const edgeMechanismLabel = createMemo(() => {
     if (!isEdgePanel()) return "";
-    const d = detail();
-    const mechanism = stringValue(d?.mechanism);
-    if (mechanism) return humanizeMechanism(mechanism);
-
-    const el = findEdgeElement();
-    // Element.kind carries the edge semantic kind (e.g. "behavioral-edge",
-    // "store-read", "file-import") — use it as the mechanism when details
-    // are missing.
-    if (el?.kind && el.kind !== "edge" && EDGE_PANEL_KINDS.has(el.kind)) {
-      return humanizeMechanism(el.kind);
-    }
-
-    const label = panelLabel() || stringValue(d?.label) || el?.label || "";
-    const kind = panelKind() || "";
-    if (kind === "store-edge" && /^(read|write)$/i.test(label)) {
-      return humanizeMechanism(`store-${label}`);
-    }
-    if (EDGE_PANEL_KINDS.has(kind) && kind !== "edge") {
-      return humanizeMechanism(kind);
-    }
-    return humanizeMechanism(label);
+    const transfer = edgeTransfer();
+    return transfer ? humanizeMechanismKind(transfer.mechanismKind) : "";
   });
+
+  const edgeTransferSummary = createMemo(() => {
+    const summary = edgeTransfer()?.summary.trim() ?? "";
+    return summary;
+  });
+
+  const edgeArtifactGroups = createMemo(() => {
+    const artifacts = edgeTransfer()?.artifacts ?? [];
+    return EDGE_ARTIFACT_ROLE_ORDER.map((role) => ({
+      role,
+      label: EDGE_ARTIFACT_ROLE_LABELS[role],
+      artifacts: artifacts.filter((artifact) => artifact.role === role),
+    }));
+  });
+
+  const edgeHasArtifacts = createMemo(() =>
+    edgeArtifactGroups().some((group) => group.artifacts.length > 0),
+  );
+
+  const edgeBehaviourCandidates = createMemo(
+    () => edgeTransfer()?.behaviourCandidates ?? [],
+  );
 
   const edgeEndpoints = createMemo(() => {
     if (!isEdgePanel()) return null;
@@ -512,6 +695,34 @@ export function DetailPanel() {
         panelKind: endpoint.kind,
         panelId: endpoint.id,
         panelLabel: endpoint.label,
+      }),
+      replace: true,
+    });
+    queueMicrotask(() => {
+      panelTitleRef?.focus();
+    });
+  };
+
+  const findEntity = (id: string) => {
+    return diagramQuery.data?.details[id] ?? null;
+  };
+
+  const entityLabel = (id: string) => {
+    const entity = findEntity(id);
+    return stringValue(entity?.label) || humanizeEntityId(id);
+  };
+
+  const openBehaviourCandidatePanel = (candidate: EdgeBehaviorCandidate) => {
+    const entity = findEntity(candidate.behaviourId);
+    const kind = stringValue(entity?.kind) || "lifecycle";
+    const label = entityLabel(candidate.behaviourId);
+
+    navigate({
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        panelKind: kind,
+        panelId: candidate.behaviourId,
+        panelLabel: label,
       }),
       replace: true,
     });
@@ -782,6 +993,108 @@ export function DetailPanel() {
                   </div>
                 </div>
               )}
+            </Show>
+            <Show when={isEdgePanel() && edgeMechanismLabel()}>
+              <div class="detail-module edge-transfer">
+                <div class="edge-mechanism-row" aria-label="Relationship mechanism">
+                  <div class="edge-mechanism-main">
+                    <span class="detail-summary-label">Mechanism</span>
+                    <span
+                      class="edge-mechanism-chip"
+                      data-testid="edge-mechanism-chip"
+                      title={
+                        edgeTransfer()?.legacyMechanism
+                          ? `Legacy mechanism: ${edgeTransfer()?.legacyMechanism}`
+                          : "Relationship mechanism"
+                      }
+                    >
+                      {edgeMechanismLabel()}
+                    </span>
+                    <Show
+                      when={
+                        edgeTransfer()?.mechanismKind === "unknown" &&
+                        edgeTransfer()?.legacyMechanism
+                      }
+                    >
+                      {(legacyMechanism) => (
+                        <span class="edge-mechanism-secondary">
+                          Legacy: {legacyMechanism()}
+                        </span>
+                      )}
+                    </Show>
+                  </div>
+                  <Show when={edgeTransfer()?.trust}>
+                    {(trust) => (
+                      <TrustBadge
+                        state={trust().state}
+                        grounding={trust().grounding}
+                      />
+                    )}
+                  </Show>
+                </div>
+              </div>
+            </Show>
+            <Show when={edgeTransferSummary()}>
+              {(summary) => (
+                <p class="edge-summary" data-testid="edge-summary">
+                  {summary()}
+                </p>
+              )}
+            </Show>
+            <Show when={edgeHasArtifacts()}>
+              <div class="detail-module edge-artifacts">
+                <For each={edgeArtifactGroups()}>
+                  {(group) => (
+                    <Show when={group.artifacts.length > 0}>
+                      <section class="edge-artifact-group">
+                        <h3
+                          class="edge-artifact-title"
+                          data-testid={`edge-artifacts-${group.role}`}
+                        >
+                          {group.label}
+                        </h3>
+                        <ul class="edge-artifact-list">
+                          <For each={group.artifacts}>
+                            {(artifact) => <li>{artifact.name}</li>}
+                          </For>
+                        </ul>
+                      </section>
+                    </Show>
+                  )}
+                </For>
+              </div>
+            </Show>
+            <Show when={edgeBehaviourCandidates().length > 0}>
+              <div class="detail-module edge-behaviour-candidates">
+                <h3 class="edge-behaviour-candidates-title">Behaviour candidates</h3>
+                <div class="edge-behaviour-candidate-list">
+                  <For each={edgeBehaviourCandidates()}>
+                    {(candidate) => (
+                      <button
+                        type="button"
+                        class="behaviour-candidate-chip"
+                        data-testid="behaviour-candidate-chip"
+                        onClick={() => openBehaviourCandidatePanel(candidate)}
+                      >
+                        <span class="behaviour-candidate-chip-main">
+                          <span class="behaviour-candidate-chip-label">
+                            {entityLabel(candidate.behaviourId)}
+                          </span>
+                          <TrustBadge
+                            state={candidate.trust.state}
+                            grounding={candidate.trust.grounding}
+                          />
+                        </span>
+                        <Show when={candidate.evidenceSource}>
+                          <span class="behaviour-candidate-chip-evidence">
+                            {candidate.evidenceSource}
+                          </span>
+                        </Show>
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </div>
             </Show>
             <PanelPrompt
               entityId={panelId() || ""}
