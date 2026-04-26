@@ -114,14 +114,16 @@ function orderSections(sections: ElkEdgeSection[]) {
   const byId = new Map(sections.map((section) => [section.id, section]));
   const ordered: ElkEdgeSection[] = [];
   const visited = new Set<string>();
-  let current =
+  let current: ElkEdgeSection | undefined =
     sections.find((section) => !section.incomingSections?.length) ?? sections[0];
 
   while (current && !visited.has(current.id)) {
     ordered.push(current);
     visited.add(current.id);
 
-    const nextId = current.outgoingSections?.find((id) => !visited.has(id));
+    const nextId: string | undefined = current.outgoingSections?.find(
+      (id) => !visited.has(id),
+    );
     current = nextId ? byId.get(nextId) : undefined;
   }
 

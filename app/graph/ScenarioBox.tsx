@@ -61,7 +61,7 @@ export function ScenarioBox(props: ScenarioBoxProps) {
       });
   });
 
-  const activeBeat = createMemo(() => {
+  const activeBeat = createMemo<(ScenarioBeat & { kind: "path" }) | null>(() => {
     const beat = props.scenario.beats[props.currentBeatIndex];
     return beat?.kind === "path" ? beat : null;
   });
@@ -178,7 +178,12 @@ export function ScenarioBox(props: ScenarioBoxProps) {
               const beats = props.scenario.beats;
               for (let i = 0; i <= idx; i++) {
                 const b = beats[i];
-                if (b?.fromNodeId === node.id || b?.toNodeId === node.id) return true;
+                if (
+                  b?.kind === "path" &&
+                  (b.fromNodeId === node.id || b.toNodeId === node.id)
+                ) {
+                  return true;
+                }
               }
               return false;
             };

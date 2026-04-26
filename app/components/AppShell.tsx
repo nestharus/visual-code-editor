@@ -4,6 +4,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  For,
   onCleanup,
   onMount,
   Show,
@@ -12,6 +13,7 @@ import {
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
 import { SearchOverlay } from "./SearchOverlay";
+import { SlicePanel } from "./slice-panel/SlicePanel";
 import { TasksPanel } from "./tasks-panel/TasksPanel";
 import { WatcherPanel } from "./WatcherPanel";
 import {
@@ -42,6 +44,8 @@ import {
   type SelectionScope,
 } from "../lib/anchor";
 import { createSelectionStore } from "../lib/selection-store";
+import { createSlicesStore } from "../lib/slices-store";
+import type { NeighbourhoodRule, SliceLifecycleState } from "../lib/slice";
 import type { Task, TaskState } from "../lib/task";
 
 type DiagramShellData = {
@@ -85,7 +89,7 @@ function sanitizeSearchGraph(
 
 export const AppShell: ParentComponent = (props) => {
   const watcherState: WatcherState = useWatchSubscription();
-  const navigate = useNavigate();
+  const navigate = useNavigate() as (options: unknown) => void;
   const location = useLocation();
   // Memoize pathname so downstream consumers (notably GraphSurface via
   // <GraphSurface graphId=... />) don't re-invalidate when only search
@@ -114,11 +118,15 @@ export const AppShell: ParentComponent = (props) => {
   const [composerSubmitting, setComposerSubmitting] = createSignal(false);
   const [tasks, setTasks] = createSignal<Task[]>([]);
   const [tasksOpen, setTasksOpen] = createSignal(false);
+  const slicesStore = createSlicesStore();
+  const [slicesOpen, setSlicesOpen] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
   const [diffVisible, setDiffVisible] = createSignal(initialDiffVisible());
   let viewportRef: HTMLElement | undefined;
   let tasksOverlayRef: HTMLDivElement | undefined;
   let tasksButtonRef: HTMLButtonElement | undefined;
+  let slicesOverlayRef: HTMLDivElement | undefined;
+  let slicesButtonRef: HTMLButtonElement | undefined;
   let composerAnchorElement: HTMLElement | null = null;
   let searchRequestVersion = 0;
   const terminalTaskStates: ReadonlySet<TaskState> = new Set([
@@ -238,6 +246,12 @@ export const AppShell: ParentComponent = (props) => {
   const activeTaskCount = createMemo(
     () => tasks().filter((task) => !terminalTaskStates.has(task.state)).length,
   );
+  const activeSliceCount = createMemo(
+    () =>
+      slicesStore
+        .slices()
+        .filter((slice) => slice.lifecycleState !== "dismissed").length,
+  );
 
   async function fetchTasks() {
     try {
@@ -273,6 +287,15 @@ export const AppShell: ParentComponent = (props) => {
 
   function openTask(taskId: string) {
     console.log("Open task", taskId);
+  }
+
+  function resolveSliceEntityLabel(entityId: string): string | null {
+    const details = diagramQuery.data?.details?.[entityId];
+    return typeof details?.label === "string" ? details.label : null;
+  }
+
+  function openSliceEntity(entityId: string) {
+    console.log("Open slice entity", entityId);
   }
 
   function closeComposer() {
@@ -406,6 +429,20 @@ export const AppShell: ParentComponent = (props) => {
     }
   }
 
+  async function handleConstructSlice(
+    query: string,
+    rule: NeighbourhoodRule,
+  ): Promise<"constructed" | "no-matches"> {
+    const slice = await slicesStore.construct(query, rule);
+    if (!slice) {
+      return "no-matches";
+    }
+
+    handleClearSearch();
+    setSlicesOpen(true);
+    return "constructed";
+  }
+
   createEffect(() => {
     location().pathname;
     selectionApi()?.clearSelection();
@@ -433,9 +470,23 @@ export const AppShell: ParentComponent = (props) => {
     onEscape: () => setTasksOpen(false),
   });
 
+  createOverlayFocus({
+    isOpen: slicesOpen,
+    getRoot: () => slicesOverlayRef,
+    getFocusTarget: () => slicesOverlayRef ?? null,
+    trapFocus: true,
+    onEscape: () => setSlicesOpen(false),
+  });
+
   createEffect(() => {
     if (tasksOpen()) {
       void fetchTasks();
+    }
+  });
+
+  createEffect(() => {
+    if (slicesOpen()) {
+      void slicesStore.refresh();
     }
   });
 
@@ -454,8 +505,24 @@ export const AppShell: ParentComponent = (props) => {
     onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
   });
 
+  createEffect(() => {
+    if (!slicesOpen()) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (slicesOverlayRef?.contains(target)) return;
+      if (slicesButtonRef?.contains(target)) return;
+      setSlicesOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
+  });
+
   onMount(() => {
     void fetchTasks();
+    void slicesStore.refresh();
   });
 
   createEffect(() => {
@@ -564,6 +631,7 @@ export const AppShell: ParentComponent = (props) => {
         <SearchOverlay
           onSearch={handleSearch}
           onClear={handleClearSearch}
+          onConstructSlice={handleConstructSlice}
           isSearchActive={searchActive()}
           searchQuery={searchQuery()}
           isLoading={searchLoading()}
@@ -666,6 +734,19 @@ export const AppShell: ParentComponent = (props) => {
               onClick={() => setTasksOpen((value) => !value)}
             >
               {`Tasks (${activeTaskCount()})`}
+            </button>
+            <button
+              ref={slicesButtonRef}
+              type="button"
+              class="toolbar-button"
+              data-toolbar="slices"
+              data-testid="slices-toolbar-button"
+              aria-label="Open Slices panel"
+              aria-expanded={slicesOpen()}
+              aria-controls="slices-panel-overlay"
+              onClick={() => setSlicesOpen((value) => !value)}
+            >
+              {`Slices (${activeSliceCount()})`}
             </button>
             <Show when={selectionStore.selection().items.length > 0}>
               <button
@@ -842,6 +923,48 @@ export const AppShell: ParentComponent = (props) => {
               }}
               onOpenTask={openTask}
             />
+          </div>
+        </Show>
+        <Show when={slicesOpen()}>
+          <div
+            id="slices-panel-overlay"
+            ref={slicesOverlayRef}
+            class="slices-panel-overlay"
+            data-testid="slices-panel-overlay"
+            role="dialog"
+            aria-label="Slices"
+            tabIndex={-1}
+          >
+            <div class="slices-panel-shell">
+              <header class="slices-panel-header">
+                <h2>Slices</h2>
+              </header>
+              <Show
+                when={activeSliceCount() > 0}
+                fallback={
+                  <p class="slices-panel-empty">No slices constructed yet.</p>
+                }
+              >
+                <div class="slices-panel-list">
+                  <For
+                    each={slicesStore
+                      .slices()
+                      .filter((slice) => slice.lifecycleState !== "dismissed")}
+                  >
+                    {(slice) => (
+                      <SlicePanel
+                        slice={slice}
+                        resolveLabel={resolveSliceEntityLabel}
+                        onEntityClick={(entityId) => openSliceEntity(entityId)}
+                        onTransition={(toState: SliceLifecycleState) => {
+                          void slicesStore.transition(slice.id, toState);
+                        }}
+                      />
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </div>
           </div>
         </Show>
       </div>

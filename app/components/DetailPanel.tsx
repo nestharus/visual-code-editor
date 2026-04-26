@@ -308,7 +308,7 @@ function resolveEndpointKind(rawKind: string | undefined): string | undefined {
 
 export function DetailPanel() {
   const search = useSearch({ strict: false });
-  const navigate = useNavigate();
+  const navigate = useNavigate() as (options: unknown) => void;
   const routeParams = useParams({ strict: false });
   const diagramQuery = useDiagramData();
   const composer = useComposerContext();

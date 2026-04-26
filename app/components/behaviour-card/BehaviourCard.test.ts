@@ -582,9 +582,10 @@ test.describe('BehaviourCard', () => {
       },
     });
 
-    expect(requestBody?.draft?.id).toMatch(/^draft:behavior:checkout\.lifecycle:\d+$/);
-    expect(requestBody?.draft?.origin?.timestamp_ms).toEqual(expect.any(Number));
-    expect(requestBody?.draft?.created_at_ms).toEqual(expect.any(Number));
+    const capturedRequestBody = requestBody as WritebackRequestBody | null;
+    expect(capturedRequestBody?.draft?.id).toMatch(/^draft:behavior:checkout\.lifecycle:\d+$/);
+    expect(capturedRequestBody?.draft?.origin?.timestamp_ms).toEqual(expect.any(Number));
+    expect(capturedRequestBody?.draft?.created_at_ms).toEqual(expect.any(Number));
   });
 
   test('pending state disables edit actions and marks Save busy', async ({ page, baseURL }) => {
@@ -617,7 +618,8 @@ test.describe('BehaviourCard', () => {
     await expect(saveButton(page)).toHaveAttribute('aria-busy', 'true');
     await expect(statusBanner(page)).toContainText('Saving');
 
-    releaseWriteback?.();
+    const release = releaseWriteback as (() => void) | null;
+    release?.();
   });
 
   test('success transitions to view mode and fires onSaved', async ({ page, baseURL }) => {

@@ -46,7 +46,7 @@ function routeFallbackTitle(
 
 export function DiagramView(props: DiagramViewProps) {
   const params = useParams({ strict: false });
-  const navigate = useNavigate();
+  const navigate = useNavigate() as (options: unknown) => void;
   const diagramQuery = useDiagramData();
   const shell = useDiagramShellContext();
 

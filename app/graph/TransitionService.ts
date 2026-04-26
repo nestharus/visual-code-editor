@@ -69,9 +69,9 @@ export function createTransitionService() {
     }
 
     setPhase("idle");
-    setEnteringNodeIds(new Set());
-    setExitingNodeIds(new Set());
-    setNodeDelayMap(new Map());
+    setEnteringNodeIds(new Set<string>());
+    setExitingNodeIds(new Set<string>());
+    setNodeDelayMap(new Map<string, number>());
   };
 
   const startExit = (nodes: GraphNode[], anchor?: TransitionAnchor) => {
@@ -86,7 +86,7 @@ export function createTransitionService() {
     }
 
     setPhase("exiting");
-    setEnteringNodeIds(new Set());
+    setEnteringNodeIds(new Set<string>());
     setExitingNodeIds(new Set(nodes.map((node) => node.id)));
     setNodeDelayMap(buildDelayMap(nodes, anchor));
   };
@@ -105,7 +105,7 @@ export function createTransitionService() {
     const maxDelay = getMaxDelay(delays);
 
     setPhase("entering");
-    setExitingNodeIds(new Set());
+    setExitingNodeIds(new Set<string>());
     setEnteringNodeIds(new Set(nodes.map((node) => node.id)));
     setNodeDelayMap(delays);
 

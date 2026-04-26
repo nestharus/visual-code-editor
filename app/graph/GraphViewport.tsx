@@ -1,4 +1,5 @@
 import { select } from "d3-selection";
+import "d3-transition";
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, type ParentComponent } from "solid-js";
 

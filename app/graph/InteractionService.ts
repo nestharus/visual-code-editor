@@ -107,8 +107,8 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
   }
 
   function clearFlowFocus() {
-    setFlowNodeIds(new Set());
-    setFlowEdgeIds(new Set());
+    setFlowNodeIds(new Set<string>());
+    setFlowEdgeIds(new Set<string>());
   }
 
   const [selectedNodeIds, setSelectedNodeIds] = createSignal<Set<string>>(new Set());
@@ -127,7 +127,7 @@ export function createInteractionService(graph: Accessor<GraphDefinition>) {
   }
 
   function clearSelection() {
-    setSelectedNodeIds(new Set());
+    setSelectedNodeIds(new Set<string>());
   }
 
   const isFlowActive = createMemo(() => flowNodeIds().size > 0 || flowEdgeIds().size > 0);

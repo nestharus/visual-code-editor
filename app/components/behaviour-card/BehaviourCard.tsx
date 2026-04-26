@@ -553,7 +553,10 @@ export function BehaviourCard(props: BehaviourCardProps) {
               data-testid="behaviour-card-status-banner"
               role="alert"
             >
-              {editor.banner().kind === "error" ? editor.banner().message : ""}
+              {(() => {
+                const banner = editor.banner();
+                return banner.kind === "error" ? banner.message : "";
+              })()}
             </div>
           </Show>
         </div>

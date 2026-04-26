@@ -7,6 +7,7 @@ import {
 
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import * as overlayStack from "../lib/a11y/overlayStack";
+import type { NeighbourhoodKind, NeighbourhoodRule } from "../lib/slice";
 
 type SearchOverlayProps = {
   onSearch: (query: string) => void;
@@ -16,14 +17,23 @@ type SearchOverlayProps = {
   isLoading: boolean;
   resultCount: number;
   openRequest?: number;
+  onConstructSlice?: (
+    query: string,
+    rule: NeighbourhoodRule,
+  ) => Promise<"constructed" | "no-matches">;
 };
 
 export function SearchOverlay(props: SearchOverlayProps) {
   const [isOpen, setIsOpen] = createSignal(false);
   const [inputValue, setInputValue] = createSignal(props.searchQuery);
+  const [ruleKind, setRuleKind] =
+    createSignal<NeighbourhoodKind>("direct-neighbours");
+  const [constructing, setConstructing] = createSignal(false);
+  const [constructMessage, setConstructMessage] = createSignal("");
   let formRef: HTMLFormElement | undefined;
   let inputRef: HTMLInputElement | undefined;
   const inputId = "diagram-search-input";
+  const ruleId = "diagram-search-slice-rule";
   const shortcutId = Symbol("search-shortcut");
   const isVisible = () => isOpen() || props.isSearchActive;
 
@@ -47,6 +57,7 @@ export function SearchOverlay(props: SearchOverlayProps) {
       }
     }
     setInputValue(value);
+    setConstructMessage("");
     setIsOpen(true);
     if (wasVisible) {
       queueMicrotask(() => inputRef?.focus());
@@ -56,6 +67,8 @@ export function SearchOverlay(props: SearchOverlayProps) {
   const closeOverlay = () => {
     const wasSearchActive = props.isSearchActive;
     setInputValue("");
+    setConstructMessage("");
+    setConstructing(false);
     setIsOpen(false);
     if (wasSearchActive) {
       props.onClear();
@@ -109,6 +122,7 @@ export function SearchOverlay(props: SearchOverlayProps) {
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     const query = inputValue().trim();
+    setConstructMessage("");
     if (query) {
       props.onSearch(query);
     }
@@ -116,6 +130,33 @@ export function SearchOverlay(props: SearchOverlayProps) {
 
   const handleClear = () => {
     closeOverlay();
+  };
+
+  const selectedRule = (): NeighbourhoodRule => ({
+    kind: ruleKind(),
+    edgeKinds: [],
+    maxHops: 0,
+  });
+
+  const handleConstructSlice = async () => {
+    const query = inputValue().trim();
+    if (!query || !props.onConstructSlice || constructing()) return;
+
+    setConstructing(true);
+    setConstructMessage("");
+    try {
+      const result = await props.onConstructSlice(query, selectedRule());
+      if (result === "no-matches") {
+        setConstructMessage("No matches for that query");
+        return;
+      }
+
+      closeOverlay();
+    } catch {
+      setConstructMessage("Slice construction failed");
+    } finally {
+      setConstructing(false);
+    }
   };
 
   return (
@@ -137,9 +178,28 @@ export function SearchOverlay(props: SearchOverlayProps) {
             class="search-overlay-input"
             placeholder="Search diagram elements..."
             value={inputValue()}
-            onInput={(e) => setInputValue(e.currentTarget.value)}
+            onInput={(e) => {
+              setInputValue(e.currentTarget.value);
+              setConstructMessage("");
+            }}
             autofocus
           />
+          <label class="visually-hidden" for={ruleId}>
+            Slice rule
+          </label>
+          <select
+            id={ruleId}
+            class="search-overlay-rule"
+            data-testid="search-overlay-rule-selector"
+            value={ruleKind()}
+            onChange={(event) => {
+              setRuleKind(event.currentTarget.value as NeighbourhoodKind);
+              setConstructMessage("");
+            }}
+          >
+            <option value="direct-neighbours">Direct neighbours</option>
+            <option value="exact">Exact match only</option>
+          </select>
           <Show when={props.isLoading || props.isSearchActive}>
             <span
               classList={{
@@ -155,6 +215,15 @@ export function SearchOverlay(props: SearchOverlayProps) {
           <button type="submit" class="search-overlay-btn">
             Search
           </button>
+          <button
+            type="button"
+            class="search-overlay-btn"
+            data-testid="search-overlay-construct-slice"
+            disabled={!inputValue().trim() || constructing()}
+            onClick={handleConstructSlice}
+          >
+            {constructing() ? "Constructing..." : "Construct slice"}
+          </button>
           <Show when={props.isSearchActive}>
             <button
               type="button"
@@ -163,6 +232,16 @@ export function SearchOverlay(props: SearchOverlayProps) {
             >
               Clear
             </button>
+          </Show>
+          <Show when={constructMessage()}>
+            <span
+              class="search-overlay-message"
+              data-testid="search-overlay-no-matches-message"
+              role="status"
+              aria-live="polite"
+            >
+              {constructMessage()}
+            </span>
           </Show>
         </form>
       </div>

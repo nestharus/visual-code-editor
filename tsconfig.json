@@ -14,7 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "vinxi/types/client"]
+    "types": ["vite/client"]
   },
   "include": ["app/**/*", "app.config.ts"],
   "exclude": ["dist", "node_modules"]

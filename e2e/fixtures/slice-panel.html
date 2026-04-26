@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SlicePanel fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      #mount {
+        width: min(720px, 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { render } from "solid-js/web";
+      import { SlicePanel } from "/app/components/slice-panel/SlicePanel.tsx";
+      import { makeSlice, sliceLifecycleStateFromString } from "/app/lib/slice.ts";
+
+      const params = new URLSearchParams(window.location.search);
+
+      window.__slicePanelEntityClickEvents = [];
+      window.__slicePanelTransitionEvents = [];
+      window.__resetSlicePanelEvents = () => {
+        window.__slicePanelEntityClickEvents.length = 0;
+        window.__slicePanelTransitionEvents.length = 0;
+      };
+
+      function numberParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null || value.trim() === "") {
+          return fallback;
+        }
+
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function boolParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null) {
+          return fallback;
+        }
+        return value !== "0" && value !== "false";
+      }
+
+      function nullableNumberParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null || value.trim() === "") {
+          return fallback;
+        }
+        if (value === "null") {
+          return null;
+        }
+
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function repeat(count, build) {
+        return Array.from({ length: Math.max(0, Math.trunc(count)) }, (_, index) =>
+          build(index),
+        );
+      }
+
+      function labelFor(entityId) {
+        const matched = entityId.match(/^system:matched-(\d+)$/);
+        if (matched !== null) {
+          return `Resolved system matched ${matched[1]}`;
+        }
+
+        const neighbourhood = entityId.match(/^module:neighbourhood-(\d+)$/);
+        if (neighbourhood !== null) {
+          return `Resolved module neighbourhood ${neighbourhood[1]}`;
+        }
+
+        return `Resolved ${entityId}`;
+      }
+
+      const query = params.get("query") ?? "auth";
+      const lifecycleState = sliceLifecycleStateFromString(params.get("state") ?? "active");
+      const matchedCount = Math.max(1, Math.trunc(numberParam("matched_count", 2)));
+      const neighbourhoodCount = Math.max(
+        0,
+        Math.trunc(numberParam("neighbourhood_count", 2)),
+      );
+      const createdAtMs = Date.now() - 120_000;
+      const ttlMs =
+        lifecycleState === "pinned"
+          ? nullableNumberParam("ttlMs", null)
+          : nullableNumberParam("ttlMs", 300_000);
+
+      const slice = makeSlice({
+        id: "slice:fixture",
+        query,
+        matchedEntityIds: repeat(matchedCount, (index) => `system:matched-${index}`),
+        neighbourhoodEntityIds: repeat(
+          neighbourhoodCount,
+          (index) => `module:neighbourhood-${index}`,
+        ),
+        rule: {
+          kind: "direct-neighbours",
+          edgeKinds: [],
+          maxHops: 0,
+        },
+        lifecycleState,
+        ttlMs,
+        createdBy: "you-this-session",
+        createdAtMs,
+        pinnedAtMs: lifecycleState === "pinned" ? createdAtMs + 60_000 : null,
+        trust: {
+          state: "grounded",
+          grounding: "test",
+        },
+      });
+
+      const nullLabelIndex = Math.trunc(numberParam("null_label_index", -1));
+      const props = {
+        slice,
+        onEntityClick: (entityId, section) => {
+          window.__slicePanelEntityClickEvents.push({ entityId, section });
+        },
+        onTransition: (toState, reason) => {
+          window.__slicePanelTransitionEvents.push({ toState, reason });
+        },
+      };
+
+      if (boolParam("resolve_labels", false)) {
+        props.resolveLabel = (entityId) => {
+          if (entityId.endsWith(`-${nullLabelIndex}`)) {
+            return null;
+          }
+          return labelFor(entityId);
+        };
+      }
+
+      render(() => SlicePanel(props), document.getElementById("mount"));
+    </script>
+  </body>
+</html>

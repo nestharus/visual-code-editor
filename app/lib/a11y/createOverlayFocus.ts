@@ -56,8 +56,9 @@ export function createOverlayFocus(options: CreateOverlayFocusOptions): void {
 
   const restoreFocus = () => {
     const fallback = document.querySelector("#diagram-viewport");
-    if (isFocusable(opener)) {
-      opener.focus();
+    const target = opener;
+    if (target && isFocusable(target)) {
+      target.focus();
     } else if (fallback instanceof HTMLElement) {
       fallback.focus();
     }

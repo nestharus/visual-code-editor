@@ -64,6 +64,16 @@ import {
   validateSubmitReviewVerdictRequest,
   validateTransitionReviewThreadRequest,
 } from "./review_threads/types";
+import { constructSliceFromDiagramPath } from "./slices/construct";
+import {
+  createSliceManager,
+  SliceManagerError,
+  type SliceErrorKind,
+} from "./slices/manager";
+import {
+  validateConstructSliceRequest,
+  validateTransitionSliceRequest,
+} from "./slices/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -817,9 +827,10 @@ function spawnAgents(
 const PROJECT_ROOT = join(__dirname, "..");
 const taskManager = createTaskManager(PROJECT_ROOT);
 const reviewThreadManager = createReviewThreadManager();
+const sliceManager = createSliceManager();
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
-  || join(PROJECT_ROOT, "dist", "data", "diagram.json");
+  || join(PROJECT_ROOT, "public", "data", "diagram.json");
 
 app.get("/api/diagram", async (_req, res) => {
   try {
@@ -828,6 +839,82 @@ app.get("/api/diagram", async (_req, res) => {
     res.send(data);
   } catch {
     res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
+  }
+});
+
+app.post("/api/slices/construct", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateConstructSliceRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const outcome = constructSliceFromDiagramPath(validation.value, DIAGRAM_JSON_PATH);
+    if (!outcome.ok) {
+      return res.json({
+        ok: false,
+        error: outcome.error,
+        error_kind: outcome.error_kind,
+        request_id: requestId,
+      });
+    }
+
+    const slice = sliceManager.add(outcome.slice, validation.value);
+    return res.json({ ok: true, slice, request_id: requestId });
+  } catch (error) {
+    const sliceError = normalizeSliceError(error);
+    return res.status(statusForSliceError(sliceError.errorKind)).json({
+      ok: false,
+      error: sliceError.message,
+      error_kind: sliceError.errorKind,
+      request_id: requestId,
+    });
+  }
+});
+
+app.get("/api/slices", (req, res) => {
+  const includeDismissed = req.query.include_dismissed === "true";
+  return res.json({ slices: sliceManager.list({ includeDismissed }) });
+});
+
+app.get("/api/slices/:id", (req, res) => {
+  const slice = sliceManager.get(req.params.id);
+  if (!slice) {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  return res.json({ slice });
+});
+
+app.post("/api/slices/:id/transition", (req, res) => {
+  const requestId = randomUUID();
+  const validation = validateTransitionSliceRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const slice = sliceManager.transition(req.params.id, validation.value);
+    return res.json({ ok: true, slice, request_id: requestId });
+  } catch (error) {
+    const sliceError = normalizeSliceError(error);
+    return res.status(statusForSliceError(sliceError.errorKind)).json({
+      ok: false,
+      error: sliceError.message,
+      error_kind: sliceError.errorKind,
+      request_id: requestId,
+    });
   }
 });
 
@@ -1421,6 +1508,27 @@ function normalizeReviewThreadError(error: unknown): ReviewThreadManagerError {
 }
 
 function statusForReviewThreadError(errorKind: ReviewThreadErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+    case "invalid-transition":
+      return 400;
+    case "not-found":
+      return 404;
+    case "internal":
+      return 500;
+  }
+}
+
+function normalizeSliceError(error: unknown): SliceManagerError {
+  if (error instanceof SliceManagerError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "slice route failed";
+  return new SliceManagerError("internal", message, { cause: error });
+}
+
+function statusForSliceError(errorKind: SliceErrorKind): number {
   switch (errorKind) {
     case "validation":
     case "invalid-transition":
