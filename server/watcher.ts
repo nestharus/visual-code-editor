@@ -33,6 +33,17 @@ import {
   type WritebackPlan,
   type WritebackRequest,
 } from "./writeback/validate";
+import {
+  createTaskManager,
+  TaskManagerError,
+  type TaskErrorKind,
+} from "./tasks/manager";
+import {
+  validateDispatchTaskRequest,
+  validateTransitionTaskRequest,
+  type DispatchTaskRequest,
+  type TransitionTaskRequest,
+} from "./tasks/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -87,6 +98,7 @@ type ExtractJsonResult =
   | { parsed: null; parsePath: "degraded" };
 
 type WritebackErrorKind = "validation" | "internal" | "io";
+type TaskRouteStatus = "ok" | "error";
 
 const app = express();
 app.use(cors());
@@ -444,6 +456,25 @@ function logWritebackOutcome(fields: {
   }));
 }
 
+function logTaskOutcome(fields: {
+  request_id: string;
+  route: string;
+  task_id: string;
+  duration_ms: number;
+  status: TaskRouteStatus;
+  error_kind?: TaskErrorKind;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: fields.route,
+    task_id: fields.task_id,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+  }));
+}
+
 async function withWritebackLock<T>(task: () => Promise<T>): Promise<T> {
   while (writebackInProgress) {
     await writebackInProgress;
@@ -734,6 +765,7 @@ function spawnAgents(
 // --- Diagram data ---
 
 const PROJECT_ROOT = join(__dirname, "..");
+const taskManager = createTaskManager(PROJECT_ROOT);
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
   || join(PROJECT_ROOT, "dist", "data", "diagram.json");
@@ -953,6 +985,148 @@ app.post("/api/writeback", async (req, res) => {
     return fail(500, errorKind, message);
   }
 });
+
+app.post("/api/tasks/dispatch", (req, res) => {
+  const startedAt = Date.now();
+  let request: DispatchTaskRequest | undefined;
+  const requestId = requestIdFromBody(req.body);
+
+  const fail = (statusCode: number, errorKind: TaskErrorKind, error: string) => {
+    logTaskOutcome({
+      request_id: request?.requestId ?? requestId,
+      route: "/api/tasks/dispatch",
+      task_id: "-",
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: request?.requestId ?? requestId,
+    });
+  };
+
+  const validation = validateDispatchTaskRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+  request = validation.value;
+
+  try {
+    const task = taskManager.dispatch(request);
+    logTaskOutcome({
+      request_id: request.requestId,
+      route: "/api/tasks/dispatch",
+      task_id: task.id,
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+    return res.status(201).json({
+      ok: true,
+      task,
+      request_id: request.requestId,
+    });
+  } catch (error) {
+    const taskError = normalizeTaskError(error);
+    return fail(statusForTaskError(taskError.errorKind), taskError.errorKind, taskError.message);
+  }
+});
+
+app.get("/api/tasks", (_req, res) => {
+  res.json({ tasks: taskManager.list() });
+});
+
+app.get("/api/tasks/:id", (req, res) => {
+  const task = taskManager.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  return res.json({ task });
+});
+
+app.post("/api/tasks/:id/transition", async (req, res) => {
+  const startedAt = Date.now();
+  let request: TransitionTaskRequest | undefined;
+
+  const fail = (statusCode: number, errorKind: TaskErrorKind, error: string) => {
+    logTaskOutcome({
+      request_id: "-",
+      route: "/api/tasks/:id/transition",
+      task_id: req.params.id,
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+    });
+  };
+
+  const validation = validateTransitionTaskRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+  request = validation.value;
+
+  try {
+    const task = await taskManager.transition(req.params.id, request);
+    logTaskOutcome({
+      request_id: task.requestId,
+      route: "/api/tasks/:id/transition",
+      task_id: task.id,
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+    return res.json({ ok: true, task });
+  } catch (error) {
+    const taskError = normalizeTaskError(error);
+    if (taskError.errorKind === "not-found") {
+      return res.status(404).json({ error: "not found" });
+    }
+    return fail(statusForTaskError(taskError.errorKind), taskError.errorKind, taskError.message);
+  }
+});
+
+function requestIdFromBody(payload: unknown): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "request_id" in payload &&
+    typeof (payload as { request_id?: unknown }).request_id === "string"
+  ) {
+    return (payload as { request_id: string }).request_id;
+  }
+
+  return "-";
+}
+
+function normalizeTaskError(error: unknown): TaskManagerError {
+  if (error instanceof TaskManagerError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "task route failed";
+  return new TaskManagerError("internal", message, { cause: error });
+}
+
+function statusForTaskError(errorKind: TaskErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+    case "invalid-transition":
+      return 400;
+    case "not-found":
+      return 404;
+    case "git":
+    case "worktree":
+    case "internal":
+      return 500;
+  }
+}
 
 // Serve static site pages
 const SITE_DIR = join(PROJECT_ROOT, "..", "agent-implementation-skill", "execution-philosophy", "diagrams", "site");

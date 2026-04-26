@@ -51,6 +51,7 @@
 :root {
   /* Read-only anchors in src/visual_code_editor/assets/styles.css: detail scrim 190, detail panel 200. */
   --z-watcher-panel: 350;
+  --z-tasks-panel: 920;
   --z-floating-composer: 950;
   --z-skip-link: 960;
   --z-modal-backdrop: 1000;
@@ -184,6 +185,12 @@
   color: var(--text);
 }
 
+.toolbar-button[data-toolbar="tasks"][aria-expanded="true"] {
+  border-color: rgba(88, 166, 255, 0.55);
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.16), rgba(88, 166, 255, 0.08));
+  color: var(--text);
+}
+
 .toolbar-button[data-toolbar="prompt"].is-open {
   border-color: var(--accent);
   color: var(--text);
@@ -208,12 +215,14 @@
 
 .toolbar-button[data-view-toggle][role="tab"][aria-selected="true"]:hover,
 .toolbar-button[data-toolbar="watcher"][aria-expanded="true"]:hover,
+.toolbar-button[data-toolbar="tasks"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tests"][role="switch"][aria-checked="true"]:hover,
 .toolbar-button[data-toolbar="diff"][role="switch"][aria-checked="true"]:hover {
   transform: translateY(-1px);
 }
 
 .toolbar-button[data-toolbar="watcher"][aria-expanded="true"]:hover,
+.toolbar-button[data-toolbar="tasks"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tests"][role="switch"][aria-checked="true"]:hover {
   border-color: rgba(88, 166, 255, 0.55);
   background: linear-gradient(180deg, rgba(88, 166, 255, 0.16), rgba(88, 166, 255, 0.08));
@@ -1024,6 +1033,22 @@
   background: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(17, 23, 34, 0.99));
   box-shadow: var(--shadow-strong);
   backdrop-filter: blur(18px);
+}
+
+.tasks-panel-overlay {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--z-tasks-panel);
+  width: min(380px, calc(100vw - 32px));
+  overflow: auto;
+  border-radius: 8px;
+  box-shadow: var(--shadow-strong);
+}
+
+.tasks-panel-overlay .tasks-panel {
+  min-height: 100%;
 }
 
 .watcher-panel-header {

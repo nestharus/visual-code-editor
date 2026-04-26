@@ -117,19 +117,24 @@ test.describe("FloatingComposer integration", () => {
     await expectComposerClosed(page);
   });
 
-  test("Submit POSTs to /api/prompt-composer with the selected panel payload", async ({
+  test("Direct mode submission POSTs to /api/tasks/dispatch", async ({
     page,
   }) => {
     let receivedBody: unknown = null;
 
-    await page.route("**/api/prompt-composer", async (route) => {
+    await page.route("**/api/tasks/dispatch", async (route) => {
       receivedBody = JSON.parse(route.request().postData() || "{}");
       await route.fulfill({
-        status: 200,
+        status: 201,
         contentType: "application/json",
         body: JSON.stringify({
-          kind: "answer",
-          response: "Composer response",
+          ok: true,
+          request_id: "request:floating-composer-direct",
+          task: {
+            id: "task:floating-composer-direct",
+            label: "Run this panel directly",
+            state: "pending",
+          },
         }),
       });
     });
@@ -140,17 +145,15 @@ test.describe("FloatingComposer integration", () => {
     );
     await promptTrigger(page).click();
 
-    await promptInput(page).fill("Summarize this panel");
+    await page.getByTestId("mode-pill-direct").click();
+    await promptInput(page).fill("Run this panel directly");
     await submitButton(page).click();
 
     await expect.poll(() => receivedBody).toMatchObject({
-      mode: "ask",
-      prompt: "Summarize this panel",
-      surfaceAnchor: "node",
-      selection: {
-        primaryAnchor: "node",
-        items: [{ id: "cluster-alpha", kind: "node", mode: "entity" }],
-      },
+      label: "Run this panel directly",
+      prompt: "Run this panel directly",
+      related_behavior_ids: [],
+      request_id: expect.any(String),
     });
   });
 

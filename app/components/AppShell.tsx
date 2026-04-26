@@ -5,12 +5,14 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
   Show,
   useContext,
   type ParentComponent,
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
 import { SearchOverlay } from "./SearchOverlay";
+import { TasksPanel } from "./tasks-panel/TasksPanel";
 import { WatcherPanel } from "./WatcherPanel";
 import {
   FloatingComposer,
@@ -22,7 +24,12 @@ import type { CombinedData } from "../graph/BehaviorPlayback";
 import { GraphSurface, type GraphSelectionApi } from "../graph/GraphSurface";
 import type { GraphDefinition } from "../graph/layout/types";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
-import { ComposerContext, type ComposerOpenIntent } from "../lib/composer-context";
+import {
+  buildDirectTaskDispatchBody,
+  ComposerContext,
+  type ComposerOpenIntent,
+} from "../lib/composer-context";
+import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import {
   useWatchSubscription,
   type WatcherState,
@@ -35,6 +42,7 @@ import {
   type SelectionScope,
 } from "../lib/anchor";
 import { createSelectionStore } from "../lib/selection-store";
+import type { Task, TaskState } from "../lib/task";
 
 type DiagramShellData = {
   elements: () => DiagramElementDefinition[];
@@ -104,11 +112,20 @@ export const AppShell: ParentComponent = (props) => {
   const [composerResult, setComposerResult] = createSignal<ComposerResult | null>(null);
   const [composerError, setComposerError] = createSignal("");
   const [composerSubmitting, setComposerSubmitting] = createSignal(false);
+  const [tasks, setTasks] = createSignal<Task[]>([]);
+  const [tasksOpen, setTasksOpen] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
   const [diffVisible, setDiffVisible] = createSignal(initialDiffVisible());
   let viewportRef: HTMLElement | undefined;
+  let tasksOverlayRef: HTMLDivElement | undefined;
+  let tasksButtonRef: HTMLButtonElement | undefined;
   let composerAnchorElement: HTMLElement | null = null;
   let searchRequestVersion = 0;
+  const terminalTaskStates: ReadonlySet<TaskState> = new Set([
+    "merged",
+    "abandoned",
+    "failed",
+  ]);
 
   function initialTestsVisible(): boolean {
     if (typeof window === "undefined") return true;
@@ -218,6 +235,45 @@ export const AppShell: ParentComponent = (props) => {
   });
   const diffStatusMap = createMemo(() => buildDiffStatusMap(currentDiff()));
   const hasDiff = createMemo(() => !!currentDiff());
+  const activeTaskCount = createMemo(
+    () => tasks().filter((task) => !terminalTaskStates.has(task.state)).length,
+  );
+
+  async function fetchTasks() {
+    try {
+      const response = await fetch(`${WATCHER_URL}/api/tasks`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const nextTasks = Array.isArray(data) ? data : data?.tasks;
+      setTasks(Array.isArray(nextTasks) ? nextTasks : []);
+    } catch {
+      // Task data is an enhancement to the toolbar; keep the shell usable if it is unavailable.
+    }
+  }
+
+  async function transitionTask(taskId: string, toState: TaskState, reason: string) {
+    try {
+      const response = await fetch(
+        `${WATCHER_URL}/api/tasks/${encodeURIComponent(taskId)}/transition`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to_state: toState, reason }),
+        },
+      );
+
+      if (response.ok) {
+        await fetchTasks();
+      }
+    } catch {
+      // v1 leaves transition failures silent; the next explicit open will refetch state.
+    }
+  }
+
+  function openTask(taskId: string) {
+    console.log("Open task", taskId);
+  }
 
   function closeComposer() {
     setComposerOpen(false);
@@ -297,6 +353,27 @@ export const AppShell: ParentComponent = (props) => {
     setComposerResult(null);
 
     try {
+      if (payload.mode === "direct") {
+        const response = await fetch(`${WATCHER_URL}/api/tasks/dispatch`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildDirectTaskDispatchBody(payload)),
+        });
+
+        if (!response.ok) {
+          throw new Error("Task dispatch request failed");
+        }
+
+        const data = await response.json();
+        await fetchTasks();
+        const dispatchedLabel =
+          typeof data?.task?.label === "string"
+            ? data.task.label
+            : payload.prompt.slice(0, 80);
+        setComposerResult({ kind: "direct", text: dispatchedLabel });
+        return;
+      }
+
       const response = await fetch(`${WATCHER_URL}/api/prompt-composer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -315,8 +392,6 @@ export const AppShell: ParentComponent = (props) => {
           text,
           patch: patchText(data) || text,
         });
-      } else if (payload.mode === "direct") {
-        setComposerResult({ kind: "direct", text });
       } else {
         setComposerResult({ kind: "answer", text });
       }
@@ -348,6 +423,39 @@ export const AppShell: ParentComponent = (props) => {
     const handleResize = () => updateComposerAnchorRect();
     window.addEventListener("resize", handleResize);
     onCleanup(() => window.removeEventListener("resize", handleResize));
+  });
+
+  createOverlayFocus({
+    isOpen: tasksOpen,
+    getRoot: () => tasksOverlayRef,
+    getFocusTarget: () => tasksOverlayRef ?? null,
+    trapFocus: true,
+    onEscape: () => setTasksOpen(false),
+  });
+
+  createEffect(() => {
+    if (tasksOpen()) {
+      void fetchTasks();
+    }
+  });
+
+  createEffect(() => {
+    if (!tasksOpen()) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (tasksOverlayRef?.contains(target)) return;
+      if (tasksButtonRef?.contains(target)) return;
+      setTasksOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
+  });
+
+  onMount(() => {
+    void fetchTasks();
   });
 
   createEffect(() => {
@@ -546,6 +654,19 @@ export const AppShell: ParentComponent = (props) => {
               </svg>
               <span>Search</span>
             </button>
+            <button
+              ref={tasksButtonRef}
+              type="button"
+              class="toolbar-button"
+              data-toolbar="tasks"
+              data-testid="tasks-toolbar-button"
+              aria-label="Open Tasks panel"
+              aria-expanded={tasksOpen()}
+              aria-controls="tasks-panel-overlay"
+              onClick={() => setTasksOpen((value) => !value)}
+            >
+              {`Tasks (${activeTaskCount()})`}
+            </button>
             <Show when={selectionStore.selection().items.length > 0}>
               <button
                 type="button"
@@ -704,6 +825,25 @@ export const AppShell: ParentComponent = (props) => {
           error={composerError()}
           isSubmitting={composerSubmitting()}
         />
+        <Show when={tasksOpen()}>
+          <div
+            id="tasks-panel-overlay"
+            ref={tasksOverlayRef}
+            class="tasks-panel-overlay"
+            data-testid="tasks-panel-overlay"
+            role="dialog"
+            aria-label="Tasks"
+            tabIndex={-1}
+          >
+            <TasksPanel
+              tasks={tasks()}
+              onTransition={(taskId, toState, reason) => {
+                void transitionTask(taskId, toState, reason);
+              }}
+              onOpenTask={openTask}
+            />
+          </div>
+        </Show>
       </div>
       </ComposerContext.Provider>
     </DiagramShellContext.Provider>
