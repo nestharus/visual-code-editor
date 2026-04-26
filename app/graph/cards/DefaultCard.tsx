@@ -62,7 +62,7 @@ export function DefaultCard(props: GraphCardProps) {
         <span class="graph-card-icon" aria-hidden="true" innerHTML={iconSvg() ?? ""} />
       </Show>
       <Show when={props.zoomTier === "label" || props.zoomTier === "full"}>
-        <span class="graph-card-label">{props.node.label}</span>
+        <span class="graph-card-label graph-node-label">{props.node.label}</span>
       </Show>
     </div>
   );

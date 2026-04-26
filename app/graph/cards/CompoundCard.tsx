@@ -36,7 +36,7 @@ export function CompoundCard(props: GraphCardProps) {
       style={cardStyle()}
       title={props.node.label}
     >
-      <div class="compound-card-header">
+      <div class="compound-card-header container-header">
         <Show when={props.zoomTier !== "dot" && getIconSvgByKind(props.node.kind)}>
           <span
             class="graph-card-icon"
@@ -45,7 +45,7 @@ export function CompoundCard(props: GraphCardProps) {
           />
         </Show>
         <Show when={props.zoomTier === "label" || props.zoomTier === "full"}>
-          <span class="graph-card-label">{props.node.label}</span>
+          <span class="graph-card-label graph-node-label">{props.node.label}</span>
         </Show>
       </div>
       <div class="compound-card-children">{props.children}</div>

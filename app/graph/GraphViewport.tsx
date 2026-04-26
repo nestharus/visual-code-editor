@@ -18,6 +18,7 @@ type GraphViewportProps = {
   graph: GraphDefinition;
   fitKey: string;
   onZoomChange?: (zoomLevel: number) => void;
+  onFitZoomChange?: (zoomLevel: number) => void;
   onViewportReady?: (handle: ViewportHandle) => void;
 };
 
@@ -103,7 +104,9 @@ export const GraphViewport: ParentComponent<GraphViewportProps> = (props) => {
     const width = viewportEl.clientWidth;
     const height = viewportEl.clientHeight;
     if (!width || !height) return;
-    applyTransform(computeTransformForBounds(width, height, bounds()));
+    const nextTransform = computeTransformForBounds(width, height, bounds());
+    props.onFitZoomChange?.(nextTransform.k);
+    applyTransform(nextTransform);
   };
 
   // --- Imperative camera handle ---

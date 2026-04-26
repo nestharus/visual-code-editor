@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zoom context fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      #mount {
+        width: 320px;
+      }
+
+      .fixture-readout,
+      .fixture-error {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #30363d;
+        background: #161b22;
+      }
+
+      .fixture-error {
+        border-color: #f85149;
+        color: #ffdcd7;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { createEffect, createSignal } from "solid-js";
+      import { createComponent, render } from "solid-js/web";
+      import { ZoomBandProvider, useZoomBand } from "/app/lib/zoom-context.tsx";
+
+      const params = new URLSearchParams(window.location.search);
+      const mount = document.getElementById("mount");
+      const initialFactor = Number(params.get("factor") ?? "0.6");
+
+      window.__zoomContextFactorReads = 0;
+      window.__zoomContextBandReads = [];
+
+      const [rawFactor, setRawFactor] = createSignal(initialFactor);
+
+      window.setFactor = (factor) => {
+        setRawFactor(Number(factor));
+      };
+
+      function factor() {
+        window.__zoomContextFactorReads += 1;
+        return rawFactor();
+      }
+
+      function appendText(parent, text) {
+        parent.appendChild(document.createTextNode(text));
+      }
+
+      function makeReadout() {
+        const readout = document.createElement("span");
+        readout.className = "fixture-readout";
+        readout.dataset.testid = "zoom-band-readout";
+        return readout;
+      }
+
+      function renderError(error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const errorBox = document.createElement("span");
+        errorBox.className = "fixture-error";
+        errorBox.dataset.testid = "zoom-error";
+        appendText(errorBox, message);
+        mount.replaceChildren(errorBox);
+      }
+
+      function ZoomBandProbe() {
+        const firstZoomBand = useZoomBand();
+        const secondZoomBand = useZoomBand();
+        const thirdZoomBand = useZoomBand();
+        const readout = makeReadout();
+
+        createEffect(() => {
+          const values = [firstZoomBand(), secondZoomBand(), thirdZoomBand()];
+          window.__zoomContextBandReads = values;
+          readout.textContent = values[0];
+        });
+
+        return readout;
+      }
+
+      function NoProviderProbe() {
+        const zoomBand = useZoomBand();
+        const readout = makeReadout();
+
+        createEffect(() => {
+          readout.textContent = zoomBand();
+        });
+
+        return readout;
+      }
+
+      try {
+        if (params.get("noprovider") === "true") {
+          render(() => createComponent(NoProviderProbe, {}), mount);
+        } else {
+          render(
+            () =>
+              createComponent(ZoomBandProvider, {
+                factor,
+                get children() {
+                  return createComponent(ZoomBandProbe, {});
+                },
+              }),
+            mount,
+          );
+        }
+      } catch (error) {
+        renderError(error);
+      }
+    </script>
+  </body>
+</html>

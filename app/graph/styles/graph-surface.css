@@ -124,7 +124,7 @@
 .edge-hit-target {
   fill: none;
   stroke: transparent;
-  stroke-width: 14;
+  stroke-width: 8px;
   pointer-events: stroke;
 }
 
@@ -208,6 +208,119 @@
 .edge-path.highlighted {
   stroke-width: 3;
   opacity: 1;
+}
+
+/* Zoom-band rules — see L.3 and L.4 contracts for the per-band tables. */
+.graph-surface-root {
+  --node-label-hit-padding: 6px;
+}
+
+.graph-surface-root[data-zoom-band="overview"] {
+  --node-label-hit-padding: 4px;
+}
+
+.graph-surface-root[data-zoom-band="overview"] .edge-hit-target {
+  stroke-width: 12px;
+}
+
+.graph-surface-root[data-zoom-band="overview"] .graph-node-label,
+.graph-surface-root[data-zoom-band="overview"] .edge-label,
+.graph-surface-root[data-zoom-band="overview"] .edge-artifact-chip,
+.graph-surface-root[data-zoom-band="overview"] .behaviour-card-slice,
+.graph-surface-root[data-zoom-band="overview"] .badge-cluster > *:nth-child(n+1) {
+  display: none;
+}
+
+.graph-surface-root[data-zoom-band="overview"] .container-header {
+  font-size: 80%;
+}
+
+.graph-surface-root[data-zoom-band="structure"] {
+  --node-label-hit-padding: 4px;
+}
+
+.graph-surface-root[data-zoom-band="structure"] .edge-hit-target {
+  stroke-width: 10px;
+}
+
+.graph-surface-root[data-zoom-band="structure"] .graph-node-label,
+.graph-surface-root[data-zoom-band="structure"] .edge-label,
+.graph-surface-root[data-zoom-band="structure"] .edge-artifact-chip,
+.graph-surface-root[data-zoom-band="structure"] .behaviour-card-slice,
+.graph-surface-root[data-zoom-band="structure"] .badge-cluster > *:nth-child(n+2) {
+  display: none;
+}
+
+.graph-surface-root[data-zoom-band="structure"] .graph-node:hover .graph-node-label,
+.graph-surface-root[data-zoom-band="structure"] .container-header {
+  display: inline-block;
+}
+
+.graph-surface-root[data-zoom-band="detail"] {
+  --node-label-hit-padding: 6px;
+}
+
+.graph-surface-root[data-zoom-band="detail"] .edge-hit-target {
+  stroke-width: 8px;
+}
+
+.graph-surface-root[data-zoom-band="detail"] .graph-node-label {
+  display: inline-block;
+}
+
+.graph-surface-root[data-zoom-band="detail"] .edge-label,
+.graph-surface-root[data-zoom-band="detail"] .edge-artifact-chip,
+.graph-surface-root[data-zoom-band="detail"] .behaviour-card-slice,
+.graph-surface-root[data-zoom-band="detail"] .badge-cluster > *:nth-child(n+3) {
+  display: none;
+}
+
+.graph-surface-root[data-zoom-band="detail"] .graph-edge:hover .edge-label {
+  display: inline-block;
+  opacity: 1;
+}
+
+.graph-surface-root[data-zoom-band="inspect"] {
+  --node-label-hit-padding: 8px;
+}
+
+.graph-surface-root[data-zoom-band="inspect"] .edge-hit-target {
+  stroke-width: 6px;
+}
+
+.graph-surface-root[data-zoom-band="inspect"] .graph-node-label,
+.graph-surface-root[data-zoom-band="inspect"] .edge-label,
+.graph-surface-root[data-zoom-band="inspect"] .edge-artifact-chip {
+  display: inline-block;
+  opacity: 1;
+}
+
+.graph-surface-root[data-zoom-band="inspect"] .behaviour-card-slice,
+.graph-surface-root[data-zoom-band="inspect"] .badge-cluster > *:nth-child(n+4) {
+  display: none;
+}
+
+.graph-surface-root[data-zoom-band="inspect"] .behaviour-card:hover .behaviour-card-slice {
+  display: block;
+}
+
+.graph-surface-root[data-zoom-band="source"] {
+  --node-label-hit-padding: 8px;
+}
+
+.graph-surface-root[data-zoom-band="source"] .edge-hit-target {
+  stroke-width: 4px;
+}
+
+.graph-surface-root[data-zoom-band="source"] .graph-node-label,
+.graph-surface-root[data-zoom-band="source"] .edge-label,
+.graph-surface-root[data-zoom-band="source"] .edge-artifact-chip {
+  display: inline-block;
+  opacity: 1;
+}
+
+.graph-surface-root[data-zoom-band="source"] .behaviour-card-slice {
+  display: block;
 }
 
 .graph-edge.flow-active .edge-path {

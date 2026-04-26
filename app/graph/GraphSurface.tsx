@@ -2,6 +2,7 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Acce
 
 import type { DiagramEntityTestRecord } from "../lib/diagram-data";
 import type { DiagramElementDefinition } from "../lib/diagram-elements";
+import { ZoomBandProvider } from "../lib/zoom-context";
 import {
   BaseEdgeLayer,
   EdgeHitLayer,
@@ -177,9 +178,14 @@ async function buildGraphDefinition(props: GraphSurfaceProps): Promise<GraphDefi
 export function GraphSurface(props: GraphSurfaceProps) {
   const [displayedGraph, setDisplayedGraph] = createSignal<GraphDefinition>(EMPTY_GRAPH);
   const [zoomLevel, setZoomLevel] = createSignal(1);
+  const [fitZoomLevel, setFitZoomLevel] = createSignal(1);
   const [fitVersion, setFitVersion] = createSignal(0);
 
   const activeGraph = createMemo(() => displayedGraph());
+  const zoomBandFactor = createMemo(() => {
+    const fitZoom = fitZoomLevel();
+    return fitZoom > 0 ? zoomLevel() / fitZoom : zoomLevel();
+  });
   const interaction = createInteractionService(activeGraph);
   const transition = createTransitionService();
   const presentation = createPresentationStateService(activeGraph);
@@ -416,11 +422,16 @@ export function GraphSurface(props: GraphSurfaceProps) {
   });
 
   return (
-    <div class="graph-surface-root" style={{ position: "relative", width: "100%", height: "100%" }}>
+    <ZoomBandProvider
+      factor={zoomBandFactor}
+      class="graph-surface-root"
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       <GraphViewport
         graph={activeGraph()}
         fitKey={`${activeGraph().id}:${fitVersion()}`}
         onZoomChange={setZoomLevel}
+        onFitZoomChange={setFitZoomLevel}
         onViewportReady={(h) => { viewportHandle = h; }}
       >
         <BaseEdgeLayer
@@ -503,6 +514,6 @@ export function GraphSurface(props: GraphSurfaceProps) {
           </div>
         </details>
       </div>
-    </div>
+    </ZoomBandProvider>
   );
 }

@@ -567,7 +567,7 @@ export function BehaviourCard(props: BehaviourCardProps) {
 
               return (
                 <button
-                  class="behaviour-card__slice"
+                  class="behaviour-card__slice behaviour-card-slice"
                   data-testid={`behaviour-card-slice-${index()}`}
                   data-confirmed={String(confirmed())}
                   type="button"
