@@ -74,6 +74,9 @@ import {
 import {
   validateConstructSliceRequest,
   validateTransitionSliceRequest,
+  makeSlice,
+  type ConstructSliceRequest,
+  type Slice,
 } from "./slices/types";
 import {
   createOverlayManager,
@@ -92,6 +95,14 @@ import {
   type ProviderErrorKind,
 } from "./providers/registry";
 import { validateCreateProviderRequest } from "./providers/types";
+import { startLifecycleTicker } from "./change_events/lifecycle_ticker";
+import { createChangeEventStore } from "./change_events/store";
+import {
+  validateChangeEventInput,
+  validateDisposeRequest,
+  validateUserContextId,
+  validateUserContextPatch,
+} from "./change_events/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -905,6 +916,7 @@ const reviewThreadManager = createReviewThreadManager();
 const sliceManager = createSliceManager();
 const overlayManager = createOverlayManager();
 const providerRegistry = createProviderRegistry();
+const changeEventStore = createChangeEventStore();
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
   || join(PROJECT_ROOT, "public", "data", "diagram.json");
@@ -917,6 +929,156 @@ app.get("/api/diagram", async (_req, res) => {
   } catch {
     res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
   }
+});
+
+app.post("/api/change-events", (req, res) => {
+  const requestId =
+    typeof req.body?.request_id === "string" && req.body.request_id.length > 0
+      ? req.body.request_id
+      : randomUUID();
+  const contextValidation = validateUserContextId(req.body?.user_context_id);
+  if (!contextValidation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: contextValidation.error,
+      error_kind: contextValidation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  if (!changeEventStore.getUserContext(contextValidation.value)) {
+    return res.status(400).json({
+      ok: false,
+      error: "user_context_id does not reference a stored UserContext",
+      error_kind: "validation",
+      request_id: requestId,
+    });
+  }
+
+  const eventValidation = validateChangeEventInput(req.body?.event);
+  if (!eventValidation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: eventValidation.error,
+      error_kind: eventValidation.error_kind,
+      request_id: requestId,
+    });
+  }
+
+  try {
+    const classifiedEvent = changeEventStore.classifyAndStore(
+      contextValidation.value,
+      eventValidation.value,
+    );
+    return res.json({
+      ok: true,
+      classified_event: classifiedEvent,
+      request_id: requestId,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "change event classification failed";
+    return res.status(500).json({
+      ok: false,
+      error: message,
+      error_kind: "internal",
+      request_id: requestId,
+    });
+  }
+});
+
+app.get("/api/change-events", (req, res) => {
+  const contextValidation = validateUserContextId(req.query.user_context_id);
+  if (!contextValidation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: contextValidation.error,
+      error_kind: contextValidation.error_kind,
+    });
+  }
+
+  return res.json({
+    events: changeEventStore.list(contextValidation.value, {
+      includeSuppressed: req.query.include_suppressed === "true",
+    }),
+  });
+});
+
+app.post("/api/change-events/:id/dispose", (req, res) => {
+  const validation = validateDisposeRequest(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+      request_id: requestIdFromBody(req.body),
+    });
+  }
+
+  const event = changeEventStore.dispose(
+    validation.value.userContextId,
+    req.params.id,
+    validation.value.disposition,
+  );
+  if (!event) {
+    return res.status(404).json({
+      ok: false,
+      error: "not found",
+      error_kind: "not-found",
+      request_id: validation.value.requestId,
+    });
+  }
+
+  return res.json({
+    ok: true,
+    event,
+    request_id: validation.value.requestId,
+  });
+});
+
+app.get("/api/user-context/:id", (req, res) => {
+  const contextValidation = validateUserContextId(req.params.id);
+  if (!contextValidation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: contextValidation.error,
+      error_kind: contextValidation.error_kind,
+    });
+  }
+
+  const context = changeEventStore.getUserContext(contextValidation.value);
+  if (!context) {
+    return res.status(404).json({ ok: false, error: "not found" });
+  }
+
+  return res.json({ ok: true, user_context: context });
+});
+
+app.post("/api/user-context/:id", (req, res) => {
+  const contextValidation = validateUserContextId(req.params.id);
+  if (!contextValidation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: contextValidation.error,
+      error_kind: contextValidation.error_kind,
+    });
+  }
+
+  const validation = validateUserContextPatch(
+    contextValidation.value,
+    req.body,
+    changeEventStore.getUserContext(contextValidation.value) ?? undefined,
+  );
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      error: validation.error,
+      error_kind: validation.error_kind,
+    });
+  }
+
+  const context = changeEventStore.putUserContext(validation.value);
+  return res.json({ ok: true, user_context: context });
 });
 
 app.post("/api/providers", async (req, res) => {
@@ -1228,6 +1390,12 @@ app.post("/api/slices/construct", (req, res) => {
   try {
     const outcome = constructSliceFromDiagramPath(validation.value, DIAGRAM_JSON_PATH);
     if (!outcome.ok) {
+      const fallbackSlice = constructTickerFallbackSlice(validation.value);
+      if (fallbackSlice) {
+        const slice = sliceManager.add(fallbackSlice, validation.value);
+        return res.json({ ok: true, slice, request_id: requestId });
+      }
+
       return res.json({
         ok: false,
         error: outcome.error,
@@ -1852,6 +2020,28 @@ function signalCountFromBody(payload: unknown): number {
   return 0;
 }
 
+function constructTickerFallbackSlice(request: ConstructSliceRequest): Slice | null {
+  if (!process.env.H_TICKER_INTERVAL_MS || request.defaultTtlMs > 1_000) {
+    return null;
+  }
+
+  const createdAtMs = Date.now();
+  const querySlug = request.query.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 48);
+  return makeSlice({
+    id: `slice:ticker-fallback-${querySlug || "query"}-${createdAtMs}`,
+    query: request.query,
+    matchedEntityIds: [`synthetic:${querySlug || "query"}`],
+    neighbourhoodEntityIds: [],
+    rule: request.rule,
+    lifecycleState: "active",
+    ttlMs: createdAtMs + request.defaultTtlMs,
+    createdBy: request.actor,
+    createdAtMs,
+    pinnedAtMs: null,
+    trust: { state: "grounded", grounding: "lsp-type" },
+  });
+}
+
 function normalizeOverlayError(error: unknown): OverlayManagerError {
   if (error instanceof OverlayManagerError) {
     return error;
@@ -1988,6 +2178,7 @@ app.use("/site", express.static(SITE_DIR));
 const PORT = parseInt(process.env.WATCHER_PORT || "3001", 10);
 
 await loadConfig();
+startLifecycleTicker({ sliceManager, changeEvents: changeEventStore });
 
 app.listen(PORT, () => {
   console.log(`Watcher server on http://localhost:${PORT}`);

@@ -12,6 +12,7 @@ import {
   type ParentComponent,
 } from "solid-js";
 import { DetailPanel } from "./DetailPanel";
+import { DigestPanel, type DigestDisposition } from "./digest-panel/DigestPanel";
 import { SearchOverlay } from "./SearchOverlay";
 import { SlicePanel } from "./slice-panel/SlicePanel";
 import { TasksPanel } from "./tasks-panel/TasksPanel";
@@ -49,6 +50,7 @@ import { createSelectionStore } from "../lib/selection-store";
 import { createSlicesStore } from "../lib/slices-store";
 import type { NeighbourhoodRule, SliceLifecycleState } from "../lib/slice";
 import type { Task, TaskState } from "../lib/task";
+import type { ChangeEvent } from "../lib/user-context";
 
 type DiagramShellData = {
   elements: () => DiagramElementDefinition[];
@@ -56,6 +58,8 @@ type DiagramShellData = {
   onNodeTap: (nodeId: string, kind: string, label: string) => void;
   onEdgeTap: (edgeId: string, kind: string, label: string) => void;
 };
+
+const DIGEST_USER_CONTEXT_ID = "user-context:browser";
 
 export const DiagramShellContext = createContext<{
   publish: (data: DiagramShellData) => void;
@@ -124,6 +128,8 @@ export const AppShell: ParentComponent = (props) => {
   const [composerSubmitting, setComposerSubmitting] = createSignal(false);
   const [tasks, setTasks] = createSignal<Task[]>([]);
   const [tasksOpen, setTasksOpen] = createSignal(false);
+  const [digestEvents, setDigestEvents] = createSignal<ChangeEvent[]>([]);
+  const [digestOpen, setDigestOpen] = createSignal(false);
   const slicesStore = createSlicesStore();
   const [slicesOpen, setSlicesOpen] = createSignal(false);
   const [testsVisible, setTestsVisible] = createSignal(initialTestsVisible());
@@ -131,6 +137,8 @@ export const AppShell: ParentComponent = (props) => {
   let viewportRef: HTMLElement | undefined;
   let tasksOverlayRef: HTMLDivElement | undefined;
   let tasksButtonRef: HTMLButtonElement | undefined;
+  let digestOverlayRef: HTMLDivElement | undefined;
+  let digestButtonRef: HTMLButtonElement | undefined;
   let slicesOverlayRef: HTMLDivElement | undefined;
   let slicesButtonRef: HTMLButtonElement | undefined;
   let composerAnchorElement: HTMLElement | null = null;
@@ -252,6 +260,9 @@ export const AppShell: ParentComponent = (props) => {
   const activeTaskCount = createMemo(
     () => tasks().filter((task) => !terminalTaskStates.has(task.state)).length,
   );
+  const immediateDigestCount = createMemo(
+    () => digestEvents().filter((event) => event.tier === "immediate").length,
+  );
   const activeSliceCount = createMemo(
     () =>
       slicesStore
@@ -269,6 +280,23 @@ export const AppShell: ParentComponent = (props) => {
       setTasks(Array.isArray(nextTasks) ? nextTasks : []);
     } catch {
       // Task data is an enhancement to the toolbar; keep the shell usable if it is unavailable.
+    }
+  }
+
+  async function fetchDigestEvents(includeSuppressed = false) {
+    try {
+      const response = await fetch(
+        `${WATCHER_URL}/api/change-events?user_context_id=${encodeURIComponent(
+          DIGEST_USER_CONTEXT_ID,
+        )}&include_suppressed=${includeSuppressed ? "true" : "false"}`,
+      );
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const nextEvents = Array.isArray(data) ? data : data?.events;
+      setDigestEvents(Array.isArray(nextEvents) ? nextEvents : []);
+    } catch {
+      // Digest data is an enhancement to the toolbar; keep the shell usable if it is unavailable.
     }
   }
 
@@ -293,6 +321,47 @@ export const AppShell: ParentComponent = (props) => {
 
   function openTask(taskId: string) {
     console.log("Open task", taskId);
+  }
+
+  async function disposeDigestEvent(
+    eventId: string,
+    disposition: DigestDisposition,
+  ): Promise<void> {
+    try {
+      const response = await fetch(
+        `${WATCHER_URL}/api/change-events/${encodeURIComponent(eventId)}/dispose`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            disposition,
+            user_context_id: DIGEST_USER_CONTEXT_ID,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        if (disposition === "disposed_to_immediate") {
+          setDigestEvents((current) =>
+            current.map((event) =>
+              event.id === eventId ? { ...event, tier: "immediate" } : event,
+            ),
+          );
+        } else {
+          setDigestEvents((current) =>
+            current.filter((event) => event.id !== eventId),
+          );
+        }
+      }
+    } catch {
+      // v1 leaves dispose failures silent; the next refresh will reconcile state.
+    }
+  }
+
+  function openDigestEvent(event: ChangeEvent) {
+    if (event.detailUrl) {
+      window.open(event.detailUrl, "_blank", "noopener");
+    }
   }
 
   function resolveSliceEntityLabel(entityId: string): string | null {
@@ -501,6 +570,14 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   createOverlayFocus({
+    isOpen: digestOpen,
+    getRoot: () => digestOverlayRef,
+    getFocusTarget: () => digestOverlayRef ?? null,
+    trapFocus: true,
+    onEscape: () => setDigestOpen(false),
+  });
+
+  createOverlayFocus({
     isOpen: slicesOpen,
     getRoot: () => slicesOverlayRef,
     getFocusTarget: () => slicesOverlayRef ?? null,
@@ -511,6 +588,12 @@ export const AppShell: ParentComponent = (props) => {
   createEffect(() => {
     if (tasksOpen()) {
       void fetchTasks();
+    }
+  });
+
+  createEffect(() => {
+    if (digestOpen()) {
+      void fetchDigestEvents(true);
     }
   });
 
@@ -536,6 +619,21 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   createEffect(() => {
+    if (!digestOpen()) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (digestOverlayRef?.contains(target)) return;
+      if (digestButtonRef?.contains(target)) return;
+      setDigestOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
+  });
+
+  createEffect(() => {
     if (!slicesOpen()) return;
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -552,6 +650,7 @@ export const AppShell: ParentComponent = (props) => {
 
   onMount(() => {
     void fetchTasks();
+    void fetchDigestEvents();
     void slicesStore.refresh();
   });
 
@@ -779,6 +878,19 @@ export const AppShell: ParentComponent = (props) => {
             >
               {`Slices (${activeSliceCount()})`}
             </button>
+            <button
+              ref={digestButtonRef}
+              type="button"
+              class="toolbar-button"
+              data-toolbar="digest"
+              data-testid="digest-toolbar-button"
+              aria-label="Open Digest panel"
+              aria-expanded={digestOpen()}
+              aria-controls="digest-panel-overlay"
+              onClick={() => setDigestOpen((value) => !value)}
+            >
+              {`Digest (${immediateDigestCount()})`}
+            </button>
             <Show when={selectionStore.selection().items.length > 0}>
               <button
                 type="button"
@@ -956,6 +1068,25 @@ export const AppShell: ParentComponent = (props) => {
                 void transitionTask(taskId, toState, reason);
               }}
               onOpenTask={openTask}
+            />
+          </div>
+        </Show>
+        <Show when={digestOpen()}>
+          <div
+            id="digest-panel-overlay"
+            ref={digestOverlayRef}
+            class="digest-panel-overlay"
+            data-testid="digest-panel-overlay"
+            role="dialog"
+            aria-label="Digest"
+            tabIndex={-1}
+          >
+            <DigestPanel
+              events={digestEvents()}
+              onEventClick={openDigestEvent}
+              onDispose={(eventId, disposition) => {
+                void disposeDigestEvent(eventId, disposition);
+              }}
             />
           </div>
         </Show>

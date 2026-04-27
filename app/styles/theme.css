@@ -52,6 +52,7 @@
   /* Read-only anchors in src/visual_code_editor/assets/styles.css: detail scrim 190, detail panel 200. */
   --z-watcher-panel: 350;
   --z-tasks-panel: 920;
+  --z-digest-panel: 920;
   --z-slices-panel: 920;
   --z-floating-composer: 950;
   --z-skip-link: 960;
@@ -187,6 +188,7 @@
 }
 
 .toolbar-button[data-toolbar="tasks"][aria-expanded="true"],
+.toolbar-button[data-toolbar="digest"][aria-expanded="true"],
 .toolbar-button[data-toolbar="slices"][aria-expanded="true"] {
   border-color: rgba(88, 166, 255, 0.55);
   background: linear-gradient(180deg, rgba(88, 166, 255, 0.16), rgba(88, 166, 255, 0.08));
@@ -218,6 +220,7 @@
 .toolbar-button[data-view-toggle][role="tab"][aria-selected="true"]:hover,
 .toolbar-button[data-toolbar="watcher"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tasks"][aria-expanded="true"]:hover,
+.toolbar-button[data-toolbar="digest"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="slices"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tests"][role="switch"][aria-checked="true"]:hover,
 .toolbar-button[data-toolbar="diff"][role="switch"][aria-checked="true"]:hover {
@@ -226,6 +229,7 @@
 
 .toolbar-button[data-toolbar="watcher"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tasks"][aria-expanded="true"]:hover,
+.toolbar-button[data-toolbar="digest"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="slices"][aria-expanded="true"]:hover,
 .toolbar-button[data-toolbar="tests"][role="switch"][aria-checked="true"]:hover {
   border-color: rgba(88, 166, 255, 0.55);
@@ -1058,6 +1062,7 @@
 }
 
 .tasks-panel-overlay,
+.digest-panel-overlay,
 .slices-panel-overlay {
   position: fixed;
   top: 64px;
@@ -1073,12 +1078,17 @@
   z-index: var(--z-tasks-panel);
 }
 
+.digest-panel-overlay {
+  z-index: var(--z-digest-panel);
+}
+
 .slices-panel-overlay {
   z-index: var(--z-slices-panel);
   width: min(460px, calc(100vw - 32px));
 }
 
-.tasks-panel-overlay .tasks-panel {
+.tasks-panel-overlay .tasks-panel,
+.digest-panel-overlay .digest-panel {
   min-height: 100%;
 }
 
