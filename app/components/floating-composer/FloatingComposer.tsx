@@ -39,6 +39,8 @@ export interface FloatingComposerProps {
   result?: ComposerResult | null;
   error?: string;
   isSubmitting?: boolean;
+  initialPrompt?: string;
+  openRequestId?: number;
 }
 
 type Size = {
@@ -218,6 +220,8 @@ export function FloatingComposer(props: FloatingComposerProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = createSignal(false);
   let rootRef: HTMLDivElement | undefined;
   let textareaRef: HTMLTextAreaElement | undefined;
+  let wasVisible = false;
+  let previousOpenRequestId: number | undefined;
 
   const isVisible = () => props.open && props.anchorRect !== null;
   const enabled = createMemo(() => enabledModeSet(props.enabledModes));
@@ -259,11 +263,15 @@ export function FloatingComposer(props: FloatingComposerProps) {
     onEscape: props.onClose,
   });
 
-  createEffect((wasVisible = false) => {
+  createEffect(() => {
     const visible = isVisible();
+    const openRequestId = props.openRequestId;
 
-    if (visible && !wasVisible) {
+    if (visible && (!wasVisible || previousOpenRequestId !== openRequestId)) {
+      previousOpenRequestId = openRequestId;
+      wasVisible = true;
       syncMode();
+      setPrompt(props.initialPrompt ?? "");
       setPrefersReducedMotion(reducedMotionRequested());
       queueMicrotask(() => {
         resizeTextarea(textareaRef);
@@ -272,10 +280,10 @@ export function FloatingComposer(props: FloatingComposerProps) {
     }
 
     if (!visible) {
+      wasVisible = false;
+      previousOpenRequestId = undefined;
       setIsPositioned(false);
     }
-
-    return visible;
   });
 
   createEffect(() => {
@@ -425,6 +433,7 @@ export function FloatingComposer(props: FloatingComposerProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Prompt composer"
+        data-mode={mode()}
         data-testid="floating-composer"
       >
         <div

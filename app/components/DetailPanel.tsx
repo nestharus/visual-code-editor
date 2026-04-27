@@ -11,7 +11,17 @@ import type {
   EdgeMechanismKind,
   EdgeTransfer,
 } from "../lib/edge-transfer";
+import { actorFromString, type ActorKind } from "../lib/actors";
+import {
+  BEHAVIOR_ID_PATTERN,
+  makeBehavior,
+  makeBehaviorSourceSlice,
+  type Behavior,
+  type BehaviorSliceRole,
+  type BehaviorSourceSlice,
+} from "../lib/behavior";
 import type { GroundingSource, TrustSignal, TrustState } from "../lib/trust";
+import { groundingSourceFromString } from "../lib/trust";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
 import { rebaseArticleLinks, resolveLegacyLink } from "../lib/detail-panel-links";
 import { getNodeVisualByKind } from "../lib/node-visuals";
@@ -21,10 +31,20 @@ import {
   type AnchorKind,
 } from "../lib/anchor";
 import { useComposerContext } from "../lib/composer-context";
+import { BehaviourCard } from "./behaviour-card/BehaviourCard";
 import { IconSvg } from "./IconSvg";
 import { TrustBadge } from "./TrustBadge";
 
-const SKIP_FIELDS = new Set(["kind", "id", "label", "href", "color", "clusterColor"]);
+const SKIP_FIELDS = new Set([
+  "kind",
+  "id",
+  "label",
+  "href",
+  "color",
+  "clusterColor",
+  "behavior",
+  "behaviour",
+]);
 const SUMMARY_ONLY_FIELDS = new Set([
   "description",
   "systemCount",
@@ -134,6 +154,17 @@ const TRUST_STATE_SET: ReadonlySet<string> = new Set([
   "stale",
   "orphaned",
 ]);
+const BEHAVIOR_SLICE_ROLE_SET: ReadonlySet<string> = new Set([
+  "entry-point",
+  "body",
+  "exit",
+  "error-path",
+  "test",
+  "fixture",
+  "annotation",
+  "guard",
+  "telemetry",
+]);
 
 function metadataFieldLabel(key: string): string {
   const labels: Record<string, string> = {
@@ -234,6 +265,192 @@ function normalizeTrustSignal(value: unknown): TrustSignal | null {
         ? (value.grounding as GroundingSource)
         : null,
   };
+}
+
+function normalizeBehaviorActor(
+  value: unknown,
+  fallback: ActorKind | null,
+): ActorKind | null {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  const lower = value.trim().toLowerCase();
+  const candidates = [
+    value.trim(),
+    lower,
+    lower.replace(/_/g, "-"),
+    lower.replace(/^agents[_-]/, "agents:").replace(/_/g, "-"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      return actorFromString(candidate);
+    } catch {
+      // Keep trying normalized actor spellings from exported JSON.
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeBehaviorSliceRole(value: unknown): BehaviorSliceRole {
+  const normalized =
+    typeof value === "string"
+      ? value.trim().toLowerCase().replace(/_/g, "-")
+      : "";
+  return BEHAVIOR_SLICE_ROLE_SET.has(normalized)
+    ? (normalized as BehaviorSliceRole)
+    : "body";
+}
+
+function normalizeBehaviorTrust(value: unknown): TrustSignal {
+  if (!isRecord(value) || !isTrustState(value.state)) {
+    return { state: "candidate", grounding: null };
+  }
+
+  if (value.state !== "grounded") {
+    return { state: value.state, grounding: null };
+  }
+
+  if (typeof value.grounding !== "string") {
+    return { state: "candidate", grounding: null };
+  }
+
+  try {
+    return {
+      state: "grounded",
+      grounding: groundingSourceFromString(value.grounding),
+    };
+  } catch {
+    return { state: "candidate", grounding: null };
+  }
+}
+
+function toPositiveLine(value: unknown, fallback: number): number {
+  const numberValue = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(numberValue) && numberValue >= 1 ? numberValue : fallback;
+}
+
+function toNullablePositiveColumn(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const numberValue = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(numberValue) && numberValue >= 1 ? numberValue : null;
+}
+
+function placeholderBehaviorSourceSlice(): BehaviorSourceSlice {
+  return makeBehaviorSourceSlice({
+    filePath: "<unknown>",
+    startLine: 1,
+    endLine: 1,
+    startCol: null,
+    endCol: null,
+    sliceRole: "body",
+    discoveredBy: "generator",
+    confirmedBy: null,
+  });
+}
+
+function normalizeBehaviorSourceSlice(value: unknown): BehaviorSourceSlice | null {
+  if (!isRecord(value)) return null;
+  const filePath = stringValue(value.filePath) || stringValue(value.file_path);
+  if (!filePath) return null;
+
+  const startLine = toPositiveLine(value.startLine ?? value.start_line, 1);
+  const endLine = toPositiveLine(value.endLine ?? value.end_line, startLine);
+
+  try {
+    return makeBehaviorSourceSlice({
+      filePath,
+      startLine,
+      endLine: Math.max(endLine, startLine),
+      startCol: toNullablePositiveColumn(value.startCol ?? value.start_col),
+      endCol: toNullablePositiveColumn(value.endCol ?? value.end_col),
+      sliceRole: normalizeBehaviorSliceRole(
+        value.sliceRole ?? value.slice_role ?? value.role,
+      ),
+      discoveredBy:
+        normalizeBehaviorActor(
+          value.discoveredBy ?? value.discovered_by,
+          "generator",
+        ) ?? "generator",
+      confirmedBy: normalizeBehaviorActor(
+        value.confirmedBy ?? value.confirmed_by,
+        null,
+      ),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeBehaviorIdPart(value: string): string {
+  return (
+    value
+      .replace(/^behavior:/, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "unknown"
+  );
+}
+
+function normalizeBehaviorId(value: unknown, fallbackId: string): string {
+  const candidate = stringValue(value);
+  if (BEHAVIOR_ID_PATTERN.test(candidate)) return candidate;
+  if (BEHAVIOR_ID_PATTERN.test(fallbackId)) return fallbackId;
+  return `behavior:placeholder-${sanitizeBehaviorIdPart(fallbackId)}`;
+}
+
+function normalizeParentBehaviorId(value: unknown): string | null {
+  const candidate = stringValue(value);
+  return BEHAVIOR_ID_PATTERN.test(candidate) ? candidate : null;
+}
+
+function behaviorPromotePrompt(label: string): string {
+  return (
+    "Generate a witness test for this behaviour: " +
+    label +
+    ". Use the existing test framework conventions in this repo. Place the test in the appropriate test file alongside the behaviour's source slices."
+  );
+}
+
+function normalizeBehaviorRecord(
+  detailRecord: DiagramDetailRecord,
+  fallbackId: string,
+  fallbackLabel: string,
+): Behavior {
+  const rawBehavior =
+    isRecord(detailRecord.behavior)
+      ? detailRecord.behavior
+      : isRecord(detailRecord.behaviour)
+        ? detailRecord.behaviour
+        : {};
+  const rawSlices = Array.isArray(rawBehavior.sourceSlices)
+    ? rawBehavior.sourceSlices
+    : Array.isArray(rawBehavior.source_slices)
+      ? rawBehavior.source_slices
+      : [];
+  const sourceSlices = rawSlices
+    .map(normalizeBehaviorSourceSlice)
+    .filter((slice): slice is BehaviorSourceSlice => slice !== null);
+  const label =
+    stringValue(rawBehavior.label) ||
+    stringValue(detailRecord.label) ||
+    fallbackLabel ||
+    fallbackId;
+  const descriptionValue =
+    stringValue(rawBehavior.description) || stringValue(detailRecord.description);
+
+  return makeBehavior({
+    id: normalizeBehaviorId(rawBehavior.id, fallbackId),
+    label,
+    description: descriptionValue || null,
+    sourceSlices: sourceSlices.length > 0 ? sourceSlices : [placeholderBehaviorSourceSlice()],
+    trust: normalizeBehaviorTrust(rawBehavior.trust),
+    parentBehaviorId: normalizeParentBehaviorId(
+      rawBehavior.parentBehaviorId ?? rawBehavior.parent_behavior_id,
+    ),
+    attributionActor: normalizeBehaviorActor(
+      rawBehavior.attributionActor ?? rawBehavior.attribution_actor,
+      "generator",
+    ),
+  });
 }
 
 function normalizeEdgeArtifact(value: unknown): EdgeArtifact | null {
@@ -364,6 +581,13 @@ export function DetailPanel() {
   const description = createMemo(() => {
     const value = detail()?.description;
     return typeof value === "string" ? value : "";
+  });
+
+  const behaviorCardBehavior = createMemo(() => {
+    const d = detail();
+    const id = panelId();
+    if (!d || d.kind !== "behavior" || !id) return null;
+    return normalizeBehaviorRecord(d, id, panelLabel() || "");
   });
 
   const codeBlocks = createMemo(() => {
@@ -837,6 +1061,14 @@ export function DetailPanel() {
     });
   };
 
+  const promoteBehaviorToTest = (behavior: Behavior) => {
+    composer.openDirect({
+      prompt: behaviorPromotePrompt(behavior.label),
+      surfaceAnchor: "behaviour-card",
+      behaviourId: behavior.id,
+    });
+  };
+
   // URL-persistent inspector: kept as <aside> landmark rather than dialog; no focus trap so users can return to the graph.
   createOverlayFocus({
     isOpen,
@@ -952,6 +1184,17 @@ export function DetailPanel() {
                   )}
                 </For>
               </div>
+            </Show>
+            <Show when={behaviorCardBehavior()}>
+              {(behavior) => (
+                <div class="detail-module">
+                  <BehaviourCard
+                    behaviour={behavior()}
+                    headerLabel={behavior().label}
+                    onPromoteToTest={promoteBehaviorToTest}
+                  />
+                </div>
+              )}
             </Show>
             <Show when={edgeEndpoints()}>
               {(endpoints) => (
@@ -1234,7 +1477,7 @@ export function DetailPanel() {
                 </table>
               </div>
             </Show>
-            <Show when={!htmlContent() && !fields().length && !description() && !codeBlocks().length && !edgeEndpoints() && behaviorScenarioRefs().length === 0}>
+            <Show when={!htmlContent() && !fields().length && !description() && !codeBlocks().length && !edgeEndpoints() && behaviorScenarioRefs().length === 0 && !behaviorCardBehavior()}>
               <div class="detail-module">
                 <p style={{ color: "var(--text-dim)" }}>No details available.</p>
               </div>

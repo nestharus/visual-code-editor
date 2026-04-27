@@ -18,6 +18,7 @@ import { TasksPanel } from "./tasks-panel/TasksPanel";
 import { WatcherPanel } from "./WatcherPanel";
 import {
   FloatingComposer,
+  type ComposerMode,
   type ComposerResult,
   type ComposerSubmission,
 } from "./floating-composer/FloatingComposer";
@@ -29,6 +30,7 @@ import type { DiagramElementDefinition } from "../lib/diagram-elements";
 import {
   buildDirectTaskDispatchBody,
   ComposerContext,
+  type ComposerOpenDirectIntent,
   type ComposerOpenIntent,
 } from "../lib/composer-context";
 import { createOverlayFocus } from "../lib/a11y/createOverlayFocus";
@@ -113,6 +115,10 @@ export const AppShell: ParentComponent = (props) => {
     createSignal<AnchorKind>("selection-box");
   const [composerAnchorRect, setComposerAnchorRect] =
     createSignal<DOMRectReadOnly | null>(null);
+  const [composerInitialMode, setComposerInitialMode] =
+    createSignal<ComposerMode | undefined>(undefined);
+  const [composerInitialPrompt, setComposerInitialPrompt] = createSignal("");
+  const [composerOpenRequestId, setComposerOpenRequestId] = createSignal(0);
   const [composerResult, setComposerResult] = createSignal<ComposerResult | null>(null);
   const [composerError, setComposerError] = createSignal("");
   const [composerSubmitting, setComposerSubmitting] = createSignal(false);
@@ -304,6 +310,8 @@ export const AppShell: ParentComponent = (props) => {
     setComposerResult(null);
     setComposerError("");
     setComposerSubmitting(false);
+    setComposerInitialMode(undefined);
+    setComposerInitialPrompt("");
     composerAnchorElement = null;
   }
 
@@ -320,6 +328,8 @@ export const AppShell: ParentComponent = (props) => {
     }
 
     composerAnchorElement = intent.trigger ?? null;
+    setComposerInitialMode(undefined);
+    setComposerInitialPrompt("");
     setComposerSurfaceAnchor(intent.surfaceAnchor);
     setComposerAnchorRect(
       intent.anchorRect ??
@@ -330,6 +340,26 @@ export const AppShell: ParentComponent = (props) => {
     setComposerResult(null);
     setComposerError("");
     setComposerSubmitting(false);
+    setComposerOpenRequestId((value) => value + 1);
+    setComposerOpen(true);
+  }
+
+  function openDirectComposer(intent: ComposerOpenDirectIntent) {
+    selectionStore.replace(
+      intent.behaviourId
+        ? [makeSelectionItem(intent.behaviourId, "behaviour-card", "entity")]
+        : [],
+    );
+
+    composerAnchorElement = null;
+    setComposerInitialMode("direct");
+    setComposerInitialPrompt(intent.prompt);
+    setComposerSurfaceAnchor(intent.surfaceAnchor);
+    setComposerAnchorRect(viewportRef?.getBoundingClientRect() ?? null);
+    setComposerResult(null);
+    setComposerError("");
+    setComposerSubmitting(false);
+    setComposerOpenRequestId((value) => value + 1);
     setComposerOpen(true);
   }
 
@@ -614,6 +644,7 @@ export const AppShell: ParentComponent = (props) => {
       <ComposerContext.Provider
         value={{
           open: openComposer,
+          openDirect: openDirectComposer,
           close: closeComposer,
           selection: selectionStore.selection,
         }}
@@ -902,6 +933,9 @@ export const AppShell: ParentComponent = (props) => {
           selection={selectionStore.selection()}
           onClose={closeComposer}
           onSubmit={handleComposerSubmit}
+          initialMode={composerInitialMode()}
+          initialPrompt={composerInitialPrompt()}
+          openRequestId={composerOpenRequestId()}
           result={composerResult()}
           error={composerError()}
           isSubmitting={composerSubmitting()}

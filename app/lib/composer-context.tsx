@@ -13,8 +13,15 @@ export type ComposerOpenIntent = {
   anchorRect?: DOMRectReadOnly;
 };
 
+export type ComposerOpenDirectIntent = {
+  prompt: string;
+  surfaceAnchor: AnchorKind;
+  behaviourId?: string;
+};
+
 export type ComposerContextValue = {
   open: (intent: ComposerOpenIntent) => void;
+  openDirect: (intent: ComposerOpenDirectIntent) => void;
   close: () => void;
   selection: Accessor<SelectionScope>;
 };
