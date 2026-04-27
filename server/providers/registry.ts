@@ -3,6 +3,7 @@ import { getAdapter } from "./adapters";
 import {
   makeProvider,
   makeProviderConnection,
+  ProviderAdapterValidationError,
   type CreateProviderRequest,
   type Provider,
   type ProviderConnection,
@@ -74,6 +75,14 @@ export function createProviderRegistry(): ProviderRegistry {
       try {
         await adapter.init(provider);
       } catch (error) {
+        if (error instanceof ProviderAdapterValidationError) {
+          throw new ProviderRegistryError(
+            "validation",
+            errorMessage(error, "provider adapter validation failed"),
+            { cause: error },
+          );
+        }
+
         throw new ProviderRegistryError(
           "adapter-error",
           errorMessage(error, "provider adapter init failed"),

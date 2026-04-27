@@ -33,6 +33,7 @@ import {
   type WritebackPlan,
   type WritebackRequest,
 } from "./writeback/validate";
+import { getCachedPullRequests } from "./providers/github_adapter";
 import {
   createTaskManager,
   TaskManagerError,
@@ -1090,6 +1091,18 @@ app.get("/api/providers/:id/connection", (req, res) => {
   }
 
   return res.json({ connection });
+});
+
+app.get("/api/providers/:id/pull-requests", (req, res) => {
+  const provider = providerRegistry.get(req.params.id);
+  if (!provider || provider.kind !== "github") {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  return res.json({
+    provider_id: provider.id,
+    pull_requests: getCachedPullRequests(provider.id) ?? [],
+  });
 });
 
 app.post("/api/overlays/layers", (req, res) => {

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mermaid-js/layout-elk": "^0.2.1",
+    "@octokit/rest": "^22.0.1",
     "@solid-primitives/spring": "^0.1.2",
     "@solid-primitives/tween": "^1.4.1",
     "@tanstack/solid-query": "^5.95.2",

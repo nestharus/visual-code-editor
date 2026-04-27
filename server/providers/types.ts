@@ -94,6 +94,13 @@ export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: string; error_kind: "validation" };
 
+export class ProviderAdapterValidationError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ProviderAdapterValidationError";
+  }
+}
+
 export const PROVIDER_ID_PATTERN = /^provider:[a-zA-Z0-9._-]+$/;
 
 export const ALL_ACTORS = [
