@@ -17,6 +17,7 @@ import { SearchOverlay } from "./SearchOverlay";
 import { SlicePanel } from "./slice-panel/SlicePanel";
 import { TasksPanel } from "./tasks-panel/TasksPanel";
 import { WatcherPanel } from "./WatcherPanel";
+import { WidgetInventoryPanel } from "./widget-inventory/WidgetInventoryPanel";
 import {
   FloatingComposer,
   type ComposerMode,
@@ -51,6 +52,7 @@ import { createSlicesStore } from "../lib/slices-store";
 import type { NeighbourhoodRule, SliceLifecycleState } from "../lib/slice";
 import type { Task, TaskState } from "../lib/task";
 import type { ChangeEvent } from "../lib/user-context";
+import type { Widget } from "../lib/widget";
 
 type DiagramShellData = {
   elements: () => DiagramElementDefinition[];
@@ -128,6 +130,8 @@ export const AppShell: ParentComponent = (props) => {
   const [composerSubmitting, setComposerSubmitting] = createSignal(false);
   const [tasks, setTasks] = createSignal<Task[]>([]);
   const [tasksOpen, setTasksOpen] = createSignal(false);
+  const [widgets, setWidgets] = createSignal<Widget[]>([]);
+  const [widgetsOpen, setWidgetsOpen] = createSignal(false);
   const [digestEvents, setDigestEvents] = createSignal<ChangeEvent[]>([]);
   const [digestOpen, setDigestOpen] = createSignal(false);
   const slicesStore = createSlicesStore();
@@ -137,6 +141,8 @@ export const AppShell: ParentComponent = (props) => {
   let viewportRef: HTMLElement | undefined;
   let tasksOverlayRef: HTMLDivElement | undefined;
   let tasksButtonRef: HTMLButtonElement | undefined;
+  let widgetsOverlayRef: HTMLDivElement | undefined;
+  let widgetsButtonRef: HTMLButtonElement | undefined;
   let digestOverlayRef: HTMLDivElement | undefined;
   let digestButtonRef: HTMLButtonElement | undefined;
   let slicesOverlayRef: HTMLDivElement | undefined;
@@ -260,6 +266,7 @@ export const AppShell: ParentComponent = (props) => {
   const activeTaskCount = createMemo(
     () => tasks().filter((task) => !terminalTaskStates.has(task.state)).length,
   );
+  const widgetCount = createMemo(() => widgets().length);
   const immediateDigestCount = createMemo(
     () => digestEvents().filter((event) => event.tier === "immediate").length,
   );
@@ -280,6 +287,21 @@ export const AppShell: ParentComponent = (props) => {
       setTasks(Array.isArray(nextTasks) ? nextTasks : []);
     } catch {
       // Task data is an enhancement to the toolbar; keep the shell usable if it is unavailable.
+    }
+  }
+
+  async function fetchWidgets(refresh = false) {
+    try {
+      const response = await fetch(
+        `${WATCHER_URL}/api/widgets${refresh ? "?refresh=true" : ""}`,
+      );
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const nextWidgets = Array.isArray(data) ? data : data?.widgets;
+      setWidgets(Array.isArray(nextWidgets) ? nextWidgets : []);
+    } catch {
+      // Widget inventory is an enhancement to the toolbar; keep the shell usable if it is unavailable.
     }
   }
 
@@ -321,6 +343,10 @@ export const AppShell: ParentComponent = (props) => {
 
   function openTask(taskId: string) {
     console.log("Open task", taskId);
+  }
+
+  function openWidget(widget: Widget) {
+    console.log("Open widget", widget.id);
   }
 
   async function disposeDigestEvent(
@@ -570,6 +596,14 @@ export const AppShell: ParentComponent = (props) => {
   });
 
   createOverlayFocus({
+    isOpen: widgetsOpen,
+    getRoot: () => widgetsOverlayRef,
+    getFocusTarget: () => widgetsOverlayRef ?? null,
+    trapFocus: true,
+    onEscape: () => setWidgetsOpen(false),
+  });
+
+  createOverlayFocus({
     isOpen: digestOpen,
     getRoot: () => digestOverlayRef,
     getFocusTarget: () => digestOverlayRef ?? null,
@@ -588,6 +622,12 @@ export const AppShell: ParentComponent = (props) => {
   createEffect(() => {
     if (tasksOpen()) {
       void fetchTasks();
+    }
+  });
+
+  createEffect(() => {
+    if (widgetsOpen()) {
+      void fetchWidgets();
     }
   });
 
@@ -612,6 +652,21 @@ export const AppShell: ParentComponent = (props) => {
       if (tasksOverlayRef?.contains(target)) return;
       if (tasksButtonRef?.contains(target)) return;
       setTasksOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
+  });
+
+  createEffect(() => {
+    if (!widgetsOpen()) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (widgetsOverlayRef?.contains(target)) return;
+      if (widgetsButtonRef?.contains(target)) return;
+      setWidgetsOpen(false);
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -650,6 +705,7 @@ export const AppShell: ParentComponent = (props) => {
 
   onMount(() => {
     void fetchTasks();
+    void fetchWidgets();
     void fetchDigestEvents();
     void slicesStore.refresh();
   });
@@ -866,6 +922,19 @@ export const AppShell: ParentComponent = (props) => {
               {`Tasks (${activeTaskCount()})`}
             </button>
             <button
+              ref={widgetsButtonRef}
+              type="button"
+              class="toolbar-button"
+              data-toolbar="widgets"
+              data-testid="widgets-toolbar-button"
+              aria-label="Open Widgets panel"
+              aria-expanded={widgetsOpen()}
+              aria-controls="widgets-panel-overlay"
+              onClick={() => setWidgetsOpen((value) => !value)}
+            >
+              {`Widgets (${widgetCount()})`}
+            </button>
+            <button
               ref={slicesButtonRef}
               type="button"
               class="toolbar-button"
@@ -1068,6 +1137,25 @@ export const AppShell: ParentComponent = (props) => {
                 void transitionTask(taskId, toState, reason);
               }}
               onOpenTask={openTask}
+            />
+          </div>
+        </Show>
+        <Show when={widgetsOpen()}>
+          <div
+            id="widgets-panel-overlay"
+            ref={widgetsOverlayRef}
+            class="widgets-panel-overlay"
+            data-testid="widgets-panel-overlay"
+            role="dialog"
+            aria-label="Widgets"
+            tabIndex={-1}
+          >
+            <WidgetInventoryPanel
+              widgets={widgets()}
+              onWidgetClick={openWidget}
+              onRefresh={() => {
+                void fetchWidgets(true);
+              }}
             />
           </div>
         </Show>

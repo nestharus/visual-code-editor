@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WidgetInventoryPanel fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      main {
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      #mount {
+        width: min(720px, 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="mount"></div>
+    </main>
+
+    <script type="module">
+      import { render } from "solid-js/web";
+      import { WidgetInventoryPanel } from "/app/components/widget-inventory/WidgetInventoryPanel.tsx";
+      import { makeWidget } from "/app/lib/widget.ts";
+
+      const params = new URLSearchParams(window.location.search);
+
+      window.__widgetInventoryClickEvents = [];
+      window.__resetWidgetInventoryEvents = () => {
+        window.__widgetInventoryClickEvents.length = 0;
+      };
+
+      function numberParam(name, fallback) {
+        const value = params.get(name);
+        if (value === null || value.trim() === "") {
+          return fallback;
+        }
+
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      const fixtureWidgets = [
+        makeWidget({
+          id: "widget:fixture.login-button",
+          label: "Login Button",
+          kind: "button",
+          references: [
+            {
+              surface: "source",
+              identifier: "app/components/auth/LoginButton.tsx#LoginButton",
+              evidenceSource: "fixture",
+            },
+          ],
+          trust: { state: "candidate", grounding: null },
+          attributionActor: "agents:slice-constructor",
+          createdAtMs: 1,
+        }),
+        makeWidget({
+          id: "widget:fixture.email-field",
+          label: "Email Field",
+          kind: "input",
+          references: [
+            {
+              surface: "source",
+              identifier: "app/lib/forms/EmailField.tsx#EmailField",
+              evidenceSource: "fixture",
+            },
+          ],
+          trust: { state: "candidate", grounding: null },
+          attributionActor: "agents:slice-constructor",
+          createdAtMs: 2,
+        }),
+        makeWidget({
+          id: "widget:fixture.profile-card",
+          label: "Profile Card",
+          kind: "card",
+          references: [
+            {
+              surface: "source",
+              identifier: "app/components/profile/ProfileCard.tsx#ProfileCard",
+              evidenceSource: "fixture",
+            },
+          ],
+          trust: { state: "candidate", grounding: null },
+          attributionActor: "agents:slice-constructor",
+          createdAtMs: 3,
+        }),
+      ];
+
+      const count = Math.max(0, Math.trunc(numberParam("count", fixtureWidgets.length)));
+      const widgets = fixtureWidgets.slice(0, count);
+
+      render(
+        () =>
+          WidgetInventoryPanel({
+            widgets,
+            onWidgetClick: (widget) => {
+              window.__widgetInventoryClickEvents.push(widget.id);
+            },
+            onRefresh: () => {},
+          }),
+        document.getElementById("mount"),
+      );
+    </script>
+  </body>
+</html>

@@ -50,6 +50,8 @@ import {
   PRDeltaComputeError,
   type PRDeltaErrorKind,
 } from "./pr_delta/compute";
+import { extractWidgets } from "./widgets/extract";
+import { WidgetExtractionError } from "./widgets/types";
 import {
   validateComputePRDeltaRequest,
   type ComputePRDeltaRequest,
@@ -928,6 +930,45 @@ app.get("/api/diagram", async (_req, res) => {
     res.send(data);
   } catch {
     res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
+  }
+});
+
+app.get("/api/widgets", async (req, res) => {
+  try {
+    const result = await extractWidgets({
+      workspaceRoot: PROJECT_ROOT,
+      refresh: req.query.refresh === "true",
+    });
+    return res.json(result);
+  } catch (error) {
+    const widgetError = normalizeWidgetExtractionError(error);
+    return res.status(500).json({
+      ok: false,
+      error: widgetError.message,
+      error_kind: widgetError.errorKind,
+    });
+  }
+});
+
+app.get("/api/widgets/:id", async (req, res) => {
+  try {
+    const result = await extractWidgets({
+      workspaceRoot: PROJECT_ROOT,
+      refresh: req.query.refresh === "true",
+    });
+    const widget = result.widgets.find((candidate) => candidate.id === req.params.id);
+    if (!widget) {
+      return res.status(404).json({ error: "not found" });
+    }
+
+    return res.json({ widget, computed_at_ms: result.computed_at_ms });
+  } catch (error) {
+    const widgetError = normalizeWidgetExtractionError(error);
+    return res.status(500).json({
+      ok: false,
+      error: widgetError.message,
+      error_kind: widgetError.errorKind,
+    });
   }
 });
 
@@ -2114,6 +2155,15 @@ function normalizePRDeltaError(error: unknown): PRDeltaComputeError {
 
   const message = error instanceof Error ? error.message : "PR delta computation failed";
   return new PRDeltaComputeError("internal", message, { cause: error });
+}
+
+function normalizeWidgetExtractionError(error: unknown): WidgetExtractionError {
+  if (error instanceof WidgetExtractionError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "widget extraction failed";
+  return new WidgetExtractionError("internal", message, { cause: error });
 }
 
 function statusForPRDeltaError(errorKind: PRDeltaErrorKind): number {
