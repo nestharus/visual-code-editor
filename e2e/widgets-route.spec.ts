@@ -15,7 +15,9 @@ import type { Widget } from "../app/lib/widget";
 
 const TEST_DIR = resolve(".tmp/widgets-route");
 const LOG_PATH = join(TEST_DIR, "watcher.log");
+const PUBLIC_RENDER_ROOT = resolve("public", "data", "widget-renders");
 const PROBE_PATHS: string[] = [];
+const PUBLIC_RENDER_FIXTURE_DIRS: string[] = [];
 
 let watcher: ChildProcessWithoutNullStreams | null = null;
 let api: APIRequestContext;
@@ -58,6 +60,9 @@ test.describe("/api/widgets", () => {
 
     for (const path of PROBE_PATHS) {
       await rm(path, { force: true });
+    }
+    for (const path of PUBLIC_RENDER_FIXTURE_DIRS) {
+      await rm(path, { recursive: true, force: true });
     }
     await rm(TEST_DIR, { recursive: true, force: true });
   });
@@ -110,6 +115,53 @@ test.describe("/api/widgets", () => {
     const missingResponse = await api.get("/api/widgets/widget:missing-widget-route");
     const missingBody = await expectJsonStatus(missingResponse, 404);
     expect(missingBody.error).toEqual(expect.any(String));
+  });
+
+  test("GET /api/widgets/:id/renders returns an empty array when no renders directory exists", async () => {
+    const widgetId = `widget:no-render-${uniqueSuffix()}`;
+
+    const response = await api.get(
+      `/api/widgets/${encodeURIComponent(widgetId)}/renders`,
+    );
+    const body = await expectJsonStatus(response, 200);
+
+    expect(body).toEqual({ renders: [] });
+  });
+
+  test("GET /api/widgets/:id/renders returns fixture renders from disk", async () => {
+    const widgetSuffix = `route-render-${uniqueSuffix()}`;
+    const widgetId = `widget:${widgetSuffix}`;
+    const fixtureDir = join(PUBLIC_RENDER_ROOT, widgetSuffix);
+    PUBLIC_RENDER_FIXTURE_DIRS.push(fixtureDir);
+
+    const render = {
+      id: `render:${widgetSuffix}.desktop`,
+      widgetId,
+      surface: "static-image",
+      viewport: "desktop",
+      theme: "dark",
+      locale: "en-US",
+      assetPath: `public/data/widget-renders/${widgetSuffix}/desktop.png`,
+      capturedAtMs: 1_700_000_000_000,
+      trust: {
+        state: "candidate",
+        grounding: null,
+      },
+    };
+
+    await mkdir(fixtureDir, { recursive: true });
+    await writeFile(
+      join(fixtureDir, "index.json"),
+      JSON.stringify({ renders: [render] }, null, 2),
+      "utf8",
+    );
+
+    const response = await api.get(
+      `/api/widgets/${encodeURIComponent(widgetId)}/renders`,
+    );
+    const body = await expectJsonStatus(response, 200);
+
+    expect(body).toEqual({ renders: [render] });
   });
 
   test("GET /api/widgets?refresh=true forces re-extraction", async () => {

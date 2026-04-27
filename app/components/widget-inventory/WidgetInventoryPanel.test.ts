@@ -116,6 +116,13 @@ test.describe('WidgetInventoryPanel', () => {
     await expect(widgetRow(page, 0)).toContainText('app/components/auth/LoginButton.tsx');
   });
 
+  test('renders the render snapshot count hint per widget row', async ({ page, baseURL }) => {
+    await openFixture(page, baseURL, { count: 2 });
+
+    await expect(widgetRow(page, 0)).toContainText('Renders (2)');
+    await expect(widgetRow(page, 1)).toContainText('Renders (0)');
+  });
+
   test('renders the empty placeholder', async ({ page, baseURL }) => {
     await openFixture(page, baseURL, { count: 0 });
 

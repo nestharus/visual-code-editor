@@ -51,6 +51,7 @@ import {
   type PRDeltaErrorKind,
 } from "./pr_delta/compute";
 import { extractWidgets } from "./widgets/extract";
+import { readWidgetRenders } from "./widgets/renders";
 import { WidgetExtractionError } from "./widgets/types";
 import {
   validateComputePRDeltaRequest,
@@ -946,6 +947,24 @@ app.get("/api/widgets", async (req, res) => {
       ok: false,
       error: widgetError.message,
       error_kind: widgetError.errorKind,
+    });
+  }
+});
+
+app.get("/api/widgets/:id/renders", async (req, res) => {
+  try {
+    const result = await readWidgetRenders({
+      workspaceRoot: PROJECT_ROOT,
+      widgetId: req.params.id,
+    });
+    return res.json(result);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "widget render read failed";
+    return res.status(500).json({
+      ok: false,
+      error: message,
+      error_kind: "internal",
     });
   }
 });

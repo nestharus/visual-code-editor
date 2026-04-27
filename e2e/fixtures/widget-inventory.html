@@ -109,6 +109,47 @@
         }),
       ];
 
+      const renderSnapshotsByWidgetId = {
+        "widget:fixture.login-button": [
+          {
+            id: "render:fixture.login-button.desktop",
+            widgetId: "widget:fixture.login-button",
+            surface: "static-image",
+            viewport: "desktop",
+            theme: "dark",
+            locale: "en-US",
+            assetPath: "public/data/widget-renders/fixture.login-button/desktop.png",
+            capturedAtMs: 1,
+            trust: { state: "candidate", grounding: null },
+          },
+          {
+            id: "render:fixture.login-button.wireframe",
+            widgetId: "widget:fixture.login-button",
+            surface: "wireframe",
+            viewport: "desktop",
+            theme: "dark",
+            locale: "en-US",
+            assetPath: "public/data/widget-renders/fixture.login-button/wireframe.svg",
+            capturedAtMs: 2,
+            trust: { state: "candidate", grounding: null },
+          },
+        ],
+        "widget:fixture.email-field": [],
+        "widget:fixture.profile-card": [
+          {
+            id: "render:fixture.profile-card.mobile",
+            widgetId: "widget:fixture.profile-card",
+            surface: "static-image",
+            viewport: "mobile-portrait",
+            theme: "dark",
+            locale: "en-US",
+            assetPath: "public/data/widget-renders/fixture.profile-card/mobile.png",
+            capturedAtMs: 3,
+            trust: { state: "candidate", grounding: null },
+          },
+        ],
+      };
+
       const count = Math.max(0, Math.trunc(numberParam("count", fixtureWidgets.length)));
       const widgets = fixtureWidgets.slice(0, count);
 
@@ -116,6 +157,7 @@
         () =>
           WidgetInventoryPanel({
             widgets,
+            renderSnapshotsByWidgetId,
             onWidgetClick: (widget) => {
               window.__widgetInventoryClickEvents.push(widget.id);
             },
