@@ -85,6 +85,12 @@ import {
   type OverlayProviderId,
   type SetOverlayLayerRequest,
 } from "./overlays/types";
+import {
+  createProviderRegistry,
+  ProviderRegistryError,
+  type ProviderErrorKind,
+} from "./providers/registry";
+import { validateCreateProviderRequest } from "./providers/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, ".watch-config.json");
@@ -141,6 +147,7 @@ type ExtractJsonResult =
 type WritebackErrorKind = "validation" | "internal" | "io";
 type TaskRouteStatus = "ok" | "error";
 type OverlayRouteStatus = "ok" | "error";
+type ProviderRouteStatus = "ok" | "error";
 
 const app = express();
 app.use(cors());
@@ -568,6 +575,40 @@ function logOverlayOutcome(fields: {
   }));
 }
 
+function logProviderOutcome(fields: {
+  request_id: string;
+  route: string;
+  provider_id: string;
+  kind: string;
+  duration_ms: number;
+  status: ProviderRouteStatus;
+  error_kind?: ProviderErrorKind;
+}) {
+  console.log(JSON.stringify({
+    request_id: fields.request_id,
+    ts: new Date().toISOString(),
+    route: fields.route,
+    provider_id: fields.provider_id,
+    kind: fields.kind,
+    duration_ms: fields.duration_ms,
+    status: fields.status,
+    ...(fields.error_kind ? { error_kind: fields.error_kind } : {}),
+  }));
+}
+
+function providerKindFromBody(payload: unknown): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "kind" in payload &&
+    typeof (payload as { kind?: unknown }).kind === "string"
+  ) {
+    return (payload as { kind: string }).kind;
+  }
+
+  return "-";
+}
+
 async function withWritebackLock<T>(task: () => Promise<T>): Promise<T> {
   while (writebackInProgress) {
     await writebackInProgress;
@@ -862,6 +903,7 @@ const taskManager = createTaskManager(PROJECT_ROOT);
 const reviewThreadManager = createReviewThreadManager();
 const sliceManager = createSliceManager();
 const overlayManager = createOverlayManager();
+const providerRegistry = createProviderRegistry();
 
 const DIAGRAM_JSON_PATH = process.env.DIAGRAM_JSON
   || join(PROJECT_ROOT, "public", "data", "diagram.json");
@@ -874,6 +916,180 @@ app.get("/api/diagram", async (_req, res) => {
   } catch {
     res.status(404).json({ error: "Run: python3 src/visual_code_editor/export_json_cli.py <workspace.json> > dist/data/diagram.json" });
   }
+});
+
+app.post("/api/providers", async (req, res) => {
+  const startedAt = Date.now();
+  const requestId = randomUUID();
+
+  const fail = (
+    statusCode: number,
+    errorKind: ProviderErrorKind,
+    error: string,
+    fields?: { providerId?: string; kind?: string },
+  ) => {
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers",
+      provider_id: fields?.providerId ?? "-",
+      kind: fields?.kind ?? providerKindFromBody(req.body),
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+    });
+  };
+
+  const validation = validateCreateProviderRequest(req.body);
+  if (!validation.ok) {
+    return fail(400, validation.error_kind, validation.error);
+  }
+
+  try {
+    const created = await providerRegistry.create(validation.value);
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers",
+      provider_id: created.provider.id,
+      kind: created.provider.kind,
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+    return res.json({
+      ok: true,
+      provider: created.provider,
+      connection: created.connection,
+      request_id: requestId,
+    });
+  } catch (error) {
+    const providerError = normalizeProviderError(error);
+    return fail(
+      statusForProviderError(providerError.errorKind),
+      providerError.errorKind,
+      providerError.message,
+      { kind: validation.value.kind },
+    );
+  }
+});
+
+app.get("/api/providers", (_req, res) => {
+  return res.json({ providers: providerRegistry.list() });
+});
+
+app.get("/api/providers/:id", (req, res) => {
+  const provider = providerRegistry.get(req.params.id);
+  if (!provider) {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  return res.json({ provider });
+});
+
+app.post("/api/providers/:id/sync", async (req, res) => {
+  const startedAt = Date.now();
+  const requestId = randomUUID();
+
+  const fail = (statusCode: number, errorKind: ProviderErrorKind, error: string) => {
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers/:id/sync",
+      provider_id: req.params.id,
+      kind: providerRegistry.get(req.params.id)?.kind ?? "-",
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+    });
+  };
+
+  try {
+    const connection = await providerRegistry.sync(req.params.id);
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers/:id/sync",
+      provider_id: connection.providerId,
+      kind: providerRegistry.get(connection.providerId)?.kind ?? "-",
+      duration_ms: Date.now() - startedAt,
+      status: "ok",
+    });
+    return res.json({ ok: true, connection, request_id: requestId });
+  } catch (error) {
+    const providerError = normalizeProviderError(error);
+    return fail(
+      statusForProviderError(providerError.errorKind),
+      providerError.errorKind,
+      providerError.message,
+    );
+  }
+});
+
+app.delete("/api/providers/:id", async (req, res) => {
+  const startedAt = Date.now();
+  const requestId = randomUUID();
+  const provider = providerRegistry.get(req.params.id);
+
+  const fail = (statusCode: number, errorKind: ProviderErrorKind, error: string) => {
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers/:id",
+      provider_id: req.params.id,
+      kind: provider?.kind ?? "-",
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      error_kind: errorKind,
+    });
+    return res.status(statusCode).json({
+      ok: false,
+      error,
+      error_kind: errorKind,
+      request_id: requestId,
+    });
+  };
+
+  try {
+    const deleted = await providerRegistry.delete(req.params.id);
+    logProviderOutcome({
+      request_id: requestId,
+      route: "/api/providers/:id",
+      provider_id: req.params.id,
+      kind: provider?.kind ?? "-",
+      duration_ms: Date.now() - startedAt,
+      status: deleted ? "ok" : "error",
+      ...(deleted ? {} : { error_kind: "not-found" as const }),
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "not found" });
+    }
+
+    return res.json({ ok: true, request_id: requestId });
+  } catch (error) {
+    const providerError = normalizeProviderError(error);
+    return fail(
+      statusForProviderError(providerError.errorKind),
+      providerError.errorKind,
+      providerError.message,
+    );
+  }
+});
+
+app.get("/api/providers/:id/connection", (req, res) => {
+  const connection = providerRegistry.connection(req.params.id);
+  if (!connection) {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  return res.json({ connection });
 });
 
 app.post("/api/overlays/layers", (req, res) => {
@@ -1638,6 +1854,28 @@ function statusForOverlayError(errorKind: OverlayErrorKind): number {
       return 400;
     case "not-found":
       return 404;
+    case "internal":
+      return 500;
+  }
+}
+
+function normalizeProviderError(error: unknown): ProviderRegistryError {
+  if (error instanceof ProviderRegistryError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "provider route failed";
+  return new ProviderRegistryError("internal", message, { cause: error });
+}
+
+function statusForProviderError(errorKind: ProviderErrorKind): number {
+  switch (errorKind) {
+    case "validation":
+    case "unsupported-kind":
+      return 400;
+    case "not-found":
+      return 404;
+    case "adapter-error":
     case "internal":
       return 500;
   }
